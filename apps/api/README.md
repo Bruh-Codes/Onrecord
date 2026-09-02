@@ -1,6 +1,6 @@
 # apps/api
 
-FastAPI + Celery backend for the Sankofa Credit Readiness Assistant. One image,
+FastAPI + Celery backend for the Onrecord Credit Readiness Assistant. One image,
 two entrypoints — see `Dockerfile`. Read [`Agent.md`](../../Agent.md) and
 [`specs/00-domain-model.md`](../../specs/00-domain-model.md) /
 [`specs/09-api.md`](../../specs/09-api.md) before changing this app.
