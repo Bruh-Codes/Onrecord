@@ -19,7 +19,7 @@ flowchart LR
   PG[("Postgres 16<br/>+ pgvector")]
   OS[("Object store<br/>R2 / MinIO")]
   DOC["Document AI<br/>+ PaddleOCR"]
-  LLM["Claude API<br/>vision · agent"]
+  LLM["LLM API<br/>vision · agent"]
 
   C -- "https" --> API
   API -- "enqueue" --> Q
@@ -31,7 +31,7 @@ flowchart LR
   W -- "classify · agent" --> LLM
 ```
 
-The API and worker pool ship from a single image with two entrypoints: the API serves the web client over REST + SSE and reads Postgres directly; the worker pool claims jobs off Redis and runs the S1–S10 pipeline (ingest → classify → extract → normalise → reconcile → categorise → analyse → score → checklist → export), writing results back to Postgres, storing originals/renders in the object store, and calling out to Document AI / PaddleOCR for OCR and the Claude API for vision extraction and the gap-filling agent.
+The API and worker pool ship from a single image with two entrypoints: the API serves the web client over REST + SSE and reads Postgres directly; the worker pool claims jobs off Redis and runs the S1–S10 pipeline (ingest → classify → extract → normalise → reconcile → categorise → analyse → score → checklist → export), writing results back to Postgres, storing originals/renders in the object store, and calling out to Document AI / PaddleOCR for OCR and the LLM API for vision extraction and the gap-filling agent.
 
 ## Repo layout
 
