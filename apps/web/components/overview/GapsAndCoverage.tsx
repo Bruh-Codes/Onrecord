@@ -29,7 +29,7 @@ export function GapsAndCoverage({ state }: { state: AppState }) {
         <div className="font-[family-name:var(--font-display)] text-[22px] mb-0.5">
           9 <span className="text-[13px] opacity-60">of 12 months</span>
         </div>
-        <Sparkline points="0,55 30,55 60,20 90,55 220,55" color="#141414" viewBoxWidth={220} height={70} />
+        <Sparkline points="0,55 30,55 60,20 90,55 220,55" color="var(--color-ink)" viewBoxWidth={220} height={70} />
       </div>
       <div>
         <div className="text-sm font-semibold mb-3">Top counterparties by value</div>

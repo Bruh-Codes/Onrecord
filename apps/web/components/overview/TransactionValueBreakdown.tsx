@@ -2,9 +2,9 @@ import { getUnclassifiedValue } from "@/lib/derived";
 import type { AppState } from "@/lib/app-state-types";
 
 const ROWS = [
-  { label: "Revenue", value: "GH¢184,300", color: "#1e6b45", widthPct: 60 },
-  { label: "COGS + opex", value: "GH¢100,100", color: "#c17d11", widthPct: 20 },
-  { label: "Financing / owner", value: "GH¢24,000", color: "#5a5a57", widthPct: 13 },
+  { label: "Revenue", value: "GH¢184,300", color: "var(--color-positive)", widthPct: 60 },
+  { label: "COGS + opex", value: "GH¢100,100", color: "var(--color-amber)", widthPct: 20 },
+  { label: "Financing / owner", value: "GH¢24,000", color: "var(--color-muted)", widthPct: 13 },
 ];
 
 export function TransactionValueBreakdown({ state }: { state: AppState }) {
@@ -17,7 +17,7 @@ export function TransactionValueBreakdown({ state }: { state: AppState }) {
         {ROWS.map((r) => (
           <div key={r.label} style={{ width: `${r.widthPct}%`, background: r.color }} />
         ))}
-        <div style={{ width: "7%", background: "#a13327" }} />
+        <div style={{ width: "7%", background: "var(--color-negative)" }} />
       </div>
       <div className="flex flex-col gap-2.5 text-[13px]">
         {ROWS.map((r) => (

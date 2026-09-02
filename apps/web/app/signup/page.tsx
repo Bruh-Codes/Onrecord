@@ -58,7 +58,7 @@ export default function SignupPage() {
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-10">
-				<div className="w-full max-w-[460px] bg-white rounded-3xl shadow-[0_12px_32px_rgba(46,43,37,0.16)] p-9">
+				<div className="w-full max-w-[460px] bg-surface rounded-3xl shadow-[var(--shadow-card)] p-9">
 					<div className="flex gap-1 bg-panel rounded-full p-1 mb-6.5">
 						<button
 							type="button"
@@ -88,7 +88,7 @@ export default function SignupPage() {
 					<button
 						type="button"
 						disabled
-						className="w-full flex items-center justify-center gap-2.5 bg-white border border-ink/16 rounded-full text-sm p-3 cursor-not-allowed text-ink/50 mb-4"
+						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 cursor-not-allowed text-ink/50 mb-4"
 					>
 						<GoogleLogo />
 						Continue with Google
@@ -134,7 +134,7 @@ export default function SignupPage() {
 						</div>
 					)}
 
-					{error && <p className="text-[12.5px] text-red-600 mt-3">{error}</p>}
+					{error && <p className="text-[12.5px] text-negative mt-3">{error}</p>}
 
 					<button
 						type="button"
@@ -142,7 +142,7 @@ export default function SignupPage() {
 						onClick={handleSubmit}
 						className="w-full mt-5 text-paper font-[family-name:var(--font-display)] text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed"
 						style={{
-							background: ready && !submitting ? "#141414" : "#9a9a97",
+							background: ready && !submitting ? "var(--color-ink)" : "var(--color-muted)",
 							cursor: ready && !submitting ? "pointer" : "not-allowed",
 						}}
 					>

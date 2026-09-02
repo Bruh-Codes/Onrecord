@@ -15,7 +15,7 @@ export function GetStartedCard() {
 			<div className="flex gap-5 flex-wrap">
 				<Link
 					href="/documents"
-					className="flex-1 min-w-[240px] bg-white rounded-2xl p-5 flex items-center gap-3.5"
+					className="flex-1 min-w-[240px] bg-surface rounded-2xl p-5 flex items-center gap-3.5"
 				>
 					<div className="w-[42px] h-[42px] shrink-0 rounded-xl bg-positive-bg flex items-center justify-center">
 						<UploadIcon className="text-positive" />
@@ -32,7 +32,7 @@ export function GetStartedCard() {
 				</Link>
 				<Link
 					href="/counterparties"
-					className="flex-1 min-w-[240px] bg-white rounded-2xl p-5 flex items-center gap-3.5"
+					className="flex-1 min-w-[240px] bg-surface rounded-2xl p-5 flex items-center gap-3.5"
 				>
 					<div className="w-[42px] h-[42px] shrink-0 rounded-xl bg-negative-bg flex items-center justify-center">
 						<CounterpartiesIcon className="text-negative" />

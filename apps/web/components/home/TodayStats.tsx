@@ -5,8 +5,13 @@ import type { AppState } from "@/lib/app-state-types";
 export function TodayStats({ state }: { state: AppState }) {
   const coverage = getCoverage(state);
   const score = getScore(state);
-  const coverageColor = coverage.positive ? "#1e6b45" : "#a13327";
-  const scoreColor = score.total >= 65 ? "#1e6b45" : score.total >= 40 ? "#8a8a87" : "#a13327";
+  const coverageColor = coverage.positive ? "var(--color-positive)" : "var(--color-negative)";
+  const scoreColor =
+    score.total >= 65
+      ? "var(--color-positive)"
+      : score.total >= 40
+        ? "var(--color-muted)"
+        : "var(--color-negative)";
 
   return (
     <div className="flex gap-12 flex-wrap">

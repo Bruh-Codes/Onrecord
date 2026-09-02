@@ -25,14 +25,14 @@ export default function OverviewPage() {
           title="Revenue, trailing 12mo"
           totalLabel="GH¢184,300"
           series={REVENUE_SERIES}
-          color="#141414"
+          color="var(--color-ink)"
           idleCaption="GH¢12,400 previous window"
         />
         <TrendChart
           title="Operating cashflow, trailing 12mo"
           totalLabel="GH¢58,200"
           series={CASHFLOW_SERIES}
-          color="#5a5a57"
+          color="var(--color-muted)"
           idleCaption={`Cash buffer: ${cashBufferDays} days`}
         />
       </div>
