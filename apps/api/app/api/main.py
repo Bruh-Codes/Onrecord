@@ -5,7 +5,7 @@ from app.api.routers.businesses import router as businesses_router
 from app.api.routers.documents import router as documents_router
 from app.errors import AppError
 
-app = FastAPI(title="Sankofa Credit Readiness API")
+app = FastAPI(title="Onrecord Credit Readiness API")
 
 
 @app.exception_handler(AppError)

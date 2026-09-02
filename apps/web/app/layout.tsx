@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sankofa — SME Credit Readiness Assistant",
+  title: "Onrecord — SME Credit Readiness Assistant",
   description: "Turn a folder of business records into a lender-ready financial profile.",
 };
 

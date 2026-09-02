@@ -1,6 +1,6 @@
 # apps/web
 
-Next.js frontend for the Sankofa Credit Readiness Assistant. Read
+Next.js frontend for the Onrecord Credit Readiness Assistant. Read
 [`Agent.md`](../../Agent.md) and [`specs/10-web.md`](../../specs/10-web.md)
 before changing this app.
 
