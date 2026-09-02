@@ -1,4 +1,4 @@
-# Sankofa — SME Credit Readiness Assistant
+# SME Credit Readiness Assistant
 
 Turns the messy records a Ghanaian SME actually has — MoMo statements, bank statements, receipts, invoices, a handwritten sales book — into a structured, provenance-tracked financial profile a lender can assess, plus an explicit list of what's still missing.
 
