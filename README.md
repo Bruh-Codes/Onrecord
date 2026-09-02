@@ -99,4 +99,15 @@ in each app's own README: [`apps/api/README.md`](./apps/api/README.md),
 
 ## Contributing
 
+`main` is protected — direct pushes are rejected. All changes go through a pull request:
+
+```bash
+git checkout -b my-feature
+# commit your changes
+git push -u origin my-feature
+gh pr create        # or use the URL git prints after the push
+```
+
+Pushing the branch alone does **not** open a PR — `gh pr create` (or the GitHub UI) is a separate, one-time step. Once a PR exists, further pushes to the same branch update it automatically; you don't need to run `gh pr create` again.
+
 See [`Agent.md`](./Agent.md) for the rules this repo's code — human or AI-written — follows (file size limits, component structure, readability).
