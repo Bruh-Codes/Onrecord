@@ -42,17 +42,60 @@ product-spec.md Full MVP engineering specification
 Agent.md        Rules for AI-assisted changes in this repo
 ```
 
-## Frontend
+## Requirements
 
-`apps/web` is the Next.js implementation of the product UI (owner flow: sign up, home, overview, documents, counterparties, gaps, nearly-ready checklist, assistant chat; plus the reviewer queue). Currently wired to mock data — no backend yet.
+| Tool | Used for | Version |
+|---|---|---|
+| [Bun](https://bun.sh) | `apps/web` package manager + dev server | 1.3+ |
+| [uv](https://docs.astral.sh/uv/) | `apps/api` Python env + package manager | latest |
+| Python | `apps/api` | 3.12 |
+| Postgres | shared by both apps (see below) | 16 |
+| Redis | `apps/api` worker (Celery) only | any recent |
+
+Both apps read from the **same Postgres database** — Better Auth's tables
+(`apps/web`, prefixed `auth_`) and the domain model (`apps/api`, `user`,
+`business`, `document`, ...) coexist without colliding. One local Postgres
+instance is enough for both.
+
+## Running locally
+
+Start Postgres and Redis first (a throwaway local Postgres cluster works fine —
+see `apps/api/README.md` "Run migrations" for a quick `initdb`/`pg_ctl` recipe if
+you don't have one running).
+
+**1. `apps/api` — backend**
+
+```bash
+cd apps/api
+uv venv --python 3.12
+uv pip install -e ".[dev]"
+# create .env — see apps/api/README.md "Setup" for the required vars
+.venv/Scripts/alembic upgrade head        # Windows; .venv/bin/... on macOS/Linux
+.venv/Scripts/uvicorn app.api.main:app --reload
+```
+
+API on `http://localhost:8000` (`/docs` for OpenAPI, `/healthz` for liveness).
+Run the worker separately when you need it:
+
+```bash
+.venv/Scripts/celery -A app.workers.celery_app worker --loglevel INFO
+```
+
+**2. `apps/web` — frontend**
 
 ```bash
 cd apps/web
 bun install
+# create .env.local — see apps/web/README.md "Auth" for the required vars
+bunx auth migrate -y                      # applies Better Auth's tables
 bun dev
 ```
 
-See [`apps/web/README.md`](./apps/web/README.md) for frontend-specific details.
+Web app on `http://localhost:3000`.
+
+Full detail (env vars, auth internals, known gaps, build/lint/test commands) is
+in each app's own README: [`apps/api/README.md`](./apps/api/README.md),
+[`apps/web/README.md`](./apps/web/README.md).
 
 ## Contributing
 

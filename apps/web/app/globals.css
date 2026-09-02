@@ -1,0 +1,85 @@
+@import url("https://fonts.googleapis.com/css2?family=Caprasimo:wght@400&family=Figtree:wght@400;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #141414;
+  --color-paper: #f7f7f6;
+  --color-panel: #ececea;
+  --color-panel-strong: #e5e5e3;
+  --color-border: rgba(20, 20, 20, 0.14);
+  --color-positive-bg: #e3f3e9;
+  --color-positive: #1e6b45;
+  --color-amber: #c17d11;
+  --color-negative-bg: #fbe6e4;
+  --color-negative: #a13327;
+  --color-muted: #5a5a57;
+  --font-display: "Caprasimo", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+a {
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+a:hover {
+  color: #000000;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgba(20, 20, 20, 0.4);
+}
+
+button {
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+button:not(:disabled):hover {
+  filter: brightness(0.93);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease;
+}
+.animate-slide-in {
+  animation: slide-in 0.25s ease;
+}

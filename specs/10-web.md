@@ -26,6 +26,21 @@ Reviewer routes may ship more; they are not on the budget.
 
 ---
 
+## 1a. Auth
+
+Better Auth is mounted here (`apps/web/app/api/auth/[...all]/route.ts`), Postgres-backed
+via its adapter. `apps/api` never issues or checks credentials — it only verifies
+the JWT Better Auth issues (see `specs/09-api.md` §1). Plugins in use: `phoneNumber`
+(owner OTP login), `organization` (institution/reviewer membership + role),
+`jwt` (token for `apps/api` to verify), `admin` (reviewer/admin management).
+
+The current `apps/web` build (`/signup`) implements a placeholder email/password +
+Google card with no real backend yet; wiring it to Better Auth — including
+switching the owner flow to phone + OTP per the routes below — is open work
+(see `ROADMAP.md`, Phase 1).
+
+---
+
 ## 2. Owner routes
 
 ```

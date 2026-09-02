@@ -9,29 +9,30 @@ response bodies are Pydantic v2 models in `app/schemas/`.
 
 ## 1. Auth
 
-Two identity paths.
+Auth is **Better Auth**, mounted in `apps/web` (Next.js route handlers), Postgres-backed
+via its adapter — same database as the rest of the system, not a separate user
+store. `apps/api` issues no credentials of its own. It verifies the session/JWT
+Better Auth produces (Better Auth's JWT plugin) on every incoming request.
 
-**Owner — phone + OTP.** SME owners do not have reliable email.
-```
-POST /v1/auth/otp/request   {"phone": "+233241234567"}  → {"challenge_id"}
-POST /v1/auth/otp/verify    {"challenge_id", "code"}    → {"access", "refresh"}
-```
-- OTP is 6 digits, valid 5 minutes, max 5 attempts, rate limited to 3 requests
-  per phone per 15 minutes.
-- Sent via `services/sms/` (Hubtel or Arkesel).
-- `phone` is stored hashed; never logged in plaintext.
+Owner and reviewer/admin are both Better Auth users, distinguished by a `role`
+claim (`Role` enum, §00-domain-model.md §1) synced onto the `user` table's `role`
+column. Owners carry `business_id`; reviewer/admin carry `institution_id`.
 
-**Reviewer / admin — email + password.**
-```
-POST /v1/auth/login    {"email", "password"} → {"access", "refresh"}
-POST /v1/auth/refresh  {"refresh"}           → {"access"}
-```
-Argon2id password hashing.
+**Plugins used (configured in `apps/web`):**
+- `phoneNumber` — owner login via phone + OTP (SME owners often lack reliable
+  email). Replaces a hand-rolled `/v1/auth/otp/*` flow entirely.
+- `organization` — models an "institution" (MFI/bank) as an organization, with
+  reviewer/admin accounts as members carrying a role. Replaces a hand-rolled
+  `institution_id` + role table.
+- `jwt` — issues the JWKS `apps/api` verifies against. `apps/api` never touches
+  credentials, never issues a token.
+- `admin` — role management / ban controls for reviewer/admin accounts.
 
-**Tokens.** JWT. Access TTL 30 min, refresh 30 days. Claims:
-`sub`, `role`, `business_id` (owners only), `institution_id` (staff only).
+See `specs/10-web.md` for the frontend-side auth wiring.
 
-**Authorisation.** `app/api/deps.py`:
+**Authorisation in `apps/api`.** `app/api/deps.py`:
+- `verify_token()` — validates the Better Auth JWT (signature, expiry, issuer)
+  and returns the claims. No local session table.
 - `require_role(Role.REVIEWER)` — dependency
 - `require_business_access(business_id)` — an owner may access only their own
   business; a reviewer only businesses within their institution.
