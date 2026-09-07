@@ -10,26 +10,23 @@ export default function SignupPage() {
 	const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [companyName, setCompanyName] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const ready =
-		authMode === "signup"
-			? companyName.trim().length > 0 && email.trim() && password.trim()
-			: email.trim() && password.trim();
+	const ready = email.trim() && password.trim();
 
 	async function handleSubmit() {
 		if (!ready || submitting) return;
 		setSubmitting(true);
 		setError(null);
 
-		// Better Auth's core schema requires a `name` — we don't collect a
-		// separate owner name at this step, so the business name doubles as it
-		// for now. Reconciled once /signup collects an owner name too.
+		// Better Auth's core schema requires a `name` — we don't collect an
+		// owner name at this step, so the email local-part fills it for now.
+		// The business itself is created on /setup (legal name, entity type).
+		const name = email.trim().split("@")[0] || "User";
 		const { error: authError } =
 			authMode === "signup"
-				? await authClient.signUp.email({ email, password, name: companyName })
+				? await authClient.signUp.email({ email, password, name })
 				: await authClient.signIn.email({ email, password });
 
 		if (authError) {
@@ -123,20 +120,6 @@ export default function SignupPage() {
 							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full"
 						/>
 					</div>
-
-					{authMode === "signup" && (
-						<div className="mt-3.5">
-							<label className="block text-xs mb-1.5 text-ink/70">
-								Business name
-							</label>
-							<input
-								value={companyName}
-								onChange={(e) => setCompanyName(e.target.value)}
-								placeholder="e.g. Adom Provisions or Kofi's Textiles"
-								className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full"
-							/>
-						</div>
-					)}
 
 					{error && <p className="text-[12.5px] text-negative mt-3">{error}</p>}
 

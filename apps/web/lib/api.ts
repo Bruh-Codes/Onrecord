@@ -6,7 +6,6 @@
  * demand so the token is always fresh (they expire).
  */
 
-import { authClient } from "./auth-client";
 import type {
   Business,
   ChecklistItem,
@@ -41,12 +40,20 @@ export class ApiError extends Error {
 }
 
 async function getToken(): Promise<string> {
-  const session = await authClient.getSession();
-  const token = session?.data?.session?.token;
-  if (!token) {
+  // Better Auth >= 1.2 no longer returns the JWT inside the get-session body
+  // (`session.token`); the jwt plugin mints it via the dedicated GET
+  // /api/auth/token endpoint instead (same signing path, same claims).
+  const res = await fetch("/api/auth/token", {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
     throw new ApiError(401, "UNAUTHORIZED", "No active session. Please sign in.");
   }
-  return token;
+  const data = (await res.json()) as { token?: string };
+  if (!data.token) {
+    throw new ApiError(401, "UNAUTHORIZED", "No active session. Please sign in.");
+  }
+  return data.token;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
