@@ -75,7 +75,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://sme:sme@postgres:5432/sme
       DATABASE_URL_SYNC: postgresql+psycopg://sme:sme@postgres:5432/sme
       REDIS_URL: redis://redis:6379/0
-      BETTER_AUTH_JWKS_URL: http://web:3000/api/auth/jwks
+      BETTER_AUTH_JWKS_URL: http://localhost:3000/api/auth/jwks
       BETTER_AUTH_ISSUER: ${BETTER_AUTH_URL:-http://localhost:3000}
       BETTER_AUTH_AUDIENCE: ${BETTER_AUTH_URL:-http://localhost:3000}
       STORAGE_ENDPOINT_URL: http://localhost:9000
@@ -102,26 +102,7 @@ services:
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       STORAGE_BUCKET: sme-documents
 
-  web:
-    build: ./apps/web
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./apps/web:/app
-      - web_node_modules:/app/node_modules
-      - web_next_cache:/app/.next
-    environment:
-      DATABASE_URL: postgresql://sme:sme@postgres:5432/sme
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-change-me-32chars}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-
 volumes:
   pgdata:
   redisdata:
   miniodata:
-  web_node_modules:
-  web_next_cache:

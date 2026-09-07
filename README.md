@@ -62,8 +62,9 @@ instance is enough for both.
 ### Docker Compose (recommended)
 
 Brings up Postgres 16 (pgvector-enabled image), Redis, MinIO (S3-compatible
-object store), the API, the Celery worker, and the web app together, each with
-a persistent named volume — no throwaway cluster, no manual `.env` wiring:
+object store), the API, and the Celery worker together, each with a persistent
+named volume — no throwaway cluster, no manual `.env` wiring. The web app runs
+separately (`bun dev` in `apps/web`, or from Vercel in production):
 
 ```bash
 cp .env.example .env   # defaults work as-is; override BETTER_AUTH_SECRET etc. if you want
@@ -72,15 +73,13 @@ docker compose up
 
 | Service | URL |
 |---|---|
-| Web | http://localhost:3000 |
 | API | http://localhost:8000 (`/healthz`, `/docs`) |
 | MinIO console | http://localhost:9001 (login: `minioadmin` / `minioadmin` by default) |
 | Postgres | `localhost:5432` (`sme`/`sme`) |
 | Redis | `localhost:6379` |
 
-The `api` service runs `alembic upgrade head` on boot; `web` runs
-`bunx auth migrate -y` on boot. Both `apps/api` and `apps/web` are bind-mounted
-for live reload — edit code on the host, see it reflected in the container.
+The `api` service runs `alembic upgrade head` on boot and is bind-mounted for
+live reload — edit code on the host, see it reflected in the container.
 `minio-init` creates the `sme-documents` bucket on first run and exits — that's
 expected, not a failure.
 

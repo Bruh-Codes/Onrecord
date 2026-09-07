@@ -43,7 +43,7 @@ Required env (`.env.local`, gitignored):
 BETTER_AUTH_SECRET=<32+ char random string>
 BETTER_AUTH_URL=http://localhost:3000
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
 
 Apply Better Auth's schema after any config change to `lib/auth.ts`:
@@ -83,13 +83,45 @@ bun dev
 Requires a reachable Postgres (see `DATABASE_URL` above) — `apps/api`'s
 `README.md` has a throwaway-local-cluster recipe if you don't have one handy;
 both apps can share the same database (they use non-colliding table names).
-Or run `docker compose up` from the repo root instead — see the root
-[`README.md`](../../README.md) "Docker Compose", which runs this app for you
-alongside Postgres/Redis/MinIO/`apps/api`.
+Or run `docker compose up` from the repo root for the backend
+(Postgres/Redis/MinIO/api/worker) and run the web with `bun dev` pointing at it
+via `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000` — see the root
+[`README.md`](../../README.md) "Docker Compose".
 
 ## Build
 
 ```bash
 bun run build
 bun run lint
+```
+
+## Deploying to Vercel
+
+`vercel.json` in this directory pins the framework (Next.js) and the build
+commands. Create the Vercel project with:
+
+- Framework preset: **Next.js**
+- Root directory: **`apps/web`** (monorepo)
+- Build: `bun run build` (bun installs automatically from the
+  `packageManager` field)
+
+Environment variables (Vercel → Settings → Environment Variables):
+
+```
+BETTER_AUTH_SECRET=<32+ char random string, stable across deploys>
+BETTER_AUTH_URL=https://<your-app>.vercel.app
+DATABASE_URL=postgresql://...railway...     # Public Network DSN from Railway Postgres → Connect
+NEXT_PUBLIC_BACKEND_URL=https://sme-project-production-9437.up.railway.app
+```
+
+The browser talks to the Railway API directly (CORS), so the API's
+`CORS_ALLOW_ORIGINS`, `BETTER_AUTH_ISSUER`, `BETTER_AUTH_AUDIENCE` and
+`BETTER_AUTH_JWKS_URL` must each point at the Vercel domain.
+
+First deploy creates the app but the Better Auth tables (`auth_user`, …) have
+not been created yet in the production database. Run once against your
+production database (from a shell with `DATABASE_URL` set to the public DSN):
+
+```bash
+bunx auth migrate
 ```
