@@ -42,7 +42,7 @@ export default function SignupPage() {
 		// business_id back onto this user (see lib/link-business.ts). Login
 		// goes straight home; the (app) layout redirects back here if a
 		// returning user somehow still has no business_id.
-		router.push(authMode === "signup" ? "/setup" : "/");
+		router.push(authMode === "signup" ? "/setup" : "/dashboard");
 	}
 
 	return (
