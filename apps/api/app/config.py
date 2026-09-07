@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 
+    # Comma-separated browser origins allowed to call this API. The web app
+    # calls every endpoint cross-origin with an Authorization header, so this
+    # must include its production URL (e.g. https://web-production-1234.up.railway.app).
+    cors_allow_origins: str = "http://localhost:3000"
+
 # S3-compatible object store (Agent.md §4: storage sits behind an
     # interface — see app/services/storage/). Local dev default is the
     # docker-compose MinIO. `storage_endpoint_url` deliberately points at

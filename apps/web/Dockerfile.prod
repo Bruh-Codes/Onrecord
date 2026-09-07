@@ -1,0 +1,33 @@
+# Production image (Railway). Multi-stage: install, build, run.
+#
+# NEXT_PUBLIC_API_URL is baked into the client bundle at build time by Next.js,
+# so it must be present during `bun run build`. Railway exposes service
+# variables during the build, so just set it in the service's Variables tab.
+
+FROM oven/bun:1.3-slim AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+FROM oven/bun:1.3-slim AS build
+WORKDIR /app
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN bun run build
+
+FROM oven/bun:1.3-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/next.config.ts ./next.config.ts
+
+EXPOSE 3000
+
+# `bunx auth migrate` creates/updates the auth_* tables on first boot;
+# the API service is not started until Postgres is healthy, and better-auth's
+# migration is idempotent, so racing the API's `alembic upgrade head` is fine.
+CMD ["sh", "-c", "bunx auth migrate -y && bun run start"]
