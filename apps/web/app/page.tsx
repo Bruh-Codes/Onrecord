@@ -62,6 +62,7 @@ export default function LandingPage() {
             <Link
               href="/signup"
               className="inline-flex items-center justify-center bg-ink text-paper rounded-full px-7 py-3.5 text-[14.5px] font-[family-name:var(--font-display)]"
+              style={{ color: "var(--color-paper)" }}
             >
               Get started free
             </Link>
@@ -136,6 +137,7 @@ export default function LandingPage() {
           <Link
             href="/signup"
             className="inline-flex items-center justify-center bg-ink text-paper rounded-full px-8 py-3.5 text-[14.5px] font-[family-name:var(--font-display)]"
+            style={{ color: "var(--color-paper)" }}
           >
             Get started
           </Link>
