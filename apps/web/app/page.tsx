@@ -75,7 +75,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-left sm:text-center text-[12px] opacity-50 mt-6 mb-0">
-            Built for GHS 20,000–200,000 · No bookkeeper needed · MoMo-first
+            Built by Dickson Kamasah, Lawrence Adagbon and Daniel Okoh Yeboah @Codetrain
           </p>
         </section>
 
