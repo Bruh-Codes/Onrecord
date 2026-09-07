@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBusiness, type EntityType } from "@/lib/api-client";
+import { api } from "@/lib/api";
 import { linkBusiness } from "@/lib/link-business";
 
-const ENTITY_TYPES: { value: EntityType; label: string }[] = [
+const ENTITY_TYPES: { value: string; label: string }[] = [
 	{ value: "sole_prop", label: "Sole proprietorship" },
 	{ value: "partnership", label: "Partnership" },
 	{ value: "ltd", label: "Limited company" },
@@ -15,7 +15,7 @@ const ENTITY_TYPES: { value: EntityType; label: string }[] = [
 export default function SetupPage() {
 	const router = useRouter();
 	const [legalName, setLegalName] = useState("");
-	const [entityType, setEntityType] = useState<EntityType>("sole_prop");
+	const [entityType, setEntityType] = useState("sole_prop");
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +27,14 @@ export default function SetupPage() {
 		setError(null);
 
 		try {
-			const business = await createBusiness({ legal_name: legalName.trim(), entity_type: entityType });
+			const business = await api.createBusiness({
+				legal_name: legalName.trim(),
+				entity_type: entityType,
+			});
 			await linkBusiness(business.id);
+			// The server-side gate in app/(app)/layout.tsx resolves businessId
+			// from the auth_user row itself, so no session refresh is needed —
+			// the owner won't be bounced back here on the next navigation.
 			router.push("/");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -63,7 +69,7 @@ export default function SetupPage() {
 						<label className="block text-xs mb-1.5 text-ink/70">Business type</label>
 						<select
 							value={entityType}
-							onChange={(e) => setEntityType(e.target.value as EntityType)}
+							onChange={(e) => setEntityType(e.target.value)}
 							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full"
 						>
 							{ENTITY_TYPES.map((t) => (

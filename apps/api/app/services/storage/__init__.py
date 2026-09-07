@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Protocol
 
+from app.config import get_settings
+from app.services.storage.local import LocalStorageBackend
 from app.services.storage.s3 import S3StorageBackend
 
 
@@ -15,7 +17,12 @@ class StorageBackend(Protocol):
 
 
 def get_storage_backend() -> StorageBackend:
-    return S3StorageBackend()
+    """S3/MinIO by default; falls back to the local-dev receiver when no
+    storage_bucket is configured."""
+    settings = get_settings()
+    if settings.storage_bucket:
+        return S3StorageBackend()
+    return LocalStorageBackend()
 
 
 __all__ = ["StorageBackend", "get_storage_backend"]

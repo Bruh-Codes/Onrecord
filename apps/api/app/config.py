@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 
-    # S3-compatible object store (Agent.md §4: storage sits behind an
+# S3-compatible object store (Agent.md §4: storage sits behind an
     # interface — see app/services/storage/). Local dev default is the
     # docker-compose MinIO. `storage_endpoint_url` deliberately points at
     # whatever the *browser* can reach (not the docker-network hostname):
@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     storage_secret_key: str = "minioadmin"
     storage_bucket: str = "sme-documents"
     storage_region: str = "us-east-1"
+
+    # When storage_bucket is unset (e.g. running the API without docker or an
+    # object store), the storage backend falls back to a local directory
+    # backend instead — see app/services/storage/local.py.
+    local_storage_dir: str = ""
 
 
 @lru_cache

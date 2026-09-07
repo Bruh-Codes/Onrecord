@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -23,6 +23,7 @@ class Business(IdMixin, Base):
     region: Mapped[str | None] = mapped_column(nullable=True)
     premises_status: Mapped[str | None] = mapped_column(nullable=True)  # 'rented'|'owned'|'none' — DECLARED
     employee_count_declared: Mapped[int | None] = mapped_column(nullable=True)  # DECLARED
+    coverage_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     accounts: Mapped[list["Account"]] = relationship(back_populates="business")
 

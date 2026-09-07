@@ -3,24 +3,24 @@
 import { PillButton } from "@/components/ui/PillButton";
 import { Badge } from "@/components/ui/Badge";
 import { DocumentsIcon } from "@/components/icons";
-import type { DocumentSummary } from "@/lib/api-client";
+import type { Document, DocumentStatus } from "@/lib/api-types";
 
-const STATUS_LABEL: Record<DocumentSummary["status"], string> = {
-  received: "Received — waiting to be read",
-  classified: "Classified",
+const STATUS_LABEL: Record<DocumentStatus, string> = {
+  uploaded: "Uploaded — waiting to be read",
+  processing: "Being read",
   extracted: "Extracted",
-  reconciliation_failed: "Numbers didn't reconcile",
+  confirmed: "Confirmed",
   failed: "Couldn't be read",
-  superseded: "Superseded",
+  deleted: "Deleted",
 };
 
-const STATUS_TONE: Record<DocumentSummary["status"], "positive" | "negative" | "neutral"> = {
-  received: "neutral",
-  classified: "neutral",
+const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> = {
+  uploaded: "neutral",
+  processing: "neutral",
   extracted: "positive",
-  reconciliation_failed: "negative",
+  confirmed: "positive",
   failed: "negative",
-  superseded: "neutral",
+  deleted: "neutral",
 };
 
 export function UploadedDocumentsList({
@@ -29,7 +29,7 @@ export function UploadedDocumentsList({
   error,
   onRetry,
 }: {
-  documents: DocumentSummary[] | null;
+  documents: Document[] | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;

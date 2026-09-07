@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Claims, require_business_access, verify_token
+from app.api.deps import Claims, require_business_access, require_document_access, verify_token
 from app.config import Settings, get_settings
 from app.db import get_session
-from app.errors import file_too_large, not_found
+from app.errors import file_too_large
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document
 from app.schemas.common import Page
@@ -77,9 +77,7 @@ async def complete_document_upload(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    document = await session.get(Document, document_id)
-    if document is None:
-        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    _, document = await require_document_access(document_id, claims=claims, session=session)
 
     # TODO: enqueue S1 ingest once app/workers/tasks.py exists. Status stays
     # "received" until the pipeline picks it up.
@@ -118,9 +116,7 @@ async def get_document(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> DocumentDetail:
-    document = await session.get(Document, document_id)
-    if document is None or document.deleted_at is not None:
-        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    _, document = await require_document_access(document_id, claims=claims, session=session)
     return DocumentDetail.model_validate(document)
 
 
@@ -131,9 +127,7 @@ async def confirm_document_type(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> DocumentDetail:
-    document = await session.get(Document, document_id)
-    if document is None or document.deleted_at is not None:
-        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    _, document = await require_document_access(document_id, claims=claims, session=session)
 
     before = {"doc_type": document.doc_type.value if document.doc_type else None}
     document.doc_type = body.doc_type
@@ -160,9 +154,7 @@ async def delete_document(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> None:
-    document = await session.get(Document, document_id)
-    if document is None or document.deleted_at is not None:
-        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    _, document = await require_document_access(document_id, claims=claims, session=session)
 
     document.deleted_at = datetime.now(UTC)
     await write_audit_event(

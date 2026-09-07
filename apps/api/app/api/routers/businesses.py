@@ -7,6 +7,8 @@ from app.api.deps import Claims, require_business_access, verify_token
 from app.db import get_session
 from app.errors import not_found
 from app.models.business import Business
+from app.models.enums import Role
+from app.models.user import User
 from app.schemas.business import BusinessCreate, BusinessDetail, BusinessPatch
 from app.services.audit import write_audit_event
 
@@ -31,6 +33,18 @@ async def create_business(
         after=body.model_dump(mode="json"),
     )
     await session.commit()
+
+    # Owner only: mirror the new business on the domain user row so
+    # /v1/me and ownership checks resolve it before the Better Auth session
+    # refreshes. Writing it back onto the auth_user row itself is the web
+    # app's job (apps/web/lib/link-business.ts) — apps/api deliberately does
+    # not touch Better Auth's database (see that file's comment).
+    if claims.role == Role.OWNER:
+        user_row = await session.get(User, claims.user_id)
+        if user_row is not None:
+            user_row.business_id = business.id
+            await session.commit()
+
     return BusinessDetail.from_model(business)
 
 

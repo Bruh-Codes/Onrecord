@@ -14,7 +14,7 @@ export type Gap = {
 };
 
 export type DocumentItem = {
-  key?: GapKey;
+  key?: string;
   label: string;
   detail: string;
   done: boolean;
