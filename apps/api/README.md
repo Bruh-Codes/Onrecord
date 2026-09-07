@@ -44,7 +44,15 @@ REDIS_URL=redis://localhost:6379/0
 BETTER_AUTH_JWKS_URL=http://localhost:3000/api/auth/jwks
 BETTER_AUTH_ISSUER=http://localhost:3000
 BETTER_AUTH_AUDIENCE=http://localhost:3000
+STORAGE_ENDPOINT_URL=http://localhost:9000
+STORAGE_ACCESS_KEY=minioadmin
+STORAGE_SECRET_KEY=minioadmin
+STORAGE_BUCKET=sme-documents
 ```
+
+Or skip all of this and run `docker compose up` from the repo root instead —
+see the root [`README.md`](../../README.md) "Docker Compose" — which
+provisions Postgres/Redis/MinIO and runs this app for you with the same vars.
 
 ## Run migrations
 
@@ -110,8 +118,12 @@ point `DATABASE_URL` at a database with data you care about.
   reviewer/admin token access any business — the `institution_id` → business
   relationship isn't modeled yet (it isn't in `specs/00-domain-model.md` either).
   Needs a decision before real reviewer accounts exist.
-- **Document upload** returns a placeholder `upload_url`; there's no
-  `app/services/storage/` yet, so nothing actually lands in an object store.
+- ~~**Document upload** returns a placeholder `upload_url`~~ — **resolved**:
+  `app/services/storage/` now generates a real presigned PUT URL via
+  `boto3` against an S3-compatible store (MinIO in local dev, via
+  `docker-compose.yml` at the repo root). See `app/config.py`'s
+  `storage_*` settings and the comment in `app/services/storage/s3.py` for
+  why `storage_endpoint_url` is deliberately the browser-facing host.
 - ~~`apps/web` side of auth isn't built yet~~ — **resolved**: Better Auth is now
   mounted in `apps/web` (`apps/web/lib/auth.ts`), matches this app's expected
   claim shape, and a full signup → JWT → `apps/api` round trip has been run

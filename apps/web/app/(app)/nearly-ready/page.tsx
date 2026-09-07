@@ -26,8 +26,8 @@ export default function NearlyReadyPage() {
 	}
 
 	return (
-		<div className="min-h-screen animate-fade-in">
-			<div className="flex items-center px-10 py-5">
+		<div className="min-h-dvh animate-fade-in">
+			<div className="flex items-center px-4 sm:px-10 py-5">
 				<Link
 					href="/"
 					className="font-[family-name:var(--font-display)] text-lg"
@@ -41,19 +41,16 @@ export default function NearlyReadyPage() {
 				</div>
 			</div>
 
-			<div className="max-w-[1040px] mx-auto px-10 pb-15 pt-5">
+			<div className="max-w-[1040px] mx-auto px-4 sm:px-10 pb-15 pt-5">
 				<div className="text-[11px] tracking-wider uppercase text-ink/50 mb-1.5">
 					{BUSINESS_NAME}
 				</div>
-				<h1 className="text-[32px] m-0 mb-2">Almost lender-ready</h1>
+				<h1 className="text-[26px] sm:text-[32px] m-0 mb-2">Almost lender-ready</h1>
 				<p className="text-[14.5px] opacity-75 m-0 mb-8">
 					To move into the next readiness band, complete the steps below:
 				</p>
 
-				<div
-					className="grid gap-10"
-					style={{ gridTemplateColumns: "1fr 300px" }}
-				>
+				<div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_300px]">
 					<div>
 						<div className="flex items-center gap-3 mb-4">
 							<span className="w-[26px] h-[26px] rounded-full bg-ink text-paper flex items-center justify-center text-[13px] font-bold shrink-0">

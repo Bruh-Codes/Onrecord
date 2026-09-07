@@ -4,8 +4,8 @@ import { APP_INTEGRATIONS } from "@/lib/mock-data";
 
 export default function AppsPage() {
   return (
-    <div className="flex-1 min-w-0 px-7 pt-7.5 pb-10 max-w-[820px]">
-      <h1 className="text-[28px] m-0 mb-1.5">Apps</h1>
+    <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[820px]">
+      <h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Apps</h1>
       <p className="text-sm opacity-70 m-0 mb-6.5">
         Connect other services to feed your profile automatically. Nothing here changes what&apos;s already
         uploaded.

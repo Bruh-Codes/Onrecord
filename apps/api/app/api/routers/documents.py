@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -20,14 +20,9 @@ from app.schemas.document import (
     DocumentUploadTarget,
 )
 from app.services.audit import write_audit_event
+from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
-
-
-def _placeholder_upload_url(storage_key: str) -> str:
-    # TODO: replace with a real presigned PUT URL once app/services/storage/
-    # exists (Agent.md §4: OCR/LLM/storage sit behind an interface — not built yet).
-    return f"https://storage.local/placeholder-upload/{storage_key}"
 
 
 @router.post("/v1/businesses/{business_id}/documents", response_model=DocumentUploadTarget, status_code=201)
@@ -37,6 +32,7 @@ async def create_document(
     claims: Claims = Depends(require_business_access),
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
+    storage: StorageBackend = Depends(get_storage_backend),
 ) -> DocumentUploadTarget:
     if body.size_bytes > settings.max_document_size_bytes:
         raise file_too_large(settings.max_document_size_bytes)
@@ -67,10 +63,11 @@ async def create_document(
     )
     await session.commit()
 
+    upload_url, expires_at = storage.create_upload_url(storage_key, body.mime)
     return DocumentUploadTarget(
         document_id=document.id,
-        upload_url=_placeholder_upload_url(storage_key),
-        upload_expires_at=datetime.now(UTC) + timedelta(minutes=15),
+        upload_url=upload_url,
+        upload_expires_at=expires_at,
     )
 
 

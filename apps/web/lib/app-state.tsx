@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { CHAT_SCRIPT } from "./mock-data";
-import { INITIAL_APP_STATE, type AppState, type UploadedFile } from "./app-state-types";
+import { INITIAL_APP_STATE, type AppState } from "./app-state-types";
 import type { GapKey, ReviewStatus, RulePackName } from "./types";
 
 type AppActions = {
@@ -14,7 +14,6 @@ type AppActions = {
   undoOneOff: () => void;
   toggleDraftMode: () => void;
   setRulePack: (name: RulePackName) => void;
-  addUploadedFiles: (files: FileList) => void;
   addDeclaredFact: (text: string) => void;
   setReviewStatus: (id: number, status: ReviewStatus) => void;
   startChat: () => void;
@@ -42,13 +41,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, oneOffRole: null, resolved: { ...s.resolved, oneOff: false } })),
       toggleDraftMode: () => setState((s) => ({ ...s, draftMode: !s.draftMode })),
       setRulePack: (name) => setState((s) => ({ ...s, rulePack: name })),
-      addUploadedFiles: (files) => {
-        const entries: UploadedFile[] = Array.from(files).map((f) => ({
-          id: Math.random().toString(36).slice(2),
-          name: f.name,
-        }));
-        setState((s) => ({ ...s, uploadedFiles: [...entries, ...s.uploadedFiles] }));
-      },
       addDeclaredFact: (text) => {
         const trimmed = text.trim();
         if (!trimmed) return;
