@@ -42,6 +42,7 @@ Required env (`.env.local`, gitignored):
 ```
 BETTER_AUTH_SECRET=<32+ char random string>
 BETTER_AUTH_URL=http://localhost:3000
+# Server-only; do not prefix with NEXT_PUBLIC_. It is used by Better Auth on Vercel.
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
