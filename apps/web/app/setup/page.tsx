@@ -35,7 +35,7 @@ export default function SetupPage() {
 			// The server-side gate in app/(app)/layout.tsx resolves businessId
 			// from the auth_user row itself, so no session refresh is needed —
 			// the owner won't be bounced back here on the next navigation.
-			router.push("/");
+			router.push("/dashboard");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
 			setSubmitting(false);

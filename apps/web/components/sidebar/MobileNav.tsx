@@ -10,7 +10,7 @@ import {
 } from "@/components/icons";
 
 const ITEMS = [
-	{ href: "/", label: "Home", icon: HomeIcon },
+	{ href: "/dashboard", label: "Home", icon: HomeIcon },
 	{ href: "/overview", label: "Overview", icon: OverviewIcon },
 	{ href: "/documents", label: "Documents", icon: DocumentsIcon },
 	{ href: "/gaps", label: "Gaps", icon: GapsIcon },

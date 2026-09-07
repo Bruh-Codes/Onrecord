@@ -19,7 +19,7 @@ export default function ReviewerQueuePage() {
 
   return (
     <div className="px-10 py-8 pb-16 max-w-[1200px] mx-auto animate-fade-in">
-      <Link href="/" className="text-[13px] inline-flex items-center gap-1 mb-3.5">
+      <Link href="/dashboard" className="text-[13px] inline-flex items-center gap-1 mb-3.5">
         <BackArrowIcon />
         Back to owner view
       </Link>
