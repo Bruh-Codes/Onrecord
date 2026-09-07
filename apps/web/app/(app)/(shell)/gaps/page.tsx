@@ -20,8 +20,8 @@ export default function GapsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 px-7 pt-7.5 pb-10 max-w-[760px]">
-      <h1 className="text-[28px] m-0 mb-1.5">Gaps</h1>
+    <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
+      <h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Gaps</h1>
       <p className="text-sm opacity-70 m-0 mb-6">
         {openGaps.length} open — resolve them here, in Documents, in Counterparties, or by talking to the
         assistant.

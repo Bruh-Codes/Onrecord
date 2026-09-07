@@ -59,6 +59,33 @@ instance is enough for both.
 
 ## Running locally
 
+### Docker Compose (recommended)
+
+Brings up Postgres 16 (pgvector-enabled image), Redis, MinIO (S3-compatible
+object store), the API, the Celery worker, and the web app together, each with
+a persistent named volume — no throwaway cluster, no manual `.env` wiring:
+
+```bash
+cp .env.example .env   # defaults work as-is; override BETTER_AUTH_SECRET etc. if you want
+docker compose up
+```
+
+| Service | URL |
+|---|---|
+| Web | http://localhost:3000 |
+| API | http://localhost:8000 (`/healthz`, `/docs`) |
+| MinIO console | http://localhost:9001 (login: `minioadmin` / `minioadmin` by default) |
+| Postgres | `localhost:5432` (`sme`/`sme`) |
+| Redis | `localhost:6379` |
+
+The `api` service runs `alembic upgrade head` on boot; `web` runs
+`bunx auth migrate -y` on boot. Both `apps/api` and `apps/web` are bind-mounted
+for live reload — edit code on the host, see it reflected in the container.
+`minio-init` creates the `sme-documents` bucket on first run and exits — that's
+expected, not a failure.
+
+### Running the two apps directly (no Docker)
+
 Start Postgres and Redis first (a throwaway local Postgres cluster works fine —
 see `apps/api/README.md` "Run migrations" for a quick `initdb`/`pg_ctl` recipe if
 you don't have one running).

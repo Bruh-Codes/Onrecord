@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 
+    # S3-compatible object store (Agent.md §4: storage sits behind an
+    # interface — see app/services/storage/). Local dev default is the
+    # docker-compose MinIO. `storage_endpoint_url` deliberately points at
+    # whatever the *browser* can reach (not the docker-network hostname):
+    # generate_presigned_url() is a local signature computation, it never
+    # dials the endpoint, so this only needs to be resolvable by whoever
+    # eventually PUTs to the URL — see app/services/storage/s3.py.
+    storage_endpoint_url: str = "http://localhost:9000"
+    storage_access_key: str = "minioadmin"
+    storage_secret_key: str = "minioadmin"
+    storage_bucket: str = "sme-documents"
+    storage_region: str = "us-east-1"
+
 
 @lru_cache
 def get_settings() -> Settings:

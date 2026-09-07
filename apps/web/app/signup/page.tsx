@@ -38,12 +38,16 @@ export default function SignupPage() {
 			return;
 		}
 
-		router.push("/");
+		// New sign-ups have no business yet — /setup creates one and writes
+		// business_id back onto this user (see lib/link-business.ts). Login
+		// goes straight home; the (app) layout redirects back here if a
+		// returning user somehow still has no business_id.
+		router.push(authMode === "signup" ? "/setup" : "/");
 	}
 
 	return (
-		<div className="min-h-screen flex flex-col animate-fade-in">
-			<div className="flex items-center px-10 py-5.5">
+		<div className="min-h-dvh flex flex-col animate-fade-in">
+			<div className="flex items-center px-6 sm:px-10 py-5.5">
 				<span className="font-[family-name:var(--font-display)] text-[19px]">
 					Onrecord
 				</span>
@@ -57,8 +61,8 @@ export default function SignupPage() {
 				</button>
 			</div>
 
-			<div className="flex-1 flex items-center justify-center p-10">
-				<div className="w-full max-w-[460px] bg-surface rounded-3xl shadow-[var(--shadow-card)] p-9">
+			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+				<div className="w-full max-w-[460px] bg-surface rounded-3xl shadow-[var(--shadow-card)] p-6 sm:p-9">
 					<div className="flex gap-1 bg-panel rounded-full p-1 mb-6.5">
 						<button
 							type="button"
@@ -159,7 +163,7 @@ export default function SignupPage() {
 				</div>
 			</div>
 
-			<div className="flex items-center gap-2.5 px-10 py-3.5 bg-ink text-paper">
+			<div className="flex items-center gap-2.5 px-6 sm:px-10 py-3.5 bg-ink text-paper">
 				<span className="font-[family-name:var(--font-display)] text-sm">
 					Onrecord
 				</span>

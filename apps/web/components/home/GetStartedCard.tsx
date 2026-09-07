@@ -7,7 +7,7 @@ import {
 
 export function GetStartedCard() {
 	return (
-		<div className="bg-panel rounded-3xl p-8 mb-7.5">
+		<div className="bg-panel rounded-3xl p-5 sm:p-8 mb-7.5">
 			<h2 className="text-2xl m-0 mb-1.5">Get started with Onrecord</h2>
 			<p className="text-[13.5px] opacity-70 m-0 mb-6">
 				Two quick wins to strengthen your profile right away.

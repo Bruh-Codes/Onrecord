@@ -10,14 +10,14 @@ export default function HomePage() {
   const state = useAppState();
 
   return (
-    <div className="px-7 pt-7.5 pb-10">
+    <div className="px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
       {state.draftMode && (
         <div className="bg-panel-strong text-[#2a2a2a] text-[12.5px] px-4 py-2.5 rounded-xl mb-4.5">
           Draft mode is on — this profile is not visible to reviewers yet. Turn it off when you&apos;re ready to
           share.
         </div>
       )}
-      <h1 className="text-[30px] m-0 mb-1.5">Welcome back, {OWNER_FIRST_NAME}!</h1>
+      <h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">Welcome back, {OWNER_FIRST_NAME}!</h1>
       <p className="text-[14.5px] opacity-80 m-0 mb-6.5">
         Browse your <Link href="/overview">readiness overview</Link>, see{" "}
         <Link href="/nearly-ready">what&apos;s still missing</Link>, or go to{" "}

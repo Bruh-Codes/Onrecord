@@ -6,10 +6,21 @@ before changing this app.
 
 ## What's built so far
 
-All 10 owner/reviewer screens (`app/`), currently driven by mock data in
-`lib/mock-data.ts` — no real API calls to `apps/api` yet. Auth is real: Better
-Auth is mounted here (`lib/auth.ts`), backed by the same Postgres `apps/api`
-uses. `app/signup` calls it for real email/password sign up and login.
+All 10 owner/reviewer screens (`app/`). Auth is real: Better Auth is mounted
+here (`lib/auth.ts`), backed by the same Postgres `apps/api` uses.
+`app/signup` calls it for real email/password sign up and login, then
+`app/setup` creates the business via `apps/api` and links it to the user
+(see "Auth" below).
+
+`lib/api-client.ts` is a typed client for `apps/api` (Business + Document
+endpoints — the only two resources built there so far, see the root
+`ROADMAP.md`). The Documents screen (`app/(app)/(shell)/documents/`) is wired
+to it end to end: `UploadDropzone` does a real upload (hash → presigned PUT →
+complete) and the "Your uploads" list reads real documents back. Every other
+screen (Overview, Counterparties, Gaps, Nearly-ready, Reviewer) still runs on
+`lib/mock-data.ts` / `lib/derived.ts` — their backing endpoints
+(coverage/indicators/score/checklist/gaps/review queue) are Phase 2 work, not
+built yet.
 
 ## Auth
 
@@ -32,6 +43,7 @@ Required env (`.env.local`, gitignored):
 BETTER_AUTH_SECRET=<32+ char random string>
 BETTER_AUTH_URL=http://localhost:3000
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 Apply Better Auth's schema after any config change to `lib/auth.ts`:
@@ -49,11 +61,17 @@ default-generate the id when the dialect natively supports UUID columns
 actually testing signup end-to-end, not just building. See the comment in
 `lib/auth.ts` for detail if this surfaces again after a Better Auth upgrade.
 
-**Known gap**: nothing writes `businessId`/`institutionId` back onto the
-Better Auth user after a business/institution is created in `apps/api` — the
-columns exist (`lib/auth.ts` `additionalFields`) but stay `null`, so every
-JWT's `business_id`/`institution_id` claim is `null` today. Needs a decision
-on which side owns that write.
+~~**Known gap**: nothing writes `businessId`/`institutionId` back onto the
+Better Auth user~~ — **resolved for the owner/business path**: `/setup`
+(new users land here right after signup) calls `POST /v1/businesses` then
+`lib/link-business.ts` writes the returned id onto `auth_user` directly,
+through the same `pg.Pool` Better Auth itself uses (not `auth.api.updateUser`
+— `businessId`/`institutionId` are deliberately `input: false`, so a
+trusted server-side write goes around that guard rather than through it).
+The `(app)/layout.tsx` guard sends any owner with no `businessId` to `/setup`.
+**Still open**: the institution/reviewer side — there's no
+institution-creation UI anywhere in this app yet to call the equivalent write
+from, so `institution_id` stays `null` on reviewer/admin tokens.
 
 ## Setup
 
@@ -65,6 +83,9 @@ bun dev
 Requires a reachable Postgres (see `DATABASE_URL` above) — `apps/api`'s
 `README.md` has a throwaway-local-cluster recipe if you don't have one handy;
 both apps can share the same database (they use non-colliding table names).
+Or run `docker compose up` from the repo root instead — see the root
+[`README.md`](../../README.md) "Docker Compose", which runs this app for you
+alongside Postgres/Redis/MinIO/`apps/api`.
 
 ## Build
 
