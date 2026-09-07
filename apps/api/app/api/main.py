@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routers.accounts import router as accounts_router
@@ -9,9 +10,21 @@ from app.api.routers.documents import router as documents_router
 from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
 from app.api.routers.transactions import router as transactions_router
+from app.config import get_settings
 from app.errors import AppError
 
 app = FastAPI(title="Onrecord Credit Readiness API")
+
+app.add_middleware(
+    CORSMiddleware,
+    # The web app calls this API cross-origin with an Authorization header, so
+    # the browser enforces CORS. Defaults to local dev; set CORS_ALLOW_ORIGINS
+    # to the deployed web URL (comma-separated for extra origins).
+    allow_origins=[o.strip() for o in get_settings().cors_allow_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(AppError)
