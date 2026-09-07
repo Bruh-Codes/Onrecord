@@ -14,7 +14,7 @@ import { NavLink } from "./NavLink";
 export function Sidebar() {
 	return (
 		<div className="hidden md:flex w-[230px] h-full shrink-0 bg-panel px-3.5 py-5 flex-col border-r border-border overflow-y-auto">
-			<Link href="/" className="flex items-center gap-2 px-2 pb-5">
+			<Link href="/dashboard" className="flex items-center gap-2 px-2 pb-5">
 				<span className="w-[26px] h-[26px] rounded-lg bg-ink inline-block" />
 				<span className="font-[family-name:var(--font-display)] text-[15px]">
 					Onrecord
@@ -22,7 +22,7 @@ export function Sidebar() {
 			</Link>
 
 			<div className="flex flex-col gap-0.5">
-				<NavLink href="/" icon={<HomeIcon />}>
+				<NavLink href="/dashboard" icon={<HomeIcon />}>
 					Home
 				</NavLink>
 				<NavLink href="/overview" icon={<OverviewIcon />}>

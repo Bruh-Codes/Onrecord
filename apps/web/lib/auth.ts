@@ -3,11 +3,16 @@ import { nextCookies } from "better-auth/next-js";
 import { admin, jwt, organization, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
 
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be configured in the server environment for Better Auth.");
+}
+
 // Shared with lib/link-business.ts, which writes businessId/institutionId
 // back onto auth_user directly (those fields are `input: false` below —
 // deliberately not settable through Better Auth's own update-user API, so
 // the trusted server-side write goes through this same pool instead).
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ connectionString: databaseUrl });
 
 // apps/api's domain model (specs/00-domain-model.md) already has its own
 // `user` and `account` tables in the same Postgres database. Every Better
