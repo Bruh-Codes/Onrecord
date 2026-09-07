@@ -3,11 +3,17 @@ import { nextCookies } from "better-auth/next-js";
 import { admin, jwt, organization, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
 
+// Shared with lib/link-business.ts, which writes businessId/institutionId
+// back onto auth_user directly (those fields are `input: false` below —
+// deliberately not settable through Better Auth's own update-user API, so
+// the trusted server-side write goes through this same pool instead).
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
 // apps/api's domain model (specs/00-domain-model.md) already has its own
 // `user` and `account` tables in the same Postgres database. Every Better
 // Auth table (core + plugins) is prefixed auth_* to avoid colliding with them.
 export const auth = betterAuth({
-  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  database: pool,
 
   // Better Auth's default id is a base62 string, not a UUID — apps/api's
   // Postgres columns are typed UUID (Agent.md §5: "IDs are UUIDv7") and parse

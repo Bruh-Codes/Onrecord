@@ -8,8 +8,8 @@ export default function CounterpartiesPage() {
   const { data: counterparties, isLoading } = useCounterparties(businessId);
 
   return (
-    <div className="flex-1 min-w-0 px-7 pt-7.5 pb-10 max-w-[820px]">
-      <h1 className="text-[28px] m-0 mb-1.5">Counterparties</h1>
+    <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[820px]">
+      <h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Counterparties</h1>
       <p className="text-sm opacity-70 m-0 mb-6.5">
         Classify a counterparty once and every transaction with them follows.
       </p>

@@ -1,17 +1,18 @@
+import { MobileNav } from "@/components/sidebar/MobileNav";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { TopBar } from "@/components/sidebar/TopBar";
-import { ShellGate } from "@/components/shell/ShellGate";
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen animate-fade-in">
-      <div className="sticky top-0 h-screen shrink-0">
+    <div className="flex h-dvh animate-fade-in">
+      <div className="sticky top-0 h-dvh shrink-0">
         <Sidebar />
       </div>
-      <div className="flex-1 min-w-0 h-screen overflow-y-auto">
+      <div className="flex-1 min-w-0 h-dvh overflow-y-auto pb-14 md:pb-0">
         <TopBar />
-        <ShellGate>{children}</ShellGate>
+        {children}
       </div>
+      <MobileNav />
     </div>
   );
 }

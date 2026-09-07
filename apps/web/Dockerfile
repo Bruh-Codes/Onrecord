@@ -1,12 +1,15 @@
-FROM node:22-alpine AS deps
+# Dev-only image (docker-compose.yml, repo root) — bind-mounts source for
+# live reload, so this never runs `bun run build`. A production image (Next
+# standalone output) is a separate concern once there's somewhere to deploy it.
+FROM oven/bun:1.3-slim
+
 WORKDIR /app
-COPY package.json ./
-RUN npm install --ignore-scripts
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
 COPY . .
 
-FROM node:22-alpine AS runner
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app .
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+
+CMD ["sh", "-c", "bunx auth migrate -y && bunx next dev -H 0.0.0.0"]

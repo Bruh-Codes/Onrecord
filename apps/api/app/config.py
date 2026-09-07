@@ -21,15 +21,22 @@ class Settings(BaseSettings):
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 
-    # Object storage (S3-compatible). When s3_bucket is unset, the API falls back
-    # to the local-dev storage backend (app/services/storage.py).
-    s3_bucket: str = ""
-    s3_endpoint_url: str = ""
-    s3_access_key: str = ""
-    s3_secret_key: str = ""
-    s3_region: str = "us-east-1"
+# S3-compatible object store (Agent.md §4: storage sits behind an
+    # interface — see app/services/storage/). Local dev default is the
+    # docker-compose MinIO. `storage_endpoint_url` deliberately points at
+    # whatever the *browser* can reach (not the docker-network hostname):
+    # generate_presigned_url() is a local signature computation, it never
+    # dials the endpoint, so this only needs to be resolvable by whoever
+    # eventually PUTs to the URL — see app/services/storage/s3.py.
+    storage_endpoint_url: str = "http://localhost:9000"
+    storage_access_key: str = "minioadmin"
+    storage_secret_key: str = "minioadmin"
+    storage_bucket: str = "sme-documents"
+    storage_region: str = "us-east-1"
 
-    # Local-only storage root for the dev backend; empty means ./var/storage.
+    # When storage_bucket is unset (e.g. running the API without docker or an
+    # object store), the storage backend falls back to a local directory
+    # backend instead — see app/services/storage/local.py.
     local_storage_dir: str = ""
 
 

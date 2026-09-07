@@ -1,14 +1,11 @@
 import type { ChatMessage, ResolvedMap, ReviewStatus, RulePackName } from "./types";
 
-export type UploadedFile = { id: string; name: string };
-
 export type AppState = {
   resolved: ResolvedMap;
   adomRole: string | null;
   oneOffRole: string | null;
   draftMode: boolean;
   rulePack: RulePackName;
-  uploadedFiles: UploadedFile[];
   declaredFacts: string[];
   chatLog: ChatMessage[];
   chatIndex: number;
@@ -21,7 +18,6 @@ export const INITIAL_APP_STATE: AppState = {
   oneOffRole: null,
   draftMode: false,
   rulePack: "MFI working capital",
-  uploadedFiles: [],
   declaredFacts: [],
   chatLog: [],
   chatIndex: 0,

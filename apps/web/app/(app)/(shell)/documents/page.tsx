@@ -3,6 +3,7 @@
 import { DocumentChecklistRow } from "@/components/documents/DocumentChecklistRow";
 import { ManualEntryPanel } from "@/components/documents/ManualEntryPanel";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
+import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
 import { useAppState } from "@/lib/app-state";
 import type { ChecklistItem } from "@/lib/api-types";
 import { useChecklist, useDocuments, useMe } from "@/lib/hooks/use-business";
@@ -39,32 +40,38 @@ function toDocItems(checklist: ChecklistItem[]) {
 
 export default function DocumentsPage() {
   const state = useAppState();
-  const { businessId } = useMe();
+  const { businessId, data: me } = useMe();
   const { data: checklist, isLoading } = useChecklist(businessId);
-  const { data: documents } = useDocuments(businessId);
+  const documents = useDocuments(businessId);
   const docItems = toDocItems(checklist ?? []);
-  const uploadedCount = documents?.items.length ?? 0;
+  const resolvedBusinessId = businessId ?? (me?.business as { id?: string } | null)?.id ?? null;
 
   function focusUpload() {
     document.getElementById("upload-input")?.click();
   }
 
   return (
-    <div className="flex-1 min-w-0 px-7 pt-7.5 pb-10 max-w-[760px]">
-      <h1 className="text-[28px] m-0 mb-1.5">Documents</h1>
+    <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
+      <h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Documents</h1>
       <p className="text-sm opacity-70 m-0 mb-5">
         Checked against <strong>{state.rulePack}</strong>. Missing items block this rule pack from being
         satisfied.
       </p>
 
-      <UploadDropzone />
+      {resolvedBusinessId && (
+        <UploadDropzone businessId={resolvedBusinessId} onUploaded={() => documents.refetch()} />
+      )}
       <ManualEntryPanel />
 
-      {uploadedCount > 0 && (
-        <div className="text-[12.5px] opacity-70 mb-2">{uploadedCount} document(s) uploaded</div>
-      )}
+      <div className="text-xs tracking-wider uppercase text-ink/45 mt-6 mb-2">Your uploads</div>
+      <UploadedDocumentsList
+        documents={documents.data?.items ?? null}
+        loading={documents.isLoading}
+        error={documents.isError ? "Couldn't load your documents." : null}
+        onRetry={() => documents.refetch()}
+      />
 
-      <div className="text-xs tracking-wider uppercase text-ink/45 my-2">Required for this rule pack</div>
+      <div className="text-xs tracking-wider uppercase text-ink/45 mt-6 mb-2">Required for this rule pack</div>
       {isLoading && <p className="text-sm opacity-60">Loading checklist…</p>}
       {docItems.map((doc) => (
         <DocumentChecklistRow key={doc.key} doc={doc} onResolve={focusUpload} />

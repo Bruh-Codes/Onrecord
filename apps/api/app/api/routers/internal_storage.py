@@ -2,9 +2,10 @@
 
 The S3StorageBackend presigns a PUT on the object store directly, so the API
 never sees upload bytes in production. The LocalStorageBackend (used when
-s3_bucket is unset) points the client at this API-internal route instead, which
-persists bytes to local disk. This keeps the entire upload→S1 flow runnable
-without any S3 dependency (Agent.md §4: storage behind an interface)."""
+storage_bucket is unset) points the client at this API-internal route instead,
+which persists bytes to local disk. This keeps the entire upload→S1 flow
+runnable without any S3 dependency (Agent.md §4: storage behind an
+interface)."""
 
 from pathlib import Path
 
@@ -27,7 +28,7 @@ async def receive_locally(
     request: Request,
     settings: Settings = Depends(get_settings),
 ) -> None:
-    if settings.s3_bucket:
+    if settings.storage_bucket:
         raise HTTPException(status_code=404, detail="Storage is externally backed; this route is disabled.")
 
     key = storage_key.replace("\\", "/").lstrip("/")

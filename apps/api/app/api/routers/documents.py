@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -20,7 +20,7 @@ from app.schemas.document import (
     DocumentUploadTarget,
 )
 from app.services.audit import write_audit_event
-from app.services.storage import get_storage_backend
+from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
 
@@ -32,6 +32,7 @@ async def create_document(
     claims: Claims = Depends(require_business_access),
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
+    storage: StorageBackend = Depends(get_storage_backend),
 ) -> DocumentUploadTarget:
     if body.size_bytes > settings.max_document_size_bytes:
         raise file_too_large(settings.max_document_size_bytes)
@@ -62,11 +63,11 @@ async def create_document(
     )
     await session.commit()
 
-    upload = get_storage_backend(settings).create_upload_url(storage_key, body.mime)
+    upload_url, expires_at = storage.create_upload_url(storage_key, body.mime)
     return DocumentUploadTarget(
         document_id=document.id,
-        upload_url=upload.url,
-        upload_expires_at=upload.expires_at,
+        upload_url=upload_url,
+        upload_expires_at=expires_at,
     )
 
 

@@ -13,10 +13,10 @@ item regresses, uncheck it.
 - [x] `product-spec.md` + `specs/00`–`11` module specs
 - [x] `apps/api` scaffold (FastAPI + Celery, one image two entrypoints — §4 of Agent.md)
 - [x] Alembic wired up (initial migration covers all 16 tables); pgvector extension + `counterparty.embedding` still deferred to Phase 4
-- [ ] Postgres 16 + pgvector actually provisioned for a persistent dev/staging environment (tested so far only against a throwaway local cluster)
-- [ ] Redis provisioned
-- [ ] Object store (R2/MinIO) provisioned
-- [ ] Docker Compose for local dev (api, worker, postgres, redis, web)
+- [x] Postgres 16 + pgvector actually provisioned for a persistent local dev environment (`docker-compose.yml`, `pgvector/pgvector:pg16` image, named volume — extension itself still unused, `counterparty.embedding` stays deferred to Phase 4). Cloud/staging provisioning is a separate, not-yet-done task — this only covers local dev.
+- [x] Redis provisioned (`docker-compose.yml`, named volume)
+- [x] Object store (MinIO) provisioned (`docker-compose.yml`, named volume + bucket init) — `apps/api/app/services/storage/` now issues real presigned upload URLs against it, replacing the old placeholder
+- [x] Docker Compose for local dev (postgres, redis, minio, api, worker, web)
 - [x] Better Auth mounted in `apps/web` (email/password + `phoneNumber`, `organization`, `jwt`, `admin` plugins, tables prefixed `auth_` to avoid colliding with `apps/api`'s own `user`/`account` tables) — full signup → JWT → `apps/api` round trip verified end-to-end against a real Postgres
 
 ## Phase 1 — Frontend (owner + reviewer UI)
@@ -32,11 +32,11 @@ item regresses, uncheck it.
 - [x] Assistant chat (scripted mock)
 - [x] Reviewer queue
 - [x] Real auth (`/signup` calls Better Auth for real email/password sign up and login)
-- [ ] Write `business_id`/`institution_id` back onto the Better Auth user after a business/institution is created (JWTs currently always carry `null` for both — see apps/web/README.md "Known gap")
-- [ ] Wire screens to real API instead of `lib/mock-data.ts`
-- [ ] Real file upload (replace mock document list)
-- [ ] Responsive/mobile pass (owner journey is mobile-first per spec §13.4)
-- [ ] Loading, empty, and error states for real network calls
+- [x] Write `business_id` back onto the Better Auth user after a business is created (`app/setup` + `lib/link-business.ts`) — `institution_id` stays open, there's no institution-creation UI yet to trigger it from (see apps/web/README.md "Auth")
+- [ ] Wire screens to real API instead of `lib/mock-data.ts` — done for what `apps/api` actually exposes today (business setup, Documents screen via `lib/api-client.ts`); Overview/Counterparties/Gaps/Nearly-ready/Reviewer stay on mock data until their Phase 2 endpoints (coverage/indicators/score/checklist/gaps/review queue) exist
+- [x] Real file upload (replace mock document list) — `UploadDropzone` does a real hash → presigned PUT → complete flow against `apps/api`; Documents screen reads the real list back
+- [x] Responsive/mobile pass on the existing built screens (owner journey is mobile-first per spec §13.4) — collapsible sidebar/bottom nav, `dvh` viewport units, fluid page containers and grids down to a ~375px viewport. Not a rebuild onto spec's separate owner-route IA (`/upload`, `/profile`, `/chat`, ...), which stays a larger future rearchitecture.
+- [x] Loading, empty, and error states for real network calls — done where real calls exist (Documents screen); the rest still runs on mock data so has nothing to load
 
 ## Phase 2 — Domain model & API surface
 

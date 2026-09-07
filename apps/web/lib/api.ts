@@ -21,7 +21,8 @@ import type {
   UploadTarget,
 } from "./api-types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   code: string;
@@ -129,10 +130,12 @@ export const api = {
   getTask: (taskId: string) => request<{ task_id: string; state: string; progress: number; result: unknown }>(`/v1/tasks/${taskId}`),
 };
 
-/** PUT file bytes to a presigned upload URL. Returns the blob's bytes so the
- * caller can confirm the upload before calling /complete. */
+/** PUT file bytes to a presigned upload URL. A relative URL means the
+ * local-dev storage backend routed through the API; prefix it with the API
+ * base so the browser PUTs to the right origin. */
 export async function uploadFileToPresignedUrl(uploadUrl: string, file: Blob, mime: string): Promise<void> {
-  const res = await fetch(uploadUrl, {
+  const url = uploadUrl.startsWith("/") ? `${API_BASE_URL}${uploadUrl}` : uploadUrl;
+  const res = await fetch(url, {
     method: "PUT",
     headers: { "Content-Type": mime },
     body: file,

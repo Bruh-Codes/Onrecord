@@ -11,7 +11,6 @@ from app.models.enums import Role
 from app.models.user import User
 from app.schemas.business import BusinessCreate, BusinessDetail, BusinessPatch
 from app.services.audit import write_audit_event
-from app.services.auth_link import set_auth_user_business_id
 
 router = APIRouter(prefix="/v1/businesses", tags=["businesses"])
 
@@ -35,17 +34,16 @@ async def create_business(
     )
     await session.commit()
 
-    # Owner only: record the new business on their Better Auth user row so the
-    # server-side ownership check (deps.require_business_access) resolves it
-    # immediately — the JWT claim is stale until the session refreshes. This
-    # is the write-back apps/web/lib/auth.ts documents as pending (see
-    # app/services/auth_link.py for why it writes the field directly).
+    # Owner only: mirror the new business on the domain user row so
+    # /v1/me and ownership checks resolve it before the Better Auth session
+    # refreshes. Writing it back onto the auth_user row itself is the web
+    # app's job (apps/web/lib/link-business.ts) — apps/api deliberately does
+    # not touch Better Auth's database (see that file's comment).
     if claims.role == Role.OWNER:
-        await set_auth_user_business_id(session, claims.user_id, business.id)
         user_row = await session.get(User, claims.user_id)
         if user_row is not None:
             user_row.business_id = business.id
-        await session.commit()
+            await session.commit()
 
     return BusinessDetail.from_model(business)
 
