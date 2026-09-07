@@ -3,6 +3,7 @@ import time
 import uuid
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -12,6 +13,10 @@ _settings = get_settings()
 
 engine = create_async_engine(_settings.database_url, pool_pre_ping=True)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+# Sync engine for the Celery worker (psycopg). SQLAlchemy can't share an async
+# engine with sync sessions, so the worker owns its own sync engine here.
+engine_sync = create_engine(_settings.database_url_sync, pool_pre_ping=True)
 
 
 class Base(DeclarativeBase):

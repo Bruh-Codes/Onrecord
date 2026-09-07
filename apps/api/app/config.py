@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 
+    # Object storage (S3-compatible). When s3_bucket is unset, the API falls back
+    # to the local-dev storage backend (app/services/storage.py).
+    s3_bucket: str = ""
+    s3_endpoint_url: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+
+    # Local-only storage root for the dev backend; empty means ./var/storage.
+    local_storage_dir: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

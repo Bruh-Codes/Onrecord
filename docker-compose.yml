@@ -1,0 +1,75 @@
+version: "3.9"
+
+# docker-compose.yml — local dev stack (Agent.md §4: no Kubernetes, no separate services)
+# Run: docker compose up --build
+# The API, worker and Postgres each need their own DB_URL; see env section.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sme
+      POSTGRES_PASSWORD: sme
+      POSTGRES_DB: sme
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sme -d sme"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: apps/api
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://sme:sme@postgres:5432/sme"
+      DATABASE_URL_SYNC: "postgresql+psycopg://sme:sme@postgres:5432/sme"
+      REDIS_URL: "redis://redis:6379/0"
+      BETTER_AUTH_JWKS_URL: "http://web:3000/api/auth/jwks"
+      BETTER_AUTH_ISSUER: "http://web:3000"
+      BETTER_AUTH_AUDIENCE: "http://web:3000"
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker:
+    build:
+      context: apps/api
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://sme:sme@postgres:5432/sme"
+      DATABASE_URL_SYNC: "postgresql+psycopg://sme:sme@postgres:5432/sme"
+      REDIS_URL: "redis://redis:6379/0"
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel", "INFO", "--concurrency=2"]
+    restart: on-failure
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    ports: ["3000:3000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: "postgresql://sme:sme@postgres:5432/sme"
+      BETTER_AUTH_BASE_URL: "http://localhost:3000"
+      BETTER_AUTH_SECRET: "dev-secret-change-in-production"
+      API_BASE_URL: "http://localhost:8000"
+    command: ["npm", "run", "dev"]
+
+volumes:
+  pgdata:

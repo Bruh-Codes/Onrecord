@@ -6,9 +6,5 @@ settings = get_settings()
 
 celery_app = Celery("sme_api", broker=settings.redis_url, backend=settings.redis_url)
 
-
-@celery_app.task(name="ping")
-def ping() -> str:
-    """Proves the worker entrypoint boots and can reach Redis. The real S1-S10
-    pipeline tasks land in app/workers/tasks.py once each stage is built."""
-    return "pong"
+# Import tasks so Celery registers them.
+import app.workers.tasks  # noqa: F401, E402

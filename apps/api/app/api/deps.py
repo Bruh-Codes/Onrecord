@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.db import get_session
-from app.errors import forbidden, unauthorized
+from app.errors import forbidden, not_found, unauthorized
 from app.models.enums import Role
+from app.services.auth_link import auth_user_business_id
 from app.services.users import ensure_user
 
 _bearer = HTTPBearer(auto_error=False)
@@ -90,11 +91,41 @@ def require_role(*allowed: Role):
     return dependency
 
 
-def require_business_access(business_id: uuid.UUID, claims: Claims = Depends(verify_token)) -> Claims:
+async def require_business_access(
+    business_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> Claims:
     """An owner may access only their own business. A reviewer/admin may access
     any business for now — the institution-to-business relation isn't modeled
-    yet (out of scope for this pass, see apps/api/README.md "Known gaps")."""
+    yet (out of scope, see apps/api/README.md "Known gaps").
 
-    if claims.role == Role.OWNER and claims.business_id != business_id:
-        raise forbidden("You don't have access to this business.")
+    Ownership is resolved from the Better Auth user row (source of truth) and
+    falls back to the JWT claim — the claim is a cache signed at session start
+    and can be stale for a business created after sign-in (app/services/
+    auth_link.py)."""
+    if claims.role == Role.OWNER:
+        resolved = await auth_user_business_id(session, claims.user_id) or claims.business_id
+        if resolved != business_id:
+            raise forbidden("You don't have access to this business.")
     return claims
+
+
+async def require_document_access(
+    document_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> tuple[Claims, "Document"]:
+    """Fetch a document and verify the caller has access to its business.
+    Returns (claims, document) so callers don't need a second query."""
+
+    from app.models.document import Document
+
+    document = await session.get(Document, document_id)
+    if document is None or document.deleted_at is not None:
+        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    if claims.role == Role.OWNER:
+        resolved = await auth_user_business_id(session, claims.user_id) or claims.business_id
+        if resolved != document.business_id:
+            raise forbidden("You don't have access to this document.")
+    return claims, document

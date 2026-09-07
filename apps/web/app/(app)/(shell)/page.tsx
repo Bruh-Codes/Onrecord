@@ -4,10 +4,18 @@ import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { TodayStats } from "@/components/home/TodayStats";
 import { useAppState } from "@/lib/app-state";
-import { BUSINESS_NAME, OWNER_FIRST_NAME } from "@/lib/mock-data";
+import { authClient } from "@/lib/auth-client";
+import { useMe, useScore, useCoverage, useGaps } from "@/lib/hooks/use-business";
 
 export default function HomePage() {
   const state = useAppState();
+  const { data: session } = authClient.useSession();
+  const ownerFirstName = session?.user?.name?.split(" ")[0];
+  const { data: me, businessId } = useMe();
+  const score = useScore(businessId);
+  const coverage = useCoverage(businessId);
+  const gaps = useGaps(businessId);
+  const tradingName = me?.business?.trading_name || me?.business?.legal_name;
 
   return (
     <div className="px-7 pt-7.5 pb-10">
@@ -17,7 +25,7 @@ export default function HomePage() {
           share.
         </div>
       )}
-      <h1 className="text-[30px] m-0 mb-1.5">Welcome back, {OWNER_FIRST_NAME}!</h1>
+      <h1 className="text-[30px] m-0 mb-1.5">Welcome back{ownerFirstName ? `, ${ownerFirstName}` : ""}!</h1>
       <p className="text-[14.5px] opacity-80 m-0 mb-6.5">
         Browse your <Link href="/overview">readiness overview</Link>, see{" "}
         <Link href="/nearly-ready">what&apos;s still missing</Link>, or go to{" "}
@@ -30,9 +38,13 @@ export default function HomePage() {
       <h2 className="text-[22px] m-0 mb-4">Today</h2>
       <div className="h-px bg-border mb-7" />
 
-      <TodayStats state={state} />
+      <TodayStats
+        coverage={coverage.data}
+        score={score.data}
+        openGaps={(gaps.data ?? []).filter((g) => g.status === "open")}
+      />
 
-      <p className="text-[11px] opacity-40 mt-10">{BUSINESS_NAME}</p>
+      <p className="text-[11px] opacity-40 mt-10">{tradingName ?? "Your business"}</p>
     </div>
   );
 }

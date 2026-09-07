@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { TopBar } from "@/components/sidebar/TopBar";
+import { ShellGate } from "@/components/shell/ShellGate";
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,7 +10,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       </div>
       <div className="flex-1 min-w-0 h-screen overflow-y-auto">
         <TopBar />
-        {children}
+        <ShellGate>{children}</ShellGate>
       </div>
     </div>
   );

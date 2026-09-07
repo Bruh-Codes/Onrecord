@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,6 +63,7 @@ class Counterparty(IdMixin, Base):
     business_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("business.id"), nullable=False)
     canonical_name: Mapped[str] = mapped_column(nullable=False)
     msisdn_hash: Mapped[str | None] = mapped_column(nullable=True)
+    display_suffix: Mapped[str | None] = mapped_column(String(4), nullable=True)
     kind: Mapped[CounterpartyKind] = mapped_column(default=CounterpartyKind.UNKNOWN)
     first_seen: Mapped[date | None] = mapped_column(nullable=True)
     last_seen: Mapped[date | None] = mapped_column(nullable=True)
