@@ -2,31 +2,67 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRightIcon, GoogleLogo } from "@/components/icons";
+import { CheckIcon, GoogleLogo } from "@/components/icons";
+import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
 import { Footer } from "@/components/ui/Footer";
 
 export default function SignupPage() {
 	const router = useRouter();
+	const { toast } = useToast();
 	const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [consented, setConsented] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [googleLoading, setGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const ready = email.trim() && password.trim();
+	const ready =
+		authMode === "signup"
+			? email.trim() && password.trim() && consented
+			: email.trim() && password.trim();
 	const busy = submitting || googleLoading;
 
 	async function handleGoogleSignIn() {
+		if (busy) return;
 		setGoogleLoading(true);
 		setError(null);
-		// Redirects the user to Google's consent screen and back into a
-		// session; the (app) layout sends owners without a business to /setup.
-		await authClient.signIn.social({
-			provider: "google",
-			callbackURL: "/dashboard",
-		});
+
+		// OAuth navigation leaves the page; if the request silently hangs or
+		// fails instead of redirecting, recover from the stuck "Redirecting…"
+		// state instead of leaving the button disabled forever.
+		const timer = window.setTimeout(() => {
+			setGoogleLoading(false);
+			setError("Google sign-in is taking longer than expected. Please try again.");
+			toast({
+				title: "Google sign-in timed out",
+				description: "Please try again.",
+				tone: "error",
+			});
+		}, 12000);
+
+		try {
+			const { error: socialError } = await authClient.signIn.social({
+				provider: "google",
+				callbackURL: "/dashboard",
+			});
+			window.clearTimeout(timer);
+			setGoogleLoading(false);
+			if (socialError) {
+				setError(socialError.message ?? "Google sign-in failed. Please try again.");
+				toast({ title: "Google sign-in failed", tone: "error" });
+			}
+		} catch {
+			window.clearTimeout(timer);
+			setGoogleLoading(false);
+			setError("Couldn't reach Google. Please try again.");
+			toast({
+				title: "Google sign-in failed",
+				description: "Couldn't reach Google. Please try again.",
+				tone: "error",
+			});
+		}
 	}
 
 	async function handleSubmit() {
@@ -152,10 +188,27 @@ export default function SignupPage() {
 								? "Create account"
 								: "Log in"}
 					</button>
-					<p className="text-[11.5px] opacity-55 mt-4.5 mb-0 leading-relaxed">
-						By continuing, I confirm I&apos;m authorised to build a financial
-						profile on this business&apos;s behalf.
-					</p>
+					<button
+						type="button"
+						onClick={() => setConsented((value) => !value)}
+						disabled={busy}
+						aria-pressed={consented}
+						className="mt-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						<span
+							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+								consented
+									? "border-ink bg-ink text-paper"
+									: "border-ink/30 bg-transparent text-paper"
+							}`}
+						>
+							{consented && <CheckIcon className="h-3 w-3" />}
+						</span>
+						<span className="text-[11.5px] leading-relaxed opacity-70">
+							By continuing, I confirm I&apos;m authorised to build a financial
+							profile on this business&apos;s behalf.
+						</span>
+					</button>
 				</div>
 			</div>
 

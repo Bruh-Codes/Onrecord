@@ -150,6 +150,14 @@ export function LogOutIcon({ className }: IconProps) {
   );
 }
 
+export function XIcon({ className }: IconProps) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.8" className={className}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 export function GoogleLogo({ className }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" className={className}>
