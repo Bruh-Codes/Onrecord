@@ -27,12 +27,12 @@ class Settings(BaseSettings):
     cors_allow_origins: str = "http://localhost:3000"
 
 # S3-compatible object store (Agent.md §4: storage sits behind an
-    # interface — see app/services/storage/). Local dev default is the
+    # interface-see app/services/storage/). Local dev default is the
     # docker-compose MinIO. `storage_endpoint_url` deliberately points at
     # whatever the *browser* can reach (not the docker-network hostname):
     # generate_presigned_url() is a local signature computation, it never
     # dials the endpoint, so this only needs to be resolvable by whoever
-    # eventually PUTs to the URL — see app/services/storage/s3.py.
+    # eventually PUTs to the URL-see app/services/storage/s3.py.
     storage_endpoint_url: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"
     storage_secret_key: str = "minioadmin"
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # When storage_bucket is unset (e.g. running the API without docker or an
     # object store), the storage backend falls back to a local directory
-    # backend instead — see app/services/storage/local.py.
+    # backend instead-see app/services/storage/local.py.
     local_storage_dir: str = ""
 
 

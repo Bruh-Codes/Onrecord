@@ -19,7 +19,7 @@ _UPLOAD_URL_TTL = timedelta(minutes=15)
 class LocalStorageBackend:
     """Produces a signed relative URL the client PUTs to the API internal route.
 
-    MVP dev backend only — swap in S3StorageBackend when object storage is
+    MVP dev backend only-swap in S3StorageBackend when object storage is
     provisioned. The signature is a placeholder sufficient for local dev.
     """
 

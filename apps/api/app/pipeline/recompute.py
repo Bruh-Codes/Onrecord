@@ -3,7 +3,7 @@
 The full S1-S6 ingestion stages (OCR, parsers, dedup, categorisation) are still
 ahead; this module implements what is useful before them: coverage, indicators,
 checklist, document gaps and score are derived from whatever transactions /
-documents already exist. Re-running is safe (INV-4) — rows are keyed by a
+documents already exist. Re-running is safe (INV-4)-rows are keyed by a
 version and replaced, never appended.
 """
 
@@ -254,7 +254,7 @@ def _sync_missing_period_gaps(db: Session, business_id: uuid.UUID, coverage: dic
                         title=f"Statement coverage gap: {hole['from']} – {hole['to']}",
                         detail=(
                             f"Request a statement covering {hole['from']} to {hole['to']} from your provider "
-                            "and upload it here promptly — statements expire 24 hours after generation."
+                            "and upload it here promptly-statements expire 24 hours after generation."
                         ),
                         target_ref={"account_id": account["account_id"], "from": hole["from"], "to": hole["to"]},
                     )

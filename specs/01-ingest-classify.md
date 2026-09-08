@@ -1,4 +1,4 @@
-# 01 — S1 Ingest, S2 Classify
+# 01-S1 Ingest, S2 Classify
 
 Modules: `app/pipeline/s1_ingest.py`, `app/pipeline/s2_classify.py`
 
@@ -37,9 +37,10 @@ is the only input.
 
 ---
 
-## S1 — Ingest
+## S1-Ingest
 
 ### Accepts
+
 PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
 
 ### Steps
@@ -54,7 +55,7 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
 3. **Hash + dedupe.**
    - `sha256` of the raw bytes.
    - Existing `(business_id, sha256)` → reject with `AppError("DUPLICATE_DOCUMENT")`.
-   - Existing `sha256` on a *different* business → accept, but set
+   - Existing `sha256` on a _different_ business → accept, but set
      `quality_flags.cross_business_reuse = true` and raise a `gap` of kind
      `inconsistency`, code `DOCUMENT_REUSED_ACROSS_BUSINESSES`, severity `blocker`.
      Never auto-clear this flag.
@@ -81,7 +82,7 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
    - `glare`: >2% of pixels at value 250+ in a contiguous blob.
    - `cropped`: the detected document quadrilateral touches the image border on
      ≥2 sides.
-   - `partial_page`: OCR-free heuristic — detected text bounding box covers <40%
+   - `partial_page`: OCR-free heuristic-detected text bounding box covers <40%
      of expected page height for a statement-like aspect ratio.
 
 7. **Short-circuit.** If `blurry` or `cropped`, set `status=received`, do NOT
@@ -94,9 +95,11 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
    Server-side encryption required.
 
 ### Output
+
 `document.status = 'received'`, `page_count`, `quality_flags`, `storage_key`.
 
 ### Tests
+
 - `tests/pipeline/test_s1_dedupe.py`: same bytes twice → second rejected.
 - Cross-business reuse raises a blocker gap.
 - A Word-produced "bank statement" PDF sets `suspect`.
@@ -104,13 +107,14 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
 
 ---
 
-## S2 — Classify
+## S2-Classify
 
 Determines `doc_type`, `issuer`, `period_start`, `period_end`.
 
 ### Two passes
 
-**Pass 1 — heuristics (free, run first).**
+**Pass 1-heuristics (free, run first).**
+
 - Filename tokens: `statement`, `momo`, `invoice`, `receipt`, `cert`.
 - Embedded PDF text layer (where present) keyword match against an issuer
   fingerprint table in `app/rules/issuers.yaml`: MTN MoMo statement headers,
@@ -120,7 +124,7 @@ Determines `doc_type`, `issuer`, `period_start`, `period_end`.
 
 If pass 1 yields `doc_type_confidence >= 0.90`, stop.
 
-**Pass 2 — vision classification.**
+**Pass 2-vision classification.**
 Single call with the first page render. Structured output:
 
 ```python
@@ -138,22 +142,25 @@ period from context; do not guess an issuer from styling alone.
 
 ### Confidence handling
 
-| `doc_type_confidence` | Action |
-|---|---|
-| ≥ 0.75 | Advance to S3 |
-| < 0.75 | Set `status=classified`, raise `gap` code `CONFIRM_DOCUMENT_TYPE`, severity `minor`. The owner is asked "Is this a bank statement?" via the agent or the upload UI. Do not proceed on a guess. |
+| `doc_type_confidence` | Action                                                                                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ≥ 0.75                | Advance to S3                                                                                                                                                                                  |
+| < 0.75                | Set `status=classified`, raise `gap` code `CONFIRM_DOCUMENT_TYPE`, severity `minor`. The owner is asked "Is this a bank statement?" via the agent or the upload UI. Do not proceed on a guess. |
 
 ### GRA e-VAT detection
+
 If a document classified as `invoice_received` or `invoice_issued` contains a QR
 code (`pyzbar` decode on the page render) plus a GRA VSDC marker, set
 `extraction` field `evat_verifiable = true`. This raises the verifiability pillar
-in S8. MVP does not verify the QR against GRA — it records that it is verifiable.
+in S8. MVP does not verify the QR against GRA-it records that it is verifiable.
 
 ### Output
+
 `document.status = 'classified'`, `doc_type`, `doc_type_confidence`, `issuer`,
 `period_start`, `period_end`.
 
 ### Tests
+
 - Golden corpus: ≥95% top-1 `doc_type` accuracy across the 12 types.
 - A statement whose header is cropped away returns `period_start=None` rather than
   a hallucinated date.

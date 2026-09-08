@@ -39,7 +39,7 @@ class ReadinessScore(IdMixin, Base):
     total: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
     band: Mapped[Band] = mapped_column(nullable=False)
     pillars: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    contributions: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    contributions: Mapped[list[dict]] = mapped_column(JSONB, nullable=False)
 
 
 class Gap(IdMixin, Base):

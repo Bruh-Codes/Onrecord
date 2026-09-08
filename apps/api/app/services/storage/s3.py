@@ -8,12 +8,12 @@ _UPLOAD_URL_TTL = timedelta(minutes=15)
 
 
 class S3StorageBackend:
-    """S3-compatible backend (MinIO in local dev, R2/S3 in production — Agent.md §4).
+    """S3-compatible backend (MinIO in local dev, R2/S3 in production-Agent.md §4).
 
     `generate_presigned_url` never makes a network call: it's a local SigV4
     computation over the configured endpoint URL. That's what lets
     `storage_endpoint_url` safely be the browser-facing host even though this
-    code runs in a different container — see app/config.py's comment.
+    code runs in a different container-see app/config.py's comment.
     """
 
     def __init__(self) -> None:

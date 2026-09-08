@@ -28,7 +28,7 @@ def ping() -> str:
 
 @celery_app.task(name="ingest_document.s1")
 def s1_ingest(document_id: str) -> dict:
-    """S1 placeholder — marks a document as ingested and hands off to S2.
+    """S1 placeholder-marks a document as ingested and hands off to S2.
     Real value lands when OCR/storage are wired (see README known gaps)."""
     from app.db import engine_sync
 

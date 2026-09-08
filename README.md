@@ -1,6 +1,6 @@
 # SME Credit Readiness Assistant
 
-Turns the messy records a Ghanaian SME actually has — MoMo statements, bank statements, receipts, invoices, a handwritten sales book — into a structured, provenance-tracked financial profile a lender can assess, plus an explicit list of what's still missing.
+Turns the messy records a Ghanaian SME actually has-MoMo statements, bank statements, receipts, invoices, a handwritten sales book-into a structured, provenance-tracked financial profile a lender can assess, plus an explicit list of what's still missing.
 
 Full product/engineering spec: [`product-spec.md`](./product-spec.md). Stage-by-stage design docs: [`specs/`](./specs).
 
@@ -44,15 +44,15 @@ Agent.md        Rules for AI-assisted changes in this repo
 
 ## Requirements
 
-| Tool | Used for | Version |
-|---|---|---|
-| [Bun](https://bun.sh) | `apps/web` package manager + dev server | 1.3+ |
-| [uv](https://docs.astral.sh/uv/) | `apps/api` Python env + package manager | latest |
-| Python | `apps/api` | 3.12 |
-| Postgres | shared by both apps (see below) | 16 |
-| Redis | `apps/api` worker (Celery) only | any recent |
+| Tool                             | Used for                                | Version    |
+| -------------------------------- | --------------------------------------- | ---------- |
+| [Bun](https://bun.sh)            | `apps/web` package manager + dev server | 1.3+       |
+| [uv](https://docs.astral.sh/uv/) | `apps/api` Python env + package manager | latest     |
+| Python                           | `apps/api`                              | 3.12       |
+| Postgres                         | shared by both apps (see below)         | 16         |
+| Redis                            | `apps/api` worker (Celery) only         | any recent |
 
-Both apps read from the **same Postgres database** — Better Auth's tables
+Both apps read from the **same Postgres database**-Better Auth's tables
 (`apps/web`, prefixed `auth_`) and the domain model (`apps/api`, `user`,
 `business`, `document`, ...) coexist without colliding. One local Postgres
 instance is enough for both.
@@ -63,7 +63,7 @@ instance is enough for both.
 
 Brings up Postgres 16 (pgvector-enabled image), Redis, MinIO (S3-compatible
 object store), the API, and the Celery worker together, each with a persistent
-named volume — no throwaway cluster, no manual `.env` wiring. The web app runs
+named volume-no throwaway cluster, no manual `.env` wiring. The web app runs
 separately (`bun dev` in `apps/web`, or from Vercel in production):
 
 ```bash
@@ -71,16 +71,16 @@ cp .env.example .env   # defaults work as-is; override BETTER_AUTH_SECRET etc. i
 docker compose up
 ```
 
-| Service | URL |
-|---|---|
-| API | http://localhost:8000 (`/healthz`, `/docs`) |
+| Service       | URL                                                                   |
+| ------------- | --------------------------------------------------------------------- |
+| API           | http://localhost:8000 (`/healthz`, `/docs`)                           |
 | MinIO console | http://localhost:9001 (login: `minioadmin` / `minioadmin` by default) |
-| Postgres | `localhost:5432` (`sme`/`sme`) |
-| Redis | `localhost:6379` |
+| Postgres      | `localhost:5432` (`sme`/`sme`)                                        |
+| Redis         | `localhost:6379`                                                      |
 
 The `api` service runs `alembic upgrade head` on boot and is bind-mounted for
-live reload — edit code on the host, see it reflected in the container.
-`minio-init` creates the `sme-documents` bucket on first run and exits — that's
+live reload-edit code on the host, see it reflected in the container.
+`minio-init` creates the `sme-documents` bucket on first run and exits-that's
 expected, not a failure.
 
 ### Running the two apps directly (no Docker)
@@ -89,13 +89,13 @@ Start Postgres and Redis first (a throwaway local Postgres cluster works fine �
 see `apps/api/README.md` "Run migrations" for a quick `initdb`/`pg_ctl` recipe if
 you don't have one running).
 
-**1. `apps/api` — backend**
+**1. `apps/api`-backend**
 
 ```bash
 cd apps/api
 uv venv --python 3.12
 uv pip install -e ".[dev]"
-# create .env — see apps/api/README.md "Setup" for the required vars
+# create .env-see apps/api/README.md "Setup" for the required vars
 .venv/Scripts/alembic upgrade head        # Windows; .venv/bin/... on macOS/Linux
 .venv/Scripts/uvicorn app.api.main:app --reload
 ```
@@ -107,12 +107,12 @@ Run the worker separately when you need it:
 .venv/Scripts/celery -A app.workers.celery_app worker --loglevel INFO
 ```
 
-**2. `apps/web` — frontend**
+**2. `apps/web`-frontend**
 
 ```bash
 cd apps/web
 bun install
-# create .env.local — see apps/web/README.md "Auth" for the required vars
+# create .env.local-see apps/web/README.md "Auth" for the required vars
 bunx auth migrate -y                      # applies Better Auth's tables
 bun dev
 ```
@@ -125,7 +125,7 @@ in each app's own README: [`apps/api/README.md`](./apps/api/README.md),
 
 ## Contributing
 
-`main` is protected — direct pushes are rejected. All changes go through a pull request:
+`main` is protected-direct pushes are rejected. All changes go through a pull request:
 
 ```bash
 git checkout -b my-feature
@@ -134,6 +134,6 @@ git push -u origin my-feature
 gh pr create        # or use the URL git prints after the push
 ```
 
-Pushing the branch alone does **not** open a PR — `gh pr create` (or the GitHub UI) is a separate, one-time step. Once a PR exists, further pushes to the same branch update it automatically; you don't need to run `gh pr create` again.
+Pushing the branch alone does **not** open a PR-`gh pr create` (or the GitHub UI) is a separate, one-time step. Once a PR exists, further pushes to the same branch update it automatically; you don't need to run `gh pr create` again.
 
-See [`Agent.md`](./Agent.md) for the rules this repo's code — human or AI-written — follows (file size limits, component structure, readability).
+See [`Agent.md`](./Agent.md) for the rules this repo's code-human or AI-written-follows (file size limits, component structure, readability).

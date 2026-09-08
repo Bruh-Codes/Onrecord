@@ -31,6 +31,34 @@ async def test_create_document_returns_upload_target(client):
     assert body["document_id"]
 
 
+async def test_complete_document_enqueues_ingest(client, monkeypatch):
+    from app.workers.tasks import s1_ingest
+
+    owner_id = uuid.uuid4()
+    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    business_id = await _create_business(client, admin_headers)
+    owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
+    create_response = await client.post(
+        f"/v1/businesses/{business_id}/documents",
+        json={
+            "filename": "momo.pdf",
+            "mime": "application/pdf",
+            "size_bytes": 1024,
+            "sha256": hashlib.sha256(b"queued-statement").hexdigest(),
+        },
+        headers=owner_headers,
+    )
+    document_id = create_response.json()["document_id"]
+    enqueued: list[str] = []
+    monkeypatch.setattr(s1_ingest, "delay", enqueued.append)
+
+    response = await client.post(f"/v1/documents/{document_id}/complete", headers=owner_headers)
+
+    assert response.status_code == 202
+    assert response.json() == {"status": "received"}
+    assert enqueued == [document_id]
+
+
 async def test_duplicate_sha256_is_rejected(client):
     owner_id = uuid.uuid4()
     admin_headers = bearer_header(role="admin", user_id=owner_id)

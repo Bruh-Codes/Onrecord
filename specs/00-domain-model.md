@@ -1,4 +1,4 @@
-# 00 — Domain Model
+# 00-Domain Model
 
 Canonical data model. Every other spec references these names. Do not rename a
 column without updating every spec that mentions it.
@@ -155,11 +155,11 @@ status DocStatus, quality_flags jsonb
 ```
 
 `quality_flags`: `{"blurry": bool, "cropped": bool, "glare": bool, "partial_page": bool}`.
-Unique on `(business_id, sha256)` — same file uploaded twice is rejected at S1.
+Unique on `(business_id, sha256)`-same file uploaded twice is rejected at S1.
 A global (cross-business) index on `sha256` exists for fraud detection; a collision
 across businesses raises a `suspect` flag, it does not block.
 
-### `extraction` — append-only
+### `extraction`-append-only
 
 ```
 id, document_id FK, page int, field_path text, value_json jsonb,
@@ -191,7 +191,7 @@ flags jsonb, provenance jsonb
 `amount_pesewas` is always positive; sign is carried by `direction`.
 `flags`: `{"internal_transfer": bool, "duplicate": bool, "reversal": bool,
 "fx": bool, "suspect": bool, "outlier": bool}`.
-`provenance`: `{"extraction_ids": [uuid, ...]}` — MUST be non-empty (INV-7).
+`provenance`: `{"extraction_ids": [uuid, ...]}`-MUST be non-empty (INV-7).
 
 Indexes: `(business_id, occurred_on)`, `(account_id, occurred_on, amount_pesewas)`,
 `(business_id, category_l1)`, unique partial on
@@ -306,7 +306,7 @@ institution_id null, is_active, last_login_at
 
 ---
 
-## 4. Coverage — a derived structure, not a table
+## 4. Coverage-a derived structure, not a table
 
 Computed in S5 and cached on `business.coverage_json`:
 

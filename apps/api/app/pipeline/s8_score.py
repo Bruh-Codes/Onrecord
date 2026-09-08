@@ -1,4 +1,4 @@
-"""S8 — Readiness score (specs/06-scoring-checklist.md).
+"""S8-Readiness score (specs/06-scoring-checklist.md).
 
 Measured against completeness and internal consistency, NOT creditworthiness
 (INV-5). Every point is attributable: `contributions` carries per-component

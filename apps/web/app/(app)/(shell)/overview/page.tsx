@@ -29,14 +29,14 @@ export default function OverviewPage() {
   const revenueTotal = seriesTotal(rev?.series);
 
   return (
-    <div className="flex-1 min-w-0 px-7 pt-7.5 pb-10">
-      <h1 className="text-[28px] m-0 mb-2">Your readiness overview</h1>
+    <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
+      <h1 className="text-[24px] sm:text-[28px] m-0 mb-2">Your readiness overview</h1>
       <p className="text-sm opacity-65 m-0 mb-10">
         Rolling 12-month window, updated whenever new documents come in.
       </p>
 
       <div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">Transactions &amp; trends</div>
-      <div className="grid gap-[52px] mb-12" style={{ gridTemplateColumns: "1fr 1.3fr 1.3fr" }}>
+      <div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
         <TransactionValueBreakdown
           revenueTotal={revenueTotal}
           opexRatio={opexRatio?.status === "insufficient_data" ? null : (opexRatio?.v ?? null)}

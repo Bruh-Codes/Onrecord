@@ -21,7 +21,7 @@ class Business(IdMixin, Base):
     sector_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     established_on: Mapped[date | None] = mapped_column(nullable=True)
     region: Mapped[str | None] = mapped_column(nullable=True)
-    premises_status: Mapped[str | None] = mapped_column(nullable=True)  # 'rented'|'owned'|'none' — DECLARED
+    premises_status: Mapped[str | None] = mapped_column(nullable=True)  # 'rented'|'owned'|'none'-DECLARED
     employee_count_declared: Mapped[int | None] = mapped_column(nullable=True)  # DECLARED
     coverage_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 

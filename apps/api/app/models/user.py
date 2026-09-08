@@ -12,7 +12,7 @@ from app.models.enums import Role
 
 class User(IdMixin, Base):
     """Identity itself lives in Better Auth (apps/web); this row is the mirror
-    apps/api joins against for business/institution scoping — see Agent.md §4."""
+    apps/api joins against for business/institution scoping-see Agent.md §4."""
 
     __tablename__ = "user"
 

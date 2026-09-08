@@ -46,7 +46,7 @@ class ReadinessScoreOut(BaseModel):
     total: float
     band: Band
     pillars: dict
-    contributions: dict
+    contributions: list[dict]
 
 
 class ChecklistItemOut(BaseModel):

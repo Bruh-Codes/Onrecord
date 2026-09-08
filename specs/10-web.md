@@ -1,6 +1,6 @@
-# 10 — Web
+# 10-Web
 
-Module: `web/` — Next.js 15, App Router.
+Module: `web/`-Next.js 15, App Router.
 
 Two audiences with opposite constraints. The owner is on a mid-range Android
 phone, 3G, metered data, possibly low digital literacy. The reviewer is at a desk
@@ -8,15 +8,15 @@ on a laptop. Do not build one interface for both.
 
 ---
 
-## 1. Performance budget — owner routes
+## 1. Performance budget-owner routes
 
 Non-negotiable, enforced in CI with Lighthouse:
 
-| Metric | Budget |
-|---|---|
-| JS shipped to an owner route | ≤ 120 KB gzipped |
-| LCP on simulated 3G | ≤ 3.0 s |
-| Images | AVIF/WebP, lazy, explicit dimensions |
+| Metric                       | Budget                               |
+| ---------------------------- | ------------------------------------ |
+| JS shipped to an owner route | ≤ 120 KB gzipped                     |
+| LCP on simulated 3G          | ≤ 3.0 s                              |
+| Images                       | AVIF/WebP, lazy, explicit dimensions |
 
 Owner routes are server components with form actions wherever possible. Client
 components only where interaction genuinely requires them: the camera capture
@@ -29,14 +29,14 @@ Reviewer routes may ship more; they are not on the budget.
 ## 1a. Auth
 
 Better Auth is mounted here (`apps/web/app/api/auth/[...all]/route.ts`), Postgres-backed
-via its adapter. `apps/api` never issues or checks credentials — it only verifies
+via its adapter. `apps/api` never issues or checks credentials-it only verifies
 the JWT Better Auth issues (see `specs/09-api.md` §1). Plugins in use: `phoneNumber`
 (owner OTP login), `organization` (institution/reviewer membership + role),
 `jwt` (token for `apps/api` to verify), `admin` (reviewer/admin management).
 
 The current `apps/web` build (`/signup`) implements a placeholder email/password +
-Google card with no real backend yet; wiring it to Better Auth — including
-switching the owner flow to phone + OTP per the routes below — is open work
+Google card with no real backend yet; wiring it to Better Auth-including
+switching the owner flow to phone + OTP per the routes below-is open work
 (see `ROADMAP.md`, Phase 1).
 
 ---
@@ -56,7 +56,7 @@ switching the owner flow to phone + OTP per the routes below — is open work
 /share                     → generate and manage a lender link
 ```
 
-### `/upload` — the screen that determines completion rate
+### `/upload`-the screen that determines completion rate
 
 - Camera capture with a live edge-detection overlay and a "hold steady" hint.
   Reject and re-prompt client-side on blur before upload: computing variance of
@@ -66,7 +66,7 @@ switching the owner flow to phone + OTP per the routes below — is open work
   "Reading your statement…" → "Checking the numbers add up…" → "Done".
   Never expose stage codes to owners.
 
-### `/upload/guide/momo` — a required, not optional, flow
+### `/upload/guide/momo`-a required, not optional, flow
 
 MTN caps self-service statements at 90 days and expires them 24 hours after
 generation. This screen must:
@@ -111,7 +111,7 @@ first-class feature, not a help page.
 /admin/rule-packs          → upload/edit checklist and category YAML
 ```
 
-### `/review/{itemId}` — the resolution screen
+### `/review/{itemId}`-the resolution screen
 
 - Left: the page render, zoomable, with the `bbox` highlighted.
 - Right: the extracted value, editable, with the confidence and extractor shown.
@@ -120,6 +120,7 @@ first-class feature, not a help page.
 - Keyboard-first: `j`/`k` to move, `Enter` to accept, `e` to edit.
 
 ### Ledger table
+
 `font-variant-numeric: tabular-nums` on every money column. Money right-aligned,
 formatted `GH¢1,234.56`. Flag chips for `outlier`, `duplicate`,
 `internal_transfer`, `suspect`.
@@ -147,7 +148,7 @@ formatted `GH¢1,234.56`. Flag chips for `outlier`, `duplicate`,
 
 - Every interactive element keyboard reachable with a visible focus state.
 - Contrast ≥ 4.5:1 for body text.
-- Charts always accompanied by their tabular figures — a chart is never the only
+- Charts always accompanied by their tabular figures-a chart is never the only
   representation of a number.
 - Form fields labelled, errors associated with `aria-describedby`.
 - Respect `prefers-reduced-motion`.

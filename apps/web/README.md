@@ -13,24 +13,24 @@ here (`lib/auth.ts`), backed by the same Postgres `apps/api` uses.
 (see "Auth" below).
 
 `lib/api-client.ts` is a typed client for `apps/api` (Business + Document
-endpoints — the only two resources built there so far, see the root
+endpoints-the only two resources built there so far, see the root
 `ROADMAP.md`). The Documents screen (`app/(app)/(shell)/documents/`) is wired
 to it end to end: `UploadDropzone` does a real upload (hash → presigned PUT →
 complete) and the "Your uploads" list reads real documents back. Every other
 screen (Overview, Counterparties, Gaps, Nearly-ready, Reviewer) still runs on
-`lib/mock-data.ts` / `lib/derived.ts` — their backing endpoints
+`lib/mock-data.ts` / `lib/derived.ts`-their backing endpoints
 (coverage/indicators/score/checklist/gaps/review queue) are Phase 2 work, not
 built yet.
 
 ## Auth
 
-`lib/auth.ts` is the Better Auth server instance — Postgres via a raw `pg`
-Pool, plugins `phoneNumber` (owner OTP, `sendOTP` is a console.log stub — no
+`lib/auth.ts` is the Better Auth server instance-Postgres via a raw `pg`
+Pool, plugins `phoneNumber` (owner OTP, `sendOTP` is a console.log stub-no
 SMS provider configured), `organization` (institution/reviewer membership),
 `admin` (its own `role` field on `auth_user` **is** our domain `Role` enum —
-`owner`/`reviewer`/`admin` — configured via `adminRoles: ["admin"]`, not a
+`owner`/`reviewer`/`admin`-configured via `adminRoles: ["admin"]`, not a
 separate custom field), and `jwt` (issues the EdDSA-signed token `apps/api`
-verifies via JWKS — see `apps/api/README.md` "Auth"). `lib/auth-client.ts` is
+verifies via JWKS-see `apps/api/README.md` "Auth"). `lib/auth-client.ts` is
 the browser-side client; `app/api/auth/[...all]/route.ts` mounts the handler.
 
 Every Better Auth table is prefixed `auth_` (`auth_user`, `auth_account`, …) —
@@ -55,7 +55,7 @@ bunx auth migrate -y
 
 **Known gap**: ids are generated as UUIDs via a custom `advanced.database.generateId`
 function (`() => crypto.randomUUID()`), not the `generateId: "uuid"` string
-option — that string tells Better Auth to expect the database to
+option-that string tells Better Auth to expect the database to
 default-generate the id when the dialect natively supports UUID columns
 (true for Postgres), but its own migration CLI doesn't create that DB-level
 `DEFAULT`, so it silently inserted `NULL` ids until this was caught by
@@ -63,14 +63,14 @@ actually testing signup end-to-end, not just building. See the comment in
 `lib/auth.ts` for detail if this surfaces again after a Better Auth upgrade.
 
 ~~**Known gap**: nothing writes `businessId`/`institutionId` back onto the
-Better Auth user~~ — **resolved for the owner/business path**: `/setup`
+Better Auth user~~-**resolved for the owner/business path**: `/setup`
 (new users land here right after signup) calls `POST /v1/businesses` then
 `lib/link-business.ts` writes the returned id onto `auth_user` directly,
 through the same `pg.Pool` Better Auth itself uses (not `auth.api.updateUser`
 — `businessId`/`institutionId` are deliberately `input: false`, so a
 trusted server-side write goes around that guard rather than through it).
 The `(app)/layout.tsx` guard sends any owner with no `businessId` to `/setup`.
-**Still open**: the institution/reviewer side — there's no
+**Still open**: the institution/reviewer side-there's no
 institution-creation UI anywhere in this app yet to call the equivalent write
 from, so `institution_id` stays `null` on reviewer/admin tokens.
 
@@ -81,12 +81,12 @@ bun install
 bun dev
 ```
 
-Requires a reachable Postgres (see `DATABASE_URL` above) — `apps/api`'s
+Requires a reachable Postgres (see `DATABASE_URL` above)-`apps/api`'s
 `README.md` has a throwaway-local-cluster recipe if you don't have one handy;
 both apps can share the same database (they use non-colliding table names).
 Or run `docker compose up` from the repo root for the backend
 (Postgres/Redis/MinIO/api/worker) and run the web with `bun dev` pointing at it
-via `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000` — see the root
+via `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000`-see the root
 [`README.md`](../../README.md) "Docker Compose".
 
 ## Build

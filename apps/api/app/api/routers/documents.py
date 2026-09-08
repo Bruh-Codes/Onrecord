@@ -79,8 +79,6 @@ async def complete_document_upload(
 ) -> dict:
     _, document = await require_document_access(document_id, claims=claims, session=session)
 
-    # TODO: enqueue S1 ingest once app/workers/tasks.py exists. Status stays
-    # "received" until the pipeline picks it up.
     await write_audit_event(
         session,
         business_id=document.business_id,
@@ -89,6 +87,12 @@ async def complete_document_upload(
         target=f"document:{document.id}",
     )
     await session.commit()
+
+    # Enqueue only after the document and its audit event are committed so the
+    # worker cannot race the transaction and observe a missing document.
+    from app.workers.tasks import s1_ingest
+
+    s1_ingest.delay(str(document.id))
     return {"status": document.status.value}
 
 

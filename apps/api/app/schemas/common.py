@@ -7,7 +7,7 @@ T = TypeVar("T")
 
 class Declared(BaseModel, Generic[T]):
     """Wraps a business attribute the owner stated rather than one read from a
-    document — every response containing a figure carries its kind (specs/09-api.md §5)."""
+    document-every response containing a figure carries its kind (specs/09-api.md §5)."""
 
     value: T
     kind: Literal["declared"] = "declared"

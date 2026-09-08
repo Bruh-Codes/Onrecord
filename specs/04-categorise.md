@@ -1,4 +1,4 @@
-# 04 — S6 Categorise
+# 04-S6 Categorise
 
 Module: `app/pipeline/s6_categorise.py`
 
@@ -12,7 +12,7 @@ future. All three tiers operate at counterparty level wherever possible.
 
 ---
 
-## Tier 1 — Rules
+## Tier 1-Rules
 
 `app/rules/categories/*.yaml`. Regex and keyword packs over `counterparty_raw`
 and the provider transaction type.
@@ -51,7 +51,7 @@ Expected coverage on MoMo data: 45–60% of transactions.
 
 ---
 
-## Tier 2 — kNN over counterparty embeddings
+## Tier 2-kNN over counterparty embeddings
 
 Once a counterparty has a category from any source, every future transaction with
 that counterparty inherits it.
@@ -74,23 +74,26 @@ copies amounts, only labels.
 
 ---
 
-## Tier 3 — LLM tiebreak
+## Tier 3-LLM tiebreak
 
-Batched. Up to **50 distinct counterparties per call** — never per transaction.
+Batched. Up to **50 distinct counterparties per call**-never per transaction.
 
 Input per counterparty:
+
 ```json
 {
-  "canonical_name": "MAAME AKOSUA ENT",
-  "business_sector": "retail_provisions",
-  "direction_mix": {"in": 2, "out": 24},
-  "amount_stats_pesewas": {"median": 20000, "min": 15000, "max": 45000},
-  "frequency": "weekly",
-  "first_seen": "2025-09-14", "last_seen": "2026-08-11"
+	"canonical_name": "MAAME AKOSUA ENT",
+	"business_sector": "retail_provisions",
+	"direction_mix": { "in": 2, "out": 24 },
+	"amount_stats_pesewas": { "median": 20000, "min": 15000, "max": 45000 },
+	"frequency": "weekly",
+	"first_seen": "2025-09-14",
+	"last_seen": "2026-08-11"
 }
 ```
 
 Output:
+
 ```python
 class CounterpartySuggestion(BaseModel):
     counterparty_id: UUID
@@ -111,10 +114,10 @@ a customer. The prompt MUST supply the business sector and the direction mix.
 
 ## Resolution and fallback
 
-| Best available confidence | Result |
-|---|---|
-| ≥ 0.60 | Apply the category |
-| < 0.60 | `category_l1 = 'unknown'`, raise `gap` kind `ambiguous_category`, code `UNCLASSIFIED_COUNTERPARTY`, `target_ref = {"counterparty_id": ...}` |
+| Best available confidence | Result                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| ≥ 0.60                    | Apply the category                                                                                                                          |
+| < 0.60                    | `category_l1 = 'unknown'`, raise `gap` kind `ambiguous_category`, code `UNCLASSIFIED_COUNTERPARTY`, `target_ref = {"counterparty_id": ...}` |
 
 The gap is raised **once per counterparty**, not once per transaction. Its
 `detail` records how many transactions and how much value it controls, which the
@@ -126,8 +129,8 @@ agent uses to prioritise (see `07-agent.md`).
 
 A transaction's category may be set by several sources. Precedence, highest first:
 
-1. `human` — reviewer override
-2. `owner_stated` — the agent recorded an owner's answer about a counterparty
+1. `human`-reviewer override
+2. `owner_stated`-the agent recorded an owner's answer about a counterparty
 3. `rule`
 4. `knn`
 5. `llm`
@@ -159,7 +162,7 @@ Post-agent-session target: ≤ 0.15 (≥85% of value classified).
 
 ## Tests
 
-- `tests/pipeline/test_s6_precedence.py` — an `owner_stated` category survives a
+- `tests/pipeline/test_s6_precedence.py`-an `owner_stated` category survives a
   re-run of S6 that would otherwise assign `llm`.
 - Rule pack coverage on the golden MoMo corpus ≥ 45%.
 - A counterparty resolved once propagates to all its transactions in one write.

@@ -1,4 +1,4 @@
-# 09 — HTTP API
+# 09-HTTP API
 
 Module: `app/api/`
 
@@ -10,7 +10,7 @@ response bodies are Pydantic v2 models in `app/schemas/`.
 ## 1. Auth
 
 Auth is **Better Auth**, mounted in `apps/web` (Next.js route handlers), Postgres-backed
-via its adapter — same database as the rest of the system, not a separate user
+via its adapter-same database as the rest of the system, not a separate user
 store. `apps/api` issues no credentials of its own. It verifies the session/JWT
 Better Auth produces (Better Auth's JWT plugin) on every incoming request.
 
@@ -19,22 +19,24 @@ claim (`Role` enum, §00-domain-model.md §1) synced onto the `user` table's `ro
 column. Owners carry `business_id`; reviewer/admin carry `institution_id`.
 
 **Plugins used (configured in `apps/web`):**
-- `phoneNumber` — owner login via phone + OTP (SME owners often lack reliable
+
+- `phoneNumber`-owner login via phone + OTP (SME owners often lack reliable
   email). Replaces a hand-rolled `/v1/auth/otp/*` flow entirely.
-- `organization` — models an "institution" (MFI/bank) as an organization, with
+- `organization`-models an "institution" (MFI/bank) as an organization, with
   reviewer/admin accounts as members carrying a role. Replaces a hand-rolled
   `institution_id` + role table.
-- `jwt` — issues the JWKS `apps/api` verifies against. `apps/api` never touches
+- `jwt`-issues the JWKS `apps/api` verifies against. `apps/api` never touches
   credentials, never issues a token.
-- `admin` — role management / ban controls for reviewer/admin accounts.
+- `admin`-role management / ban controls for reviewer/admin accounts.
 
 See `specs/10-web.md` for the frontend-side auth wiring.
 
 **Authorisation in `apps/api`.** `app/api/deps.py`:
-- `verify_token()` — validates the Better Auth JWT (signature, expiry, issuer)
+
+- `verify_token()`-validates the Better Auth JWT (signature, expiry, issuer)
   and returns the claims. No local session table.
-- `require_role(Role.REVIEWER)` — dependency
-- `require_business_access(business_id)` — an owner may access only their own
+- `require_role(Role.REVIEWER)`-dependency
+- `require_business_access(business_id)`-an owner may access only their own
   business; a reviewer only businesses within their institution.
 - Every mutating endpoint writes an `audit_event`.
 
@@ -46,6 +48,7 @@ Money in request and response bodies is **integer pesewas**, with the field name
 ending `_pesewas`. Never send a decimal.
 
 ### Businesses
+
 ```
 POST   /v1/businesses
        {legal_name, trading_name?, entity_type, registration_number?, tin?,
@@ -55,12 +58,15 @@ POST   /v1/businesses
 GET    /v1/businesses/{id}                → BusinessDetail
 PATCH  /v1/businesses/{id}                → BusinessDetail
 ```
+
 `BusinessDetail` marks declared attributes:
+
 ```json
-{"premises_status": {"value": "rented", "kind": "declared"}}
+{ "premises_status": { "value": "rented", "kind": "declared" } }
 ```
 
 ### Documents
+
 ```
 POST   /v1/businesses/{id}/documents
        {filename, mime, size_bytes, sha256}
@@ -82,11 +88,13 @@ Errors: `DUPLICATE_DOCUMENT` (409), `FILE_TOO_LARGE` (413),
 `UNSUPPORTED_MIME` (415), `VIRUS_DETECTED` (422).
 
 ### Coverage
+
 ```
 GET /v1/businesses/{id}/coverage → Coverage   (schema in 00-domain-model.md §4)
 ```
 
 ### Transactions
+
 ```
 GET   /v1/businesses/{id}/transactions
       ?from&to&category_l1&flag&account_id&page&page_size(≤200)
@@ -99,6 +107,7 @@ PATCH /v1/transactions/{id}
 ```
 
 ### Indicators / score / checklist / gaps
+
 ```
 GET /v1/businesses/{id}/indicators?window=12m|6m|3m  → [Indicator]
 GET /v1/businesses/{id}/score                        → ReadinessScore
@@ -108,6 +117,7 @@ POST /v1/gaps/{id}/waive  {reason}                   → Gap   (reviewer only)
 ```
 
 ### Recompute
+
 ```
 POST /v1/businesses/{id}/recompute → 202 {task_id}
      Enqueues S6–S9. Idempotent per input_hash.
@@ -115,6 +125,7 @@ GET  /v1/tasks/{task_id}           → {state, progress, result}
 ```
 
 ### Agent
+
 ```
 POST /v1/businesses/{id}/agent/sessions      → 201 {session_id, score_before}
 POST /v1/agent/sessions/{sid}/messages
@@ -130,10 +141,11 @@ POST /v1/agent/sessions/{sid}/close → {score_before, score_after, delta}
 GET  /v1/agent/sessions/{sid}       → session + messages
 ```
 
-SSE, not WebSocket — one-directional streaming, survives mobile network changes
+SSE, not WebSocket-one-directional streaming, survives mobile network changes
 better, and needs no separate connection lifecycle.
 
 ### Exports
+
 ```
 POST /v1/businesses/{id}/exports  {format: pdf|json|csv|pack} → 202 {export_id}
 GET  /v1/exports/{export_id}                                  → {status, download_url?}
@@ -143,19 +155,23 @@ GET  /v1/exports/{export_id}/access_log                       → [{at, ip_count
 ```
 
 ### Review queue
+
 ```
 GET  /v1/review/queue?assignee=&status=      → [ReviewItem]
 POST /v1/review/items/{id}/claim             → ReviewItem
 POST /v1/review/items/{id}/resolve
      {field_path, corrected_value, note?}    → ReviewItem
 ```
+
 Resolving writes a new `extraction` row and sets `superseded_by` on the old one.
 It never edits in place.
 
 ### Webhooks (institution integrations)
+
 ```
 POST /v1/institutions/{id}/webhooks  {url, events[], secret}
 ```
+
 Events: `profile.scored`, `profile.export_ready`, `gap.blocker_raised`.
 Payloads signed with HMAC-SHA256 in `X-Signature`. Retries: 5 attempts with
 exponential backoff.
@@ -173,10 +189,15 @@ class AppError(Exception):
 ```
 
 Response body:
+
 ```json
-{"error": {"code": "DUPLICATE_DOCUMENT",
-           "message": "You have already uploaded this file.",
-           "detail": {"existing_document_id": "..."}}}
+{
+	"error": {
+		"code": "DUPLICATE_DOCUMENT",
+		"message": "You have already uploaded this file.",
+		"detail": { "existing_document_id": "..." }
+	}
+}
 ```
 
 Never leak internal exception text, stack traces, SQL, or file paths.
@@ -185,12 +206,12 @@ Never leak internal exception text, stack traces, SQL, or file paths.
 
 ## 4. Rate limits
 
-| Scope | Limit |
-|---|---|
-| OTP request | 3 per phone per 15 min |
+| Scope           | Limit                    |
+| --------------- | ------------------------ |
+| OTP request     | 3 per phone per 15 min   |
 | Document upload | 50 per business per hour |
-| Agent message | 30 per session per hour |
-| Export | 10 per business per day |
+| Agent message   | 30 per session per hour  |
+| Export          | 10 per business per day  |
 | Everything else | 300 per token per minute |
 
 ---

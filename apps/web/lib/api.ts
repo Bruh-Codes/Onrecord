@@ -26,6 +26,8 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "http://localhost:8000";
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -43,7 +45,7 @@ async function getToken(): Promise<string> {
   // Better Auth >= 1.2 no longer returns the JWT inside the get-session body
   // (`session.token`); the jwt plugin mints it via the dedicated GET
   // /api/auth/token endpoint instead (same signing path, same claims).
-  const res = await fetch("/api/auth/token", {
+  const res = await fetchWithTimeout("/api/auth/token", {
     headers: { Accept: "application/json" },
   });
   if (!res.ok) {
@@ -66,7 +68,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { ...init, headers });
 
   if (!res.ok) {
     let body: { error?: { code?: string; message?: string; detail?: unknown } } | null = null;
@@ -100,7 +102,8 @@ export const api = {
   listDocuments: (businessId: string, page = 1, pageSize = 50) =>
     request<{ items: Document[]; total: number }>(`/v1/businesses/${businessId}/documents?page=${page}&page_size=${pageSize}`),
   getDocument: (id: string) => request<Document>(`/v1/documents/${id}`),
-  completeDocument: (id: string) => request<Document>(`/v1/documents/${id}/complete`, { method: "POST" }),
+  completeDocument: (id: string) =>
+    request<{ status: Document["status"] }>(`/v1/documents/${id}/complete`, { method: "POST" }),
   confirmDocument: (id: string, docType: string) =>
     request<Document>(`/v1/documents/${id}/confirm`, { method: "POST", body: JSON.stringify({ doc_type: docType }) }),
   deleteDocument: (id: string) => request<void>(`/v1/documents/${id}`, { method: "DELETE" }),
@@ -145,7 +148,7 @@ export const api = {
  * base so the browser PUTs to the right origin. */
 export async function uploadFileToPresignedUrl(uploadUrl: string, file: Blob, mime: string): Promise<void> {
   const url = uploadUrl.startsWith("/") ? `${API_BASE_URL}${uploadUrl}` : uploadUrl;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "PUT",
     headers: { "Content-Type": mime },
     body: file,
@@ -161,4 +164,23 @@ export async function sha256Hex(file: Blob): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(504, "REQUEST_TIMEOUT", "The server took too long to respond. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
