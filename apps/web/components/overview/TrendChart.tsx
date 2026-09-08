@@ -76,8 +76,12 @@ export function TrendChart({
         )}
       </div>
       <div className="flex justify-between text-[11px] text-ink/50 mt-1">
-        <span>{series[0].month}</span>
-        <span>{series[series.length - 1].month}</span>
+        {series.length > 0 && (
+          <>
+            <span>{series[0].month}</span>
+            <span>{series[series.length - 1].month}</span>
+          </>
+        )}
       </div>
     </div>
   );
