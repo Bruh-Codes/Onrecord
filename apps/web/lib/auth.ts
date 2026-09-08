@@ -56,6 +56,20 @@ export const auth = betterAuth({
   },
   account: {
     modelName: "auth_account",
+    // Automatic account linking: a Google sign-in whose verified email
+    // matches an existing (e.g. email+password) user merges into that
+    // account instead of erroring with a duplicate email.
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
   },
   verification: {
     modelName: "auth_verification",

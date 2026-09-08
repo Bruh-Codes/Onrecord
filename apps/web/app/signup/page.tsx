@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRightIcon, GoogleLogo } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
+import { Footer } from "@/components/ui/Footer";
 
 export default function SignupPage() {
 	const router = useRouter();
@@ -11,9 +12,21 @@ export default function SignupPage() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [submitting, setSubmitting] = useState(false);
+	const [googleLoading, setGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const ready = email.trim() && password.trim();
+
+	async function handleGoogleSignIn() {
+		setGoogleLoading(true);
+		setError(null);
+		// Redirects the user to Google's consent screen and back into a
+		// session; the (app) layout sends owners without a business to /setup.
+		await authClient.signIn.social({
+			provider: "google",
+			callbackURL: "/dashboard",
+		});
+	}
 
 	async function handleSubmit() {
 		if (!ready || submitting) return;
@@ -48,14 +61,6 @@ export default function SignupPage() {
 				<span className="font-[family-name:var(--font-display)] text-[19px]">
 					Onrecord
 				</span>
-				<button
-					type="button"
-					onClick={() => setAuthMode("login")}
-					className="ml-auto flex items-center gap-1.5 text-[13.5px] text-ink cursor-pointer bg-transparent border-none"
-				>
-					Log in
-					<ChevronRightIcon />
-				</button>
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
@@ -85,14 +90,14 @@ export default function SignupPage() {
 						</button>
 					</div>
 
-					{/* Not wired up — no Google OAuth credentials configured yet. */}
 					<button
 						type="button"
-						disabled
-						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 cursor-not-allowed text-ink/50 mb-4"
+						onClick={handleGoogleSignIn}
+						disabled={googleLoading}
+						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 hover:bg-panel disabled:opacity-60 transition-colors cursor-pointer"
 					>
 						<GoogleLogo />
-						Continue with Google
+						{googleLoading ? "Redirecting…" : "Continue with Google"}
 					</button>
 
 					<div className="flex items-center gap-2.5 mb-4.5">
@@ -129,7 +134,10 @@ export default function SignupPage() {
 						onClick={handleSubmit}
 						className="w-full mt-5 text-paper font-[family-name:var(--font-display)] text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed"
 						style={{
-							background: ready && !submitting ? "var(--color-ink)" : "var(--color-muted)",
+							background:
+								ready && !submitting
+									? "var(--color-ink)"
+									: "var(--color-muted)",
 							cursor: ready && !submitting ? "pointer" : "not-allowed",
 						}}
 					>
@@ -146,14 +154,7 @@ export default function SignupPage() {
 				</div>
 			</div>
 
-			<div className="flex items-center gap-2.5 px-6 sm:px-10 py-3.5 bg-ink text-paper">
-				<span className="font-[family-name:var(--font-display)] text-sm">
-					Onrecord
-				</span>
-				<span className="ml-auto text-[11.5px] opacity-60">
-					SME Credit Readiness Assistant
-				</span>
-			</div>
+			<Footer />
 		</div>
 	);
 }
