@@ -1,4 +1,4 @@
-"""S7 Analytics — the computable indicators (specs/05-analytics.md).
+"""S7 Analytics-the computable indicators (specs/05-analytics.md).
 
 Pure and deterministic. No LLM, no network. Same inputs + FORMULA_VERSION
 must give byte-identical output. Money is integer pesewas throughout.
@@ -41,7 +41,7 @@ class AnalysisContext:
 
 def filter_transactions(txns: list[Txn], window_start: date, window_end: date) -> list[Txn]:
     """Exclude dupes, internal transfers, fx and reversals; drop rows outside the
-    window (specs/05-analytics.md §2). Unknown stays — UNCLASSIFIED_RATIO needs it."""
+    window (specs/05-analytics.md §2). Unknown stays-UNCLASSIFIED_RATIO needs it."""
     kept: list[Txn] = []
     for t in txns:
         if t.flags.get("duplicate") or t.flags.get("internal_transfer") or t.flags.get("fx") or t.flags.get("reversal"):

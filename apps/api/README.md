@@ -1,7 +1,7 @@
 # apps/api
 
 FastAPI + Celery backend for the Onrecord Credit Readiness Assistant. One image,
-two entrypoints — see `Dockerfile`. Read [`Agent.md`](../../Agent.md) and
+two entrypoints-see `Dockerfile`. Read [`Agent.md`](../../Agent.md) and
 [`specs/00-domain-model.md`](../../specs/00-domain-model.md) /
 [`specs/09-api.md`](../../specs/09-api.md) before changing this app.
 
@@ -9,7 +9,7 @@ two entrypoints — see `Dockerfile`. Read [`Agent.md`](../../Agent.md) and
 
 Domain model (all tables from `specs/00-domain-model.md`), the `Business` and
 `Document` resource endpoints from `specs/09-api.md` §2, JWT verification for
-Better-Auth-issued tokens (EdDSA via Better Auth's JWKS endpoint — see Auth
+Better-Auth-issued tokens (EdDSA via Better Auth's JWKS endpoint-see Auth
 below), and the Celery worker skeleton. The S1–S10 pipeline, the agent, scoring,
 and export are not built yet (see `../../ROADMAP.md`).
 
@@ -19,7 +19,7 @@ and export are not built yet (see `../../ROADMAP.md`).
 signs tokens with its `jwt` plugin, which defaults to **EdDSA/Ed25519**, not a
 shared secret. `apps/api` verifies each request by fetching Better Auth's public
 keys from its JWKS endpoint (`GET {BETTER_AUTH_URL}/api/auth/jwks`) via
-`PyJWKClient` (`app/api/deps.py`) — no secret to configure or rotate on this
+`PyJWKClient` (`app/api/deps.py`)-no secret to configure or rotate on this
 side. Custom claims (`role`, `business_id`, `institution_id`) must be added on
 the Better Auth side via the `jwt` plugin's `definePayload` option; without
 that, tokens verify but `verify_token` has nothing to build `Claims` from.
@@ -27,7 +27,7 @@ that, tokens verify but `verify_token` has nothing to build `Claims` from.
 ## Setup
 
 Requires Python 3.12, a Postgres 16 instance, and Redis (Redis only needed to
-run the worker — the API and its tests don't touch it).
+run the worker-the API and its tests don't touch it).
 
 ```bash
 cd apps/api
@@ -51,7 +51,7 @@ STORAGE_BUCKET=sme-documents
 ```
 
 Or skip all of this and run `docker compose up` from the repo root instead —
-see the root [`README.md`](../../README.md) "Docker Compose" — which
+see the root [`README.md`](../../README.md) "Docker Compose"-which
 provisions Postgres/Redis/MinIO and runs this app for you with the same vars.
 
 ## Run migrations
@@ -67,7 +67,7 @@ New model change → new migration in the same commit (Agent.md §7.4):
 alembic revision --autogenerate -m "add whatever"
 ```
 
-Autogenerate needs a real Postgres to diff against — SQLite is not a substitute
+Autogenerate needs a real Postgres to diff against-SQLite is not a substitute
 (no native enums/jsonb). If you don't have one handy, a throwaway local cluster
 works fine for generating a migration:
 
@@ -92,7 +92,7 @@ createdb -h localhost -p 5433 -U sme sme
 .venv/Scripts/celery -A app.workers.celery_app worker --loglevel INFO
 ```
 
-Only a placeholder `ping` task exists so far — proves the entrypoint boots and
+Only a placeholder `ping` task exists so far-proves the entrypoint boots and
 reaches Redis. Real pipeline tasks land in `app/workers/tasks.py` as each S1–S10
 stage is built.
 
@@ -103,30 +103,30 @@ stage is built.
 ```
 
 DB-backed tests need a reachable `DATABASE_URL` and skip cleanly with a reason
-if one isn't available. They create and drop their own tables per test — don't
+if one isn't available. They create and drop their own tables per test-don't
 point `DATABASE_URL` at a database with data you care about.
 
 ## Known gaps (flagged during the initial scaffold, not yet resolved)
 
 - **`user` provisioning**: identity lives in Better Auth (`apps/web`); `apps/api`
   has no sync job. `app/services/users.py::ensure_user` lazily mirrors a JWT's
-  claims into the local `user` table on first request instead — fine for FK
+  claims into the local `user` table on first request instead-fine for FK
   integrity, but means a user who never calls `apps/api` has no local row. If a
   reviewer/admin needs provisioning before their first API call, a real sync
   (webhook from Better Auth, most likely) still needs building.
 - **Institution ↔ business scoping**: `require_business_access` lets any
-  reviewer/admin token access any business — the `institution_id` → business
+  reviewer/admin token access any business-the `institution_id` → business
   relationship isn't modeled yet (it isn't in `specs/00-domain-model.md` either).
   Needs a decision before real reviewer accounts exist.
-- ~~**Document upload** returns a placeholder `upload_url`~~ — **resolved**:
+- ~~**Document upload** returns a placeholder `upload_url`~~-**resolved**:
   `app/services/storage/` now generates a real presigned PUT URL via
   `boto3` against an S3-compatible store (MinIO in local dev, via
   `docker-compose.yml` at the repo root). See `app/config.py`'s
   `storage_*` settings and the comment in `app/services/storage/s3.py` for
   why `storage_endpoint_url` is deliberately the browser-facing host.
-- ~~`apps/web` side of auth isn't built yet~~ — **resolved**: Better Auth is now
+- ~~`apps/web` side of auth isn't built yet~~-**resolved**: Better Auth is now
   mounted in `apps/web` (`apps/web/lib/auth.ts`), matches this app's expected
   claim shape, and a full signup → JWT → `apps/api` round trip has been run
   end-to-end against a real Postgres (not just unit-tested against a mocked
   JWKS). `business_id`/`institution_id` still come through `null` on every
-  token, though — see `apps/web/README.md`'s "Known gap" on that write-back.
+  token, though-see `apps/web/README.md`'s "Known gap" on that write-back.

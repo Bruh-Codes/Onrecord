@@ -9,7 +9,8 @@ from app.db import get_session
 from app.models.business import Business
 from app.models.enums import Role
 from app.schemas.business import BusinessDetail
-from app.services.auth_link import auth_user_business_id, auth_user_institution_id
+from app.services.auth_link import auth_user_institution_id
+from app.services.users import resolve_business_id
 
 router = APIRouter(tags=["me"])
 
@@ -33,7 +34,9 @@ async def get_me(
     the Better Auth row (source of truth) so a business created after sign-in
     is visible immediately, falling back to the JWT claim (cache)."""
 
-    business_id = await auth_user_business_id(session, claims.user_id) or claims.business_id
+    business_id = await resolve_business_id(
+        session, user_id=claims.user_id, token_business_id=claims.business_id
+    )
     institution_id = await auth_user_institution_id(session, claims.user_id) or claims.institution_id
 
     business = None

@@ -1,7 +1,7 @@
 class AppError(Exception):
     """Raised anywhere in the app; rendered by the handler in app/api/main.py
     into the {"error": {...}} shape from specs/09-api.md §3. `code` is a stable
-    string the frontend switches on — never change one once shipped."""
+    string the frontend switches on-never change one once shipped."""
 
     def __init__(self, code: str, message: str, http_status: int, detail: dict | None = None):
         self.code = code

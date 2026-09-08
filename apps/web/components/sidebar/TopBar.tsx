@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import { SearchIcon, SunIcon, MoonIcon, LogOutIcon } from "@/components/icons";
 import { useTheme } from "@/lib/theme";
 import { authClient } from "@/lib/auth-client";
+import icon from "@/public/icon.png";
 
 export function TopBar() {
   const { theme, toggleTheme } = useTheme();
@@ -48,12 +51,22 @@ export function TopBar() {
   };
 
   return (
-    <div className="flex items-center gap-4 px-4 sm:px-7 py-3 sm:py-3.5 border-b border-border">
-      <div className="hidden sm:flex flex-1 max-w-[420px] items-center gap-2 bg-panel rounded-full px-4 py-2">
-        <SearchIcon className="opacity-50" />
-        <span className="text-[13px] opacity-50">Search documents, transactions…</span>
+    <div className="flex items-center gap-3 px-3 sm:px-7 py-3 sm:py-3.5 border-b border-border sticky top-0 z-30 bg-paper/80 backdrop-blur">
+      <Link
+        href="/dashboard"
+        className="md:hidden flex items-center gap-2 shrink-0"
+        aria-label="Onrecord home"
+      >
+        <Image src={icon} alt="" width={26} height={26} />
+        <span className="font-display text-[16px] hidden sm:inline">Onrecord</span>
+      </Link>
+
+      <div className="flex-1 flex items-center gap-2 md:max-w-[420px] bg-panel rounded-full px-4 py-2 text-[13px]">
+        <SearchIcon className="opacity-50 shrink-0" />
+        <span className="opacity-50 truncate">Search documents, transactions…</span>
       </div>
-      <div className="ml-auto flex items-center gap-4 text-[13px]">
+
+      <div className="ml-auto flex items-center gap-3 sm:gap-4 text-[13px] shrink-0">
         <button
           type="button"
           onClick={toggleTheme}

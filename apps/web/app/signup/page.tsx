@@ -34,7 +34,9 @@ export default function SignupPage() {
 		// state instead of leaving the button disabled forever.
 		const timer = window.setTimeout(() => {
 			setGoogleLoading(false);
-			setError("Google sign-in is taking longer than expected. Please try again.");
+			setError(
+				"Google sign-in is taking longer than expected. Please try again.",
+			);
 			toast({
 				title: "Google sign-in timed out",
 				description: "Please try again.",
@@ -50,7 +52,9 @@ export default function SignupPage() {
 			window.clearTimeout(timer);
 			setGoogleLoading(false);
 			if (socialError) {
-				setError(socialError.message ?? "Google sign-in failed. Please try again.");
+				setError(
+					socialError.message ?? "Google sign-in failed. Please try again.",
+				);
 				toast({ title: "Google sign-in failed", tone: "error" });
 			}
 		} catch {
@@ -70,7 +74,7 @@ export default function SignupPage() {
 		setSubmitting(true);
 		setError(null);
 
-		// Better Auth's core schema requires a `name` — we don't collect an
+		// Better Auth's core schema requires a `name`-we don't collect an
 		// owner name at this step, so the email local-part fills it for now.
 		// The business itself is created on /setup (legal name, entity type).
 		const name = email.trim().split("@")[0] || "User";
@@ -85,7 +89,7 @@ export default function SignupPage() {
 			return;
 		}
 
-		// New sign-ups have no business yet — /setup creates one and writes
+		// New sign-ups have no business yet-/setup creates one and writes
 		// business_id back onto this user (see lib/link-business.ts). Login
 		// goes straight home; the (app) layout redirects back here if a
 		// returning user somehow still has no business_id.

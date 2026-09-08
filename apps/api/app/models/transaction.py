@@ -12,7 +12,7 @@ from app.models.enums import CategorySource, CounterpartyKind, Direction
 
 class Transaction(IdMixin, Base):
     """amount_pesewas is always positive; sign is carried by `direction` (INV-1).
-    provenance.extraction_ids must be non-empty (INV-7) — enforced in the
+    provenance.extraction_ids must be non-empty (INV-7)-enforced in the
     Pydantic schema / service layer, not by Postgres, since a portable
     "non-empty jsonb array" check constraint isn't worth the complexity here."""
 
@@ -70,4 +70,4 @@ class Counterparty(IdMixin, Base):
     txn_count: Mapped[int] = mapped_column(default=0)
     total_in_pesewas: Mapped[int] = mapped_column(BigInteger, default=0)
     total_out_pesewas: Mapped[int] = mapped_column(BigInteger, default=0)
-    # embedding vector(1024) — added once pgvector is provisioned (specs/04-categorise.md); omitted for now
+    # embedding vector(1024)-added once pgvector is provisioned (specs/04-categorise.md); omitted for now

@@ -24,7 +24,7 @@ class AuditEvent(IdMixin, Base):
 
 
 class CostEvent(IdMixin, Base):
-    """Per-business OCR/LLM spend — a first-class metric (product-spec §10.5, §16)."""
+    """Per-business OCR/LLM spend-a first-class metric (product-spec §10.5, §16)."""
 
     __tablename__ = "cost_event"
 

@@ -45,6 +45,7 @@ export async function uploadWithProgress(
         sha256,
       });
       await uploadFileToPresignedUrl(target.upload_url, file, file.type || "application/octet-stream");
+      await api.completeDocument(target.document_id);
       onProgress({ name: file.name, state: "done" });
     } catch (err) {
       onProgress({

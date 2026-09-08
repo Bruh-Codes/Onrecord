@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
    * its source inline avoids the broken external resolution.
    * See https://github.com/ramonmalcolm10/next-bun-compile/issues/14. */
   transpilePackages: ["pg", "pg-pool", "pg-protocol", "pg-types", "pgpass"],
+  async rewrites() {
+    const backendOrigin = process.env.API_BACKEND_ORIGIN ?? "http://localhost:8000";
+    return [
+      {
+        source: "/backend/:path*",
+        destination: `${backendOrigin}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

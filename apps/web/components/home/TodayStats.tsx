@@ -5,10 +5,12 @@ export function TodayStats({
   coverage,
   score,
   openGaps,
+  isNewUser = false,
 }: {
   coverage: Coverage | undefined;
   score: ReadinessScore | undefined;
   openGaps: Gap[];
+  isNewUser?: boolean;
 }) {
   const continuous = coverage?.continuous_months ?? 0;
   const windowMonths = coverage?.analysis_window_months ?? 12;
@@ -29,20 +31,20 @@ export function TodayStats({
       <div className="flex-1 min-w-[260px]">
         <div className="text-[13px] opacity-65 mb-2.5">Statement coverage</div>
         <div className="font-[family-name:var(--font-display)] text-[30px] mb-0.5" style={{ color: coverageColor }}>
-          {coverage ? `${continuous} / ${windowMonths} months` : "—"}
+          {isNewUser ? "Not calculated" : coverage ? `${continuous} / ${windowMonths} months` : "—"}
         </div>
         <div className="text-xs opacity-55 mb-3.5">
-          {coverage ? (coveragePositive ? "Fully covered" : `${windowMonths - continuous} month(s) still missing`) : "No coverage computed yet"}
+          {isNewUser ? "Upload a statement to measure your history" : coverage ? (coveragePositive ? "Fully covered" : `${windowMonths - continuous} month(s) still missing`) : "No coverage computed yet"}
         </div>
-        <Sparkline points="0,44 40,44 70,10 100,44 220,44" color={coverageColor} />
+        <Sparkline points="0,44 220,44" color={isNewUser ? "var(--color-border)" : coverageColor} />
       </div>
       <div className="flex-1 min-w-[260px]">
         <div className="text-[13px] opacity-65 mb-2.5">Readiness score</div>
         <div className="font-[family-name:var(--font-display)] text-[30px] mb-0.5" style={{ color: scoreColor }}>
-          {score ? `${total}` : "—"} <span className="text-[15px] opacity-50">/ 100</span>
+          {isNewUser ? "Not calculated" : score ? `${total}` : "—"} {!isNewUser && <span className="text-[15px] opacity-50">/ 100</span>}
         </div>
-        <div className="text-xs opacity-55 mb-3.5">{bandLabel} · not a credit decision</div>
-        <Sparkline points="0,30 40,30 70,36 100,20 220,20" color={scoreColor} />
+        <div className="text-xs opacity-55 mb-3.5">{isNewUser ? "Calculated after your first source is processed" : `${bandLabel} · not a credit decision`}</div>
+        <Sparkline points="0,30 220,30" color={isNewUser ? "var(--color-border)" : scoreColor} />
       </div>
       <div className="w-[220px] shrink-0">
         <div className="text-[13px] opacity-65 mb-2.5">Next request</div>
@@ -53,8 +55,8 @@ export function TodayStats({
           </>
         ) : (
           <>
-            <div className="text-[18px] font-semibold mb-0.5">Nothing open</div>
-            <div className="text-xs opacity-55">No open requests right now</div>
+            <div className="text-[18px] font-semibold mb-0.5">{isNewUser ? "Nothing requested yet" : "Nothing open"}</div>
+            <div className="text-xs opacity-55">{isNewUser ? "Your first upload will create the next steps" : "No open requests right now"}</div>
           </>
         )}
       </div>

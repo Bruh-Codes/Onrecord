@@ -1,4 +1,4 @@
-# 03 — S4 Normalise, S5 Reconcile
+# 03-S4 Normalise, S5 Reconcile
 
 Modules: `app/pipeline/s4_normalise.py`, `app/pipeline/s5_reconcile.py`
 
@@ -7,7 +7,7 @@ multi-statement ledger internally consistent.
 
 ---
 
-## S4 — Normalise
+## S4-Normalise
 
 ### Steps
 
@@ -24,7 +24,7 @@ multi-statement ledger internally consistent.
    - levy → `direction=out`, `category_l1='opex'`, `category_l2='elevy'`
    - Both carry `provenance` pointing at the same extraction rows and
      `flags.derived_from_composite = true`.
-   The parent row's `amount_pesewas` remains the principal only.
+     The parent row's `amount_pesewas` remains the principal only.
 
 4. **Normalise counterparty names.** Strip provider boilerplate
    (`MoMo Transfer from`, `TRF/`, `POS PURCHASE`), collapse whitespace, uppercase
@@ -42,12 +42,13 @@ multi-statement ledger internally consistent.
    Excluded from all indicators. Do not attempt conversion at MVP.
 
 ### Output
+
 `transaction` rows with `category_l1` unset (except fee/levy rows) and
 `document.status = 'extracted'`.
 
 ---
 
-## S5 — Reconcile
+## S5-Reconcile
 
 Four distinct jobs. Run in this order.
 
@@ -62,12 +63,13 @@ statements at 90 days, so a 12-month history is four uploads and users commonly
 request overlapping ranges.
 
 Dedupe key, in priority order:
+
 1. `(account_id, provider_reference)` where `provider_reference` is not null.
-   This is authoritative — MoMo transaction IDs are unique.
+   This is authoritative-MoMo transaction IDs are unique.
 2. Fuzzy: `(account_id, occurred_on ±1 day, amount_pesewas, counterparty_hash)`.
 
 Duplicates are marked `flags.duplicate = true` and excluded from indicators. They
-are NOT deleted — the second document is legitimate evidence.
+are NOT deleted-the second document is legitimate evidence.
 
 **Safety rail:** if fuzzy matching would mark more than **2% of rows** in a
 document as duplicates, do not auto-apply. Raise a `gap` kind `inconsistency`,
@@ -78,14 +80,15 @@ halved by a fuzzy matcher.
 ### 5.2 Internal transfer pairing
 
 **Why this matters:** an SME moving GH¢5,000 from MoMo to bank must not read as
-GH¢5,000 revenue *and* GH¢5,000 expense. This is the highest-impact correctness
+GH¢5,000 revenue _and_ GH¢5,000 expense. This is the highest-impact correctness
 issue in the ledger.
 
 Pair two transactions `a`, `b` when ALL hold:
+
 - `a.direction != b.direction`
 - `a.account_id != b.account_id`, both accounts belong to the same business
 - `abs(a.amount_pesewas - b.amount_pesewas) <= max(a.fee_pesewas + a.levy_pesewas,
-   b.fee_pesewas + b.levy_pesewas, 100)`
+ b.fee_pesewas + b.levy_pesewas, 100)`
 - `abs(a.occurred_at - b.occurred_at) <= 48 hours`
 
 On a match: both get `flags.internal_transfer = true`,
@@ -101,7 +104,7 @@ It may be a genuine cash withdrawal for stock, or a transfer to an account the
 system does not know about. The agent asks.
 
 **Targets:** recall ≥ 0.95, precision ≥ 0.98 on the labelled multi-account set.
-Precision is weighted higher — wrongly deleting real revenue is worse than
+Precision is weighted higher-wrongly deleting real revenue is worse than
 leaving a transfer in.
 
 ### 5.3 Period stitching and coverage
@@ -121,7 +124,7 @@ def build_coverage(session, business_id) -> Coverage:
   severity `major`, with `target_ref = {"account_id": ..., "from": ..., "to": ...}`.
 - The gap `detail` MUST contain a literal instruction with dates the owner can act
   on: `"Request an MTN MoMo statement for 3 Feb 2026 – 3 May 2026 at
-  statements.mtn.com.gh and upload it here."` Do not emit a vague "more data
+statements.mtn.com.gh and upload it here."` Do not emit a vague "more data
   needed" message.
 - Because MTN statements expire 24 hours after generation, the instruction must
   also say to upload promptly.
@@ -142,7 +145,7 @@ list, ask.
 
 ## Tests
 
-- `tests/pipeline/test_s5_pairing.py` — the `adom_provisions` fixture has one
+- `tests/pipeline/test_s5_pairing.py`-the `adom_provisions` fixture has one
   wallet-to-bank transfer per week; all 52 must pair, and no genuine
   customer payment may be mis-paired.
 - Overlapping 90-day statements covering months 1–3 and 2–4 produce one

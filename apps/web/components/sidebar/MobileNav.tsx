@@ -16,7 +16,7 @@ const ITEMS = [
 	{ href: "/gaps", label: "Gaps", icon: GapsIcon },
 ];
 
-// Bottom tab bar for the owner journey on narrow viewports — Sidebar.tsx
+// Bottom tab bar for the owner journey on narrow viewports-Sidebar.tsx
 // covers the same routes (plus Counterparties/Apps/Reviewer) on md+.
 // specs/10-web.md: owner routes are mobile-first, min 44px tap targets.
 export function MobileNav() {

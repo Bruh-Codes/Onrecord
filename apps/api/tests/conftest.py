@@ -24,13 +24,13 @@ _test_public_key = _test_private_key.public_key()
 
 @pytest_asyncio.fixture
 async def db_ready():
-    """DB-dependent tests need a real Postgres — sqlite can't stand in, since we
+    """DB-dependent tests need a real Postgres-sqlite can't stand in, since we
     rely on native jsonb/enum behaviour (Agent.md §5). Skip cleanly if the
     DATABASE_URL in .env isn't reachable, rather than faking a pass.
 
     NullPool here (not the app's pooled engine) sidesteps a Windows-specific
     asyncpg/ProactorEventLoop teardown crash when a pooled connection is
-    terminated outside the task that opened it — pytest-asyncio's per-test
+    terminated outside the task that opened it-pytest-asyncio's per-test
     task boundary triggers exactly that. Not needed under the app's real
     deployment target (Linux), only in this local test harness."""
 

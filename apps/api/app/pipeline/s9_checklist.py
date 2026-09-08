@@ -1,4 +1,4 @@
-"""S9 — Document checklist (specs/06-scoring-checklist.md).
+"""S9-Document checklist (specs/06-scoring-checklist.md).
 
 Declarative rule packs matched against the documents a business has uploaded.
 Condition expressions are evaluated with simpleeval, never eval().

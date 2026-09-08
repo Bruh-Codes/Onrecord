@@ -9,7 +9,7 @@ def _checklist(items):
 
 def test_full_marks_reachable():
     """A business with 12 continuous months, everything captured, nothing
-    unclassified, full checklist and full statement evidence scores 100-ish — the
+    unclassified, full checklist and full statement evidence scores 100-ish-the
     coverage pillar's 30 must be reachable (specs/06-scoring-checklist.md)."""
     result = s8_score.compute_score(
         continuous_months=12,

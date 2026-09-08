@@ -1,4 +1,4 @@
-# 08 — S10 Export
+# 08-S10 Export
 
 Module: `app/pipeline/s10_export.py`
 
@@ -11,10 +11,10 @@ its correctness as you would a financial statement.
 
 `POST /v1/businesses/{id}/exports` with `{"format": "pdf" | "json" | "csv" | "pack"}`.
 
-- **pdf** — the Financial Profile, human-readable, for the loan officer
-- **json** — machine-readable, for institutions integrating
-- **csv** — the normalised transaction ledger
-- **pack** — a zip of all three plus the source documents
+- **pdf**-the Financial Profile, human-readable, for the loan officer
+- **json**-machine-readable, for institutions integrating
+- **csv**-the normalised transaction ledger
+- **pack**-a zip of all three plus the source documents
 
 ---
 
@@ -27,7 +27,7 @@ Runs in the worker.
 1. Cover
    Business name, registration number, TIN, sector, period covered,
    generation timestamp, readiness band.
-   Disclaimer block (§4) — on the cover, not buried.
+   Disclaimer block (§4)-on the cover, not buried.
 
 2. Summary
    Readiness band + pillar breakdown with attribution reasons.
@@ -74,7 +74,7 @@ Runs in the worker.
 
 - Money formatted `GH¢1,234.56` at the display boundary only. The template
   receives integer pesewas and formats; no float ever enters the template context.
-- `insufficient_data` indicators render as "Not enough data — needs 6 complete
+- `insufficient_data` indicators render as "Not enough data-needs 6 complete
   months, 4 available", never as blank, zero, or a dash.
 - `DECLARED` values use a distinct treatment (tint block + label). They MUST NOT
   appear in the same table as `DERIVED` figures without the label.
@@ -103,28 +103,42 @@ Removing or weakening either string is a rejected change (INV-5).
 
 ```json
 {
-  "meta": {
-    "schema_version": "1.0.0",
-    "generated_at": "2026-08-29T14:02:11Z",
-    "formula_version": "1.0.0",
-    "rubric_version": "1.0.0",
-    "disclaimer": "This profile organises records supplied by the business. It is not a credit assessment, credit score, or recommendation to lend."
-  },
-  "business": {"...": "..."},
-  "coverage": {"...": "..."},
-  "indicators": [
-    {"code": "REV_TTM", "unit": "pesewas", "kind": "derived",
-     "value": {"v": 5955000}, "window": {"from": "2025-09-01", "to": "2026-08-31"},
-     "inputs": {"transaction_ids": ["..."]}}
-  ],
-  "score": {"total": 72.5, "band": "nearly_ready", "pillars": {}, "contributions": []},
-  "declarations": [
-    {"question": "...", "answer_text": "...", "kind": "declared",
-     "verification_status": "unverified"}
-  ],
-  "checklist": [],
-  "gaps_open": [],
-  "documents": [{"id": "...", "doc_type": "momo_statement", "sha256": "..."}]
+	"meta": {
+		"schema_version": "1.0.0",
+		"generated_at": "2026-08-29T14:02:11Z",
+		"formula_version": "1.0.0",
+		"rubric_version": "1.0.0",
+		"disclaimer": "This profile organises records supplied by the business. It is not a credit assessment, credit score, or recommendation to lend."
+	},
+	"business": { "...": "..." },
+	"coverage": { "...": "..." },
+	"indicators": [
+		{
+			"code": "REV_TTM",
+			"unit": "pesewas",
+			"kind": "derived",
+			"value": { "v": 5955000 },
+			"window": { "from": "2025-09-01", "to": "2026-08-31" },
+			"inputs": { "transaction_ids": ["..."] }
+		}
+	],
+	"score": {
+		"total": 72.5,
+		"band": "nearly_ready",
+		"pillars": {},
+		"contributions": []
+	},
+	"declarations": [
+		{
+			"question": "...",
+			"answer_text": "...",
+			"kind": "declared",
+			"verification_status": "unverified"
+		}
+	],
+	"checklist": [],
+	"gaps_open": [],
+	"documents": [{ "id": "...", "doc_type": "momo_statement", "sha256": "..." }]
 }
 ```
 
@@ -143,7 +157,7 @@ balance_after_ghs, counterparty, category_l1, category_l2, category_source,
 flags, document_id, page
 ```
 
-Money in this file is decimal GHS with 2 places — it is for humans and
+Money in this file is decimal GHS with 2 places-it is for humans and
 spreadsheets. Note in the header comment that the authoritative values are the
 integer pesewas in the JSON export.
 
@@ -152,6 +166,7 @@ integer pesewas in the JSON export.
 ## 7. Sharing
 
 `POST /v1/exports/{id}/share` produces a scoped link:
+
 - expires in 14 days (configurable per institution)
 - revocable by the owner at any time
 - access-logged; the owner can see who opened it and when

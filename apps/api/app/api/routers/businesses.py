@@ -37,7 +37,7 @@ async def create_business(
     # Owner only: mirror the new business on the domain user row so
     # /v1/me and ownership checks resolve it before the Better Auth session
     # refreshes. Writing it back onto the auth_user row itself is the web
-    # app's job (apps/web/lib/link-business.ts) — apps/api deliberately does
+    # app's job (apps/web/lib/link-business.ts)-apps/api deliberately does
     # not touch Better Auth's database (see that file's comment).
     if claims.role == Role.OWNER:
         user_row = await session.get(User, claims.user_id)

@@ -8,12 +8,12 @@ const STEPS = [
 	{
 		n: "1",
 		title: "Upload your records",
-		body: "MoMo statements, bank statements, receipts, handwritten ledgers — photos or PDFs. Nothing gets thrown away or 'edited'.",
+		body: "MoMo statements, bank statements, receipts, handwritten ledgers-photos or PDFs. Nothing gets thrown away or 'edited'.",
 	},
 	{
 		n: "2",
 		title: "We build the provable profile",
-		body: "Every figure is extracted, derived, or declared — each traceable to a source page. Statements must reconcile before they enter the ledger.",
+		body: "Every figure is extracted, derived, or declared-each traceable to a source page. Statements must reconcile before they enter the ledger.",
 	},
 	{
 		n: "3",
@@ -25,7 +25,7 @@ const STEPS = [
 const PILLARS = [
 	{
 		title: "Never a made-up number",
-		body: "Three kinds of value — extracted, derived, declared — never mixed. Aggregation and scoring are deterministic code, not model output.",
+		body: "Three kinds of value-extracted, derived, declared-never mixed. Aggregation and scoring are deterministic code, not model output.",
 	},
 	{
 		title: "Proof over polish",
@@ -33,7 +33,7 @@ const PILLARS = [
 	},
 	{
 		title: "A score, not a decision",
-		body: "A readiness score measures how complete and consistent your file is. It's tooling for you and your lender — never a lending decision.",
+		body: "A readiness score measures how complete and consistent your file is. It's tooling for you and your lender-never a lending decision.",
 	},
 ];
 
@@ -61,8 +61,8 @@ export default async function LandingPage() {
 						When your records are messy, credit is out of reach
 					</h1>
 					<p className="text-left sm:text-center text-[15.5px] sm:text-base leading-relaxed opacity-75 m-0 mb-8 max-w-[560px] mx-auto">
-						Onrecord turns a Ghanaian SME&apos;s real records — MoMo statements,
-						receipts, a handwritten sales book — into a clean,{" "}
+						Onrecord turns a Ghanaian SME&apos;s real records-MoMo statements,
+						receipts, a handwritten sales book-into a clean,{" "}
 						<strong className="font-semibold">provable</strong>, lender-ready
 						financial profile in under an hour.
 					</p>
@@ -141,7 +141,7 @@ export default async function LandingPage() {
 					</h2>
 					<p className="text-[15px] opacity-75 m-0 mb-7">
 						Create your profile today and go to your first lender meeting with
-						receipts — not charm.
+						receipts-not charm.
 					</p>
 					<Link
 						href="/signup"
