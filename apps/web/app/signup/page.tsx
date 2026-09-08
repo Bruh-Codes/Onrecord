@@ -16,6 +16,7 @@ export default function SignupPage() {
 	const [error, setError] = useState<string | null>(null);
 
 	const ready = email.trim() && password.trim();
+	const busy = submitting || googleLoading;
 
 	async function handleGoogleSignIn() {
 		setGoogleLoading(true);
@@ -29,7 +30,7 @@ export default function SignupPage() {
 	}
 
 	async function handleSubmit() {
-		if (!ready || submitting) return;
+		if (!ready || busy) return;
 		setSubmitting(true);
 		setError(null);
 
@@ -69,7 +70,8 @@ export default function SignupPage() {
 						<button
 							type="button"
 							onClick={() => setAuthMode("signup")}
-							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer ${
+							disabled={busy}
+							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
 								authMode === "signup"
 									? "bg-ink text-paper font-semibold"
 									: "text-ink"
@@ -80,7 +82,8 @@ export default function SignupPage() {
 						<button
 							type="button"
 							onClick={() => setAuthMode("login")}
-							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer ${
+							disabled={busy}
+							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
 								authMode === "login"
 									? "bg-ink text-paper font-semibold"
 									: "text-ink"
@@ -93,8 +96,8 @@ export default function SignupPage() {
 					<button
 						type="button"
 						onClick={handleGoogleSignIn}
-						disabled={googleLoading}
-						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 hover:bg-panel disabled:opacity-60 transition-colors cursor-pointer"
+						disabled={busy}
+						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 hover:bg-panel disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
 					>
 						<GoogleLogo />
 						{googleLoading ? "Redirecting…" : "Continue with Google"}
@@ -111,8 +114,9 @@ export default function SignupPage() {
 						<input
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
+							disabled={busy}
 							placeholder="you@business.com"
-							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full"
+							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</div>
 					<div className="mb-2">
@@ -121,8 +125,9 @@ export default function SignupPage() {
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
+							disabled={busy}
 							placeholder="••••••••"
-							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full"
+							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</div>
 
@@ -130,7 +135,7 @@ export default function SignupPage() {
 
 					<button
 						type="button"
-						disabled={!ready || submitting}
+						disabled={!ready || busy}
 						onClick={handleSubmit}
 						className="w-full mt-5 text-paper font-[family-name:var(--font-display)] text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed"
 						style={{
