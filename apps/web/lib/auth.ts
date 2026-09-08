@@ -59,9 +59,14 @@ export const auth = betterAuth({
     // Automatic account linking: a Google sign-in whose verified email
     // matches an existing (e.g. email+password) user merges into that
     // account instead of erroring with a duplicate email.
+    //
+    // requireLocalEmailVerified: false — credential-created users have no
+    // email-verification flow (no provider configured), so their local
+    // emailVerified stays false; a verified Google email is the proof.
     accountLinking: {
       enabled: true,
       trustedProviders: ["google"],
+      requireLocalEmailVerified: false,
     },
   },
 
