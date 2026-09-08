@@ -67,6 +67,9 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ["google"],
       requireLocalEmailVerified: false,
+      // Copy Google's profile (name + image) onto the local user when the
+      // account is linked, so the avatar isn't a bare initial.
+      updateUserInfoOnLink: true,
     },
   },
 
@@ -74,6 +77,9 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Refresh name + avatar from Google's profile on every sign-in, so the
+      // topbar avatar shows the Google picture instead of a bare initial.
+      overrideUserInfoOnSignIn: true,
     },
   },
   verification: {
