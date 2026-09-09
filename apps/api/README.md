@@ -10,8 +10,19 @@ two entrypoints-see `Dockerfile`. Read [`Agent.md`](../../Agent.md) and
 Domain model (all tables from `specs/00-domain-model.md`), the `Business` and
 `Document` resource endpoints from `specs/09-api.md` §2, JWT verification for
 Better-Auth-issued tokens (EdDSA via Better Auth's JWKS endpoint-see Auth
-below), and the Celery worker skeleton. The S1–S10 pipeline, the agent, scoring,
-and export are not built yet (see `../../ROADMAP.md`).
+below), and the Celery worker. The active document stages and remaining S1-S10
+work are summarized below and tracked in `../../ROADMAP.md`.
+
+### Current processing status
+
+The Celery task `ingest_document.s1` now reads uploads with Docling, classifies
+them, and persists supported bank/MoMo transaction rows or financial-statement
+line-item extraction rows. It then queues analytics recomputation. Ambiguous
+documents remain classified rather than being given invented values.
+
+In Railway, API and worker must use the same S3-compatible `STORAGE_*` settings;
+local-disk storage is not shared between services. Keep the worker at
+`--concurrency=1` because Docling loads CPU/memory-intensive local models.
 
 ## Auth
 
@@ -89,12 +100,12 @@ createdb -h localhost -p 5433 -U sme sme
 ## Run the worker
 
 ```bash
-.venv/Scripts/celery -A app.workers.celery_app worker --loglevel INFO
+.venv/Scripts/celery -A app.workers.celery_app worker --loglevel INFO --concurrency=1
 ```
 
-Only a placeholder `ping` task exists so far-proves the entrypoint boots and
-reaches Redis. Real pipeline tasks land in `app/workers/tasks.py` as each S1–S10
-stage is built.
+The worker also exposes a `ping` task for connectivity checks. Its production
+document task is `ingest_document.s1`; it runs Docling and persists the current
+statement/financial-statement extraction stages described above.
 
 ## Tests
 

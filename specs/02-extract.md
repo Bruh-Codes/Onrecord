@@ -4,6 +4,17 @@ Module: `app/pipeline/s3_extract/`
 
 Produces `extraction` rows. Does NOT produce `transaction` rows-that is S4.
 
+## Current implementation note
+
+The MVP implementation is in `app/pipeline/s3_extract.py` and
+`app/pipeline/s3_financial_statement.py`, invoked by `app/workers/tasks.py`.
+Docling Markdown tables are parsed conservatively for bank/MoMo statement rows;
+those rows are persisted with `provenance.extraction_ids` and recomputation is
+queued. Financial statements produce explicit line-item extraction rows and do
+not produce synthetic transactions. A document stays `classified` when no
+unambiguous values are found. Issuer-specific parsers, reconciliation gates,
+vision extraction, and reviewer routing below remain future work.
+
 ---
 
 ## Tier routing
