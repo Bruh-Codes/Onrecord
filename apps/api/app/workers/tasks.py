@@ -3,6 +3,7 @@
 import logging
 import hashlib
 import re
+from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -15,7 +16,7 @@ from app.models.document import Document, Extraction
 from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
-from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement
+from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement, summarize_financial_fields
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ def s1_ingest(document_id: str) -> dict:
     from app.db import engine_sync
     from app.pipeline.s2_classify import classify_document
     from app.services.document_processing import DoclingProcessor
+    from app.services.financial_mapping import get_structure_mapper
     from app.services.storage import get_storage_backend
 
     with Session(engine_sync) as session:
@@ -68,6 +70,7 @@ def s1_ingest(document_id: str) -> dict:
             return {"status": doc.status.value, "document_id": str(doc.id)}
 
         doc.page_count = processed.page_count
+        doc.docling_document = processed.structure
         doc.doc_type = result.doc_type
         doc.doc_type_confidence = result.confidence
         doc.issuer = result.issuer
@@ -93,14 +96,34 @@ def s1_ingest(document_id: str) -> dict:
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
         elif result.supported and doc.doc_type == DocType.FINANCIAL_STATEMENT:
-            fields, extraction_error = parse_financial_statement(processed.text)
+            fields, extraction_error = parse_financial_statement(
+                processed.text,
+                processed.tables,
+                structure_mapper=get_structure_mapper(),
+            )
             if extraction_error:
                 doc.status = DocStatus.CLASSIFIED
                 doc.quality_flags["extraction_error"] = extraction_error
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             _persist_financial_fields(session, doc, fields)
-            doc.quality_flags["financial_statement_fields"] = len(fields)
+            summaries = summarize_financial_fields(processed.text, fields)
+            doc.quality_flags["financial_statements"] = [asdict(summary) for summary in summaries]
+            doc.quality_flags["financial_statement_values"] = len(fields)
+            doc.quality_flags["financial_statement_validation_issues"] = sum(
+                len(summary.validation_issues) for summary in summaries
+            )
+            doc.quality_flags["financial_statement_mapping_review_values"] = sum(
+                field.mapping_method == "model" and (field.mapping_confidence or 0) < 0.85
+                for field in fields
+            )
+            doc.quality_flags["financial_statement_structure_review_values"] = sum(
+                field.structure_method == "model" and (field.structure_confidence or 0) < 0.85
+                for field in fields
+            )
+            doc.quality_flags["financial_statement_unmapped_values"] = sum(
+                field.canonical_concept is None for field in fields
+            )
             doc.status = DocStatus.EXTRACTED
         else:
             doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
@@ -169,18 +192,39 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
 
 
 def _persist_financial_fields(session: Session, doc: Document, fields: list[FinancialField]) -> None:
+    period_indexes: dict[tuple[int, str], int] = {}
     for field in fields:
+        period_key = (field.statement_index, field.period)
+        if period_key not in period_indexes:
+            period_indexes[period_key] = len([key for key in period_indexes if key[0] == field.statement_index])
         session.add(
             Extraction(
                 document_id=doc.id,
                 page=field.page,
-                field_path=f"financial_statement.{field.key}",
+                field_path=(
+                    f"financial_statements[{field.statement_index}].line_items[{field.line_index}]"
+                    f".values[{period_indexes[period_key]}]"
+                ),
                 value_json={
+                    "source_id": field.source_id,
                     "label": field.label,
+                    "section": field.section,
+                    "parent_line_index": field.parent_line_index,
+                    "depth": field.depth,
+                    "is_total": field.is_total,
+                    "statement_type": field.statement_type,
+                    "period": field.period,
                     "value_pesewas": field.value_pesewas,
                     "raw_value": field.raw_value,
+                    "kind": "extracted",
+                    "canonical_concept": field.canonical_concept,
+                    "mapping_confidence": field.mapping_confidence,
+                    "mapping_method": field.mapping_method,
+                    "structure_confidence": field.structure_confidence,
+                    "structure_method": field.structure_method,
                 },
-                extractor="parser:financial_statement_markdown_v1",
+                bbox=field.bbox,
+                extractor="parser:docling_financial_table_v2",
                 confidence=0.85,
             )
         )

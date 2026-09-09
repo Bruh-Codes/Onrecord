@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import { PillButton } from "@/components/ui/PillButton";
 import { Badge } from "@/components/ui/Badge";
 import { DocumentsIcon } from "@/components/icons";
 import { DocumentRowSkeleton } from "@/components/ui/Skeleton";
+import { FinancialStatementView } from "@/components/documents/FinancialStatementView";
 import type { Document, DocumentStatus } from "@/lib/api-types";
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
@@ -28,7 +31,10 @@ const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> =
 function needsReview(document: Document) {
 	return Boolean(
 		document.quality_flags?.extraction_error ||
-		document.quality_flags?.processing_error,
+		document.quality_flags?.processing_error ||
+		Number(document.quality_flags?.financial_statement_validation_issues ?? 0) > 0 ||
+		Number(document.quality_flags?.financial_statement_mapping_review_values ?? 0) > 0 ||
+		Number(document.quality_flags?.financial_statement_structure_review_values ?? 0) > 0,
 	);
 }
 
@@ -53,6 +59,7 @@ export function UploadedDocumentsList({
 	onRemove: (documentId: string) => void;
 	removingId: string | null;
 }) {
+	const [expandedId, setExpandedId] = useState<string | null>(null);
 	if (loading) {
 		return (
 			<div
@@ -87,10 +94,8 @@ export function UploadedDocumentsList({
 	return (
 		<div>
 			{documents.map((doc) => (
-				<div
-					key={doc.id}
-					className="py-3 border-b border-border flex items-center gap-3.5"
-				>
+				<div key={doc.id} className="border-b border-border">
+				<div className="py-3 flex items-center gap-3.5">
 					<div className="w-[34px] h-[34px] shrink-0 rounded-[10px] bg-panel flex items-center justify-center">
 						<DocumentsIcon />
 					</div>
@@ -103,6 +108,11 @@ export function UploadedDocumentsList({
 						</div>
 					</div>
 					<div className="shrink-0 flex items-center gap-2">
+						{doc.doc_type === "financial_statement" && doc.status === "extracted" && (
+							<PillButton onClick={() => setExpandedId(expandedId === doc.id ? null : doc.id)}>
+								{expandedId === doc.id ? "Hide data" : "View data"}
+							</PillButton>
+						)}
 						<Badge tone={needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
 							{needsReview(doc)
 								? "Needs review"
@@ -118,6 +128,8 @@ export function UploadedDocumentsList({
 							{removingId === doc.id ? "Removing..." : "Remove"}
 						</PillButton>
 					</div>
+				</div>
+				{expandedId === doc.id && <FinancialStatementView documentId={doc.id} />}
 				</div>
 			))}
 		</div>

@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     task_always_eager: bool = False
 
+    # Optional OpenAI semantic pass. Without a key, financial extraction stays
+    # fully local and unknown structure/concepts remain unclassified.
+    openai_api_key: str = ""
+    financial_mapping_model: str = "gpt-5.6-luna"
+
     # Better Auth (apps/web) issues these tokens via its `jwt` plugin, which
     # defaults to EdDSA/Ed25519 and is verified against its JWKS endpoint —
     # apps/api never holds a shared secret. iss/aud default to the web app's

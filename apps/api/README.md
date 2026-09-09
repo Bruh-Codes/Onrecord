@@ -15,14 +15,30 @@ work are summarized below and tracked in `../../ROADMAP.md`.
 
 ### Current processing status
 
-The Celery task `ingest_document.s1` now reads uploads with Docling, classifies
-them, and persists supported bank/MoMo transaction rows or financial-statement
-line-item extraction rows. It then queues analytics recomputation. Ambiguous
-documents remain classified rather than being given invented values.
+The Celery task `ingest_document.s1` reads uploads with Docling and stores its
+lossless `DoclingDocument` JSON. Bank/MoMo tables follow the transaction parser.
+Financial statements retain every printed line item and period value in a
+dynamic statement shape, with page/bounding-box provenance; unfamiliar labels
+are not dropped. Accounting equations are checked deterministically. An
+optional OpenAI pass may classify statement type, sections, hierarchy, totals,
+and canonical concepts, but receives no amounts and cannot change extracted
+values. Ambiguous documents remain
+classified rather than being given invented values.
 
 In Railway, API and worker must use the same S3-compatible `STORAGE_*` settings;
 local-disk storage is not shared between services. Keep the worker at
 `--concurrency=1` because Docling loads CPU/memory-intensive local models.
+
+### OpenAI semantic structuring
+
+Set `OPENAI_API_KEY` on the Railway service that runs the Celery worker. Keep
+the key server-side; it must not be added to `apps/web`, committed to git, or
+sent to the browser. The default model is `gpt-5.6-luna`, configurable with
+`FINANCIAL_MAPPING_MODEL` (for example, `gpt-5.6-terra` for a higher-cost
+fallback). The worker sends OpenAI row labels and stable source IDs only:
+Docling/parser output remains authoritative for amounts, periods, and
+provenance. If the key is absent or the model call fails, extraction continues
+with deterministic/local structure and marks uncertain values for review.
 
 ## Auth
 
@@ -59,6 +75,8 @@ STORAGE_ENDPOINT_URL=http://localhost:9000
 STORAGE_ACCESS_KEY=minioadmin
 STORAGE_SECRET_KEY=minioadmin
 STORAGE_BUCKET=sme-documents
+OPENAI_API_KEY=                       # optional; omit for local-only extraction
+FINANCIAL_MAPPING_MODEL=gpt-5.6-luna  # optional override
 ```
 
 Or skip all of this and run `docker compose up` from the repo root instead —

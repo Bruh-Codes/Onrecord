@@ -1,7 +1,8 @@
 import uuid
 from datetime import date, datetime
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import DocStatus, DocType, Provider
 
@@ -39,6 +40,40 @@ class DocumentSummary(BaseModel):
     created_at: datetime
 
 
+class FinancialStatementValue(BaseModel):
+    extraction_id: uuid.UUID
+    line_index: int
+    source_id: str
+    label: str
+    section: str | None
+    parent_line_index: int | None
+    depth: int
+    is_total: bool
+    period: str
+    value_pesewas: int
+    raw_value: str
+    kind: Literal["extracted"]
+    canonical_concept: str | None
+    mapping_confidence: float | None
+    mapping_method: str | None
+    structure_confidence: float | None
+    structure_method: str | None
+    page: int
+    bbox: dict[str, Any] | None
+    confidence: float | None
+
+
+class FinancialStatement(BaseModel):
+    statement_index: int
+    statement_type: str
+    periods: list[str]
+    currency: str = "GHS"
+    scale: int = 1
+    validation_issues: list[str]
+    values: list[FinancialStatementValue]
+
+
 class DocumentDetail(DocumentSummary):
     quality_flags: dict
     page_count: int | None
+    financial_statements: list[FinancialStatement] = Field(default_factory=list)

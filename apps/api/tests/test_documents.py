@@ -1,5 +1,9 @@
 import hashlib
 import uuid
+from decimal import Decimal
+from types import SimpleNamespace
+
+from app.api.routers.documents import _financial_statements
 
 from tests.conftest import bearer_header
 
@@ -166,3 +170,41 @@ async def test_list_documents_is_paginated(client):
     assert len(body["items"]) == 2
     assert body["page"] == 1
     assert body["page_size"] == 2
+
+
+def test_document_detail_groups_dynamic_statement_values():
+    document = SimpleNamespace(quality_flags={"financial_statements": [{
+        "statement_index": 0,
+        "statement_type": "income_statement",
+        "periods": ["2025"],
+        "currency": "GHS",
+        "scale": 1,
+        "validation_issues": [],
+    }]})
+    extraction_id = uuid.uuid4()
+    rows = [SimpleNamespace(
+        id=extraction_id,
+        field_path="financial_statements[0].line_items[0].values[0]",
+        value_json={
+            "label": "Unusual but printed item",
+            "section": "Other income",
+            "depth": 1,
+            "is_total": False,
+            "period": "2025",
+            "value_pesewas": 12_345,
+            "raw_value": "123.45",
+            "kind": "extracted",
+            "canonical_concept": None,
+            "mapping_confidence": None,
+            "mapping_method": None,
+        },
+        page=3,
+        bbox={"l": 1, "t": 2, "r": 3, "b": 4},
+        confidence=Decimal("0.85"),
+    )]
+
+    statements = _financial_statements(document, rows)
+
+    assert statements[0].values[0].label == "Unusual but printed item"
+    assert statements[0].values[0].value_pesewas == 12_345
+    assert statements[0].values[0].extraction_id == extraction_id
