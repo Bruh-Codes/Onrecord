@@ -15,6 +15,10 @@ class StorageBackend(Protocol):
         upload_url with a Content-Type header matching `mime`."""
         ...
 
+    def read_bytes(self, key: str) -> bytes:
+        """Read an uploaded object for background processing."""
+        ...
+
 
 def get_storage_backend() -> StorageBackend:
     """S3/MinIO by default; falls back to the local-dev receiver when no

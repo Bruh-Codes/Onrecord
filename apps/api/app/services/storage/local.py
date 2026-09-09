@@ -31,3 +31,10 @@ class LocalStorageBackend:
         signed = f"sha256:{expires.timestamp()}:{key}"
         url = f"/internal/storage/{quote(key)}?signature={signed}"
         return url, expires
+
+    def read_bytes(self, key: str) -> bytes:
+        root = Path(self._settings.local_storage_dir) if self._settings.local_storage_dir else Path("var/storage")
+        target = root.joinpath(key).resolve()
+        if not target.is_relative_to(root.resolve()) or not target.is_file():
+            raise FileNotFoundError(key)
+        return target.read_bytes()

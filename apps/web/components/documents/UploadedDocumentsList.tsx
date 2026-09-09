@@ -78,14 +78,18 @@ export function UploadedDocumentsList({
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="text-sm font-semibold">
-							{doc.doc_type ?? "Uploaded document"}
+						{doc.doc_type === "other" && doc.status === "failed"
+							? "Unsupported document"
+							: doc.doc_type ?? "Uploaded document"}
 						</div>
 						<div className="text-xs opacity-60">
 							{new Date(doc.created_at).toLocaleString()}
 						</div>
 					</div>
 					<Badge tone={STATUS_TONE[doc.status]}>
-						{STATUS_LABEL[doc.status]}
+						{doc.status === "failed" && doc.doc_type === "other"
+							? "Not financial data"
+							: STATUS_LABEL[doc.status]}
 					</Badge>
 				</div>
 			))}
