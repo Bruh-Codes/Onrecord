@@ -66,7 +66,11 @@ async def get_transaction(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> TransactionDetail:
-    transaction = await session.get(Transaction, transaction_id)
+    transaction = await session.scalar(
+        select(Transaction)
+        .join(Document, Transaction.document_id == Document.id)
+        .where(Transaction.id == transaction_id, Document.deleted_at.is_(None))
+    )
     if transaction is None:
         raise not_found("TRANSACTION_NOT_FOUND", "No transaction with that id.")
     require_business_access(transaction.business_id, claims)
@@ -81,7 +85,11 @@ async def patch_transaction(
     session: AsyncSession = Depends(get_session),
 ) -> TransactionDetail:
     """Reviewer only. Sets category_source='human' (highest precedence, specs/04-categorise.md)."""
-    transaction = await session.get(Transaction, transaction_id)
+    transaction = await session.scalar(
+        select(Transaction)
+        .join(Document, Transaction.document_id == Document.id)
+        .where(Transaction.id == transaction_id, Document.deleted_at.is_(None))
+    )
     if transaction is None:
         raise not_found("TRANSACTION_NOT_FOUND", "No transaction with that id.")
     require_business_access(transaction.business_id, claims)

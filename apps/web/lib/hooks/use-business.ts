@@ -110,6 +110,27 @@ export function useDocuments(businessId: string | null) {
   });
 }
 
+/** Delete a document and immediately evict every client cache that can contain
+ * document-derived values. The API also invalidates its derived snapshots. */
+export function useDeleteDocument(businessId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) => api.deleteDocument(documentId),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["documents", businessId] }),
+        qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
+        qc.invalidateQueries({ queryKey: ["counterparties", businessId] }),
+        qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
+        qc.invalidateQueries({ queryKey: ["score", businessId] }),
+        qc.invalidateQueries({ queryKey: ["coverage", businessId] }),
+        qc.invalidateQueries({ queryKey: ["checklist", businessId] }),
+        qc.invalidateQueries({ queryKey: ["gaps", businessId] }),
+      ]);
+    },
+  });
+}
+
 export function useTransactions(businessId: string | null, params?: Record<string, string | number>) {
   const key = JSON.stringify(params ?? {});
   return useQuery<{ items: Transaction[]; total: number }>({

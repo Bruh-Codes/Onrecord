@@ -98,6 +98,13 @@ async def test_deleted_document_can_be_uploaded_again(client):
     deleted = await client.delete(f"/v1/documents/{first.json()['document_id']}", headers=owner_headers)
     assert deleted.status_code == 204
 
+    deleted_id = first.json()["document_id"]
+    listed = await client.get(f"/v1/businesses/{business_id}/documents", headers=owner_headers)
+    assert listed.status_code == 200
+    assert deleted_id not in {item["id"] for item in listed.json()["items"]}
+    hidden = await client.get(f"/v1/documents/{deleted_id}", headers=owner_headers)
+    assert hidden.status_code == 404
+
     replacement = await client.post(f"/v1/businesses/{business_id}/documents", json=payload, headers=owner_headers)
     assert replacement.status_code == 201
 

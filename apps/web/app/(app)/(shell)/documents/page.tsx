@@ -4,19 +4,18 @@ import { useState } from "react";
 import { ManualEntryPanel } from "@/components/documents/ManualEntryPanel";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
 import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
-import { api } from "@/lib/api";
-import { useDocuments, useMe } from "@/lib/hooks/use-business";
+import { useDeleteDocument, useDocuments, useMe } from "@/lib/hooks/use-business";
 
 export default function DocumentsPage() {
   const me = useMe();
   const { businessId } = me;
 	const documents = useDocuments(businessId);
+	const deleteDocument = useDeleteDocument(businessId);
 	const [removingId, setRemovingId] = useState<string | null>(null);
 	async function removeDocument(documentId: string) {
 		setRemovingId(documentId);
 		try {
-			await api.deleteDocument(documentId);
-			await documents.refetch();
+			await deleteDocument.mutateAsync(documentId);
 		} finally {
 			setRemovingId(null);
 		}

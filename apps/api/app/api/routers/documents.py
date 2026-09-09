@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Claims, require_business_access, require_document_access, verify_token
@@ -12,6 +12,7 @@ from app.db import get_session
 from app.errors import file_too_large
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
+from app.models.scoring import Indicator, ReadinessScore
 from app.schemas.common import Page
 from app.schemas.document import (
     DocumentConfirm,
@@ -208,6 +209,12 @@ async def delete_document(
         action="document.delete",
         target=f"document:{document.id}",
     )
+    # Derived analytics have no document foreign key, so remove the cached
+    # snapshot immediately. The queued recompute will rebuild it from active
+    # documents only; an API read can never serve the deleted document's old
+    # totals during that interval.
+    await session.execute(delete(Indicator).where(Indicator.business_id == document.business_id))
+    await session.execute(delete(ReadinessScore).where(ReadinessScore.business_id == document.business_id))
     await session.commit()
 
     # Removing a document changes the active transaction set and all derived
