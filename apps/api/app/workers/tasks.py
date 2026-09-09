@@ -1,5 +1,6 @@
 """Background pipeline tasks."""
 
+import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.pipeline.recompute import recompute_business
 from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="recompute")
@@ -50,6 +53,10 @@ def s1_ingest(document_id: str) -> dict:
                 processed = DoclingProcessor().process(source)
             result = classify_document(processed.text, doc.storage_key)
         except Exception as exc:
+            # Keep the document bytes and extracted content out of logs, but
+            # retain the traceback needed to distinguish storage, model, and
+            # parsing failures in the worker logs.
+            logger.exception("Document processing failed for document_id=%s", document_id)
             doc.status = DocStatus.FAILED
             doc.quality_flags = {**(doc.quality_flags or {}), "processing_error": type(exc).__name__}
             session.commit()
