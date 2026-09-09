@@ -11,6 +11,7 @@ class DocumentCreate(BaseModel):
     mime: str
     size_bytes: int
     sha256: str
+    replace_document_id: uuid.UUID | None = None
 
 
 class DocumentUploadTarget(BaseModel):
@@ -27,12 +28,14 @@ class DocumentSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    filename: str
     doc_type: DocType | None
     doc_type_confidence: float | None
     issuer: Provider | None
     period_start: date | None
     period_end: date | None
     status: DocStatus
+    quality_flags: dict
     created_at: datetime
 
 

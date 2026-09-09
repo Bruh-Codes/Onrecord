@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from app.models.enums import DocType, Provider
 
@@ -36,9 +36,14 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
     issuer = next((provider for marker, provider in _ISSUERS.items() if marker in haystack), None)
     period_start, period_end = _statement_period(haystack)
 
-    if "mtn mobile money" in haystack or "momo statement" in haystack:
+    filename_tokens = re.sub(r"[^a-z0-9]+", " ", filename.lower())
+    momo_filename = "momo" in filename_tokens and any(
+        token in filename_tokens for token in ("statement", "report", "transaction", "transactions", "tx")
+    )
+    if "mtn mobile money" in haystack or "momo statement" in haystack or momo_filename:
         doc_type = DocType.MOMO_MERCHANT_STATEMENT if "merchant" in haystack else DocType.MOMO_STATEMENT
-        return ClassificationResult(doc_type, 0.95, issuer or Provider.MTN, period_start, period_end, True, "MoMo statement header detected")
+        reason = "MoMo statement header detected" if not momo_filename else "MoMo statement filename detected"
+        return ClassificationResult(doc_type, 0.90 if momo_filename else 0.95, issuer or Provider.MTN, period_start, period_end, True, reason)
     if issuer is not None and ("statement" in haystack or "opening balance" in haystack):
         return ClassificationResult(DocType.BANK_STATEMENT, 0.92, issuer, period_start, period_end, True, "Bank statement header detected")
     if "invoice" in haystack:
@@ -56,11 +61,22 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
 
 
 def _statement_period(text: str) -> tuple[date | None, date | None]:
-    dates = re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+    dates = re.findall(
+        r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|"
+        r"\d{1,2}[- ](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[- ]\d{4})\b",
+        text,
+        re.IGNORECASE,
+    )
     parsed: list[date] = []
     for value in dates[:6]:
         try:
-            parsed.append(date.fromisoformat(value))
+            normalized = value.replace(".", "/")
+            for pattern in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y"):
+                try:
+                    parsed.append(datetime.strptime(normalized, pattern).date())
+                    break
+                except ValueError:
+                    continue
         except ValueError:
             continue
     return (parsed[0], parsed[1]) if len(parsed) >= 2 else (None, None)

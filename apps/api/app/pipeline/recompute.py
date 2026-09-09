@@ -38,7 +38,10 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
         select(Document).where(Document.business_id == business_id, Document.deleted_at.is_(None))
     ).all()
     txns = db.scalars(
-        select(Transaction).where(Transaction.business_id == business_id).order_by(Transaction.occurred_on)
+        select(Transaction)
+        .join(Document, Transaction.document_id == Document.id)
+        .where(Transaction.business_id == business_id, Document.deleted_at.is_(None))
+        .order_by(Transaction.occurred_on)
     ).all()
 
     # ---- Coverage (S5.3) ----

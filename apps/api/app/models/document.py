@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,15 @@ from app.models.enums import DocStatus, DocType, Provider
 
 class Document(IdMixin, Base):
     __tablename__ = "document"
-    __table_args__ = (UniqueConstraint("business_id", "sha256", name="uq_document_business_sha256"),)
+    __table_args__ = (
+        Index(
+            "uq_document_business_sha256_active",
+            "business_id",
+            "sha256",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     business_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("business.id"), nullable=False)
     uploaded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
@@ -30,6 +38,11 @@ class Document(IdMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # soft delete
 
     extractions: Mapped[list["Extraction"]] = relationship(back_populates="document")
+
+    @property
+    def filename(self) -> str:
+        """The original filename is the final component of the object key."""
+        return self.storage_key.rsplit("/", maxsplit=1)[-1]
 
 
 class Extraction(IdMixin, Base):

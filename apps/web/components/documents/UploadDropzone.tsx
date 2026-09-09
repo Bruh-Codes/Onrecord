@@ -10,6 +10,8 @@ type UploadState = {
 	name: string;
 	status: "uploading" | "done" | "error";
 	error?: string;
+	existingDocumentId?: string;
+	file?: File;
 };
 
 export function UploadDropzone({
@@ -47,9 +49,44 @@ export function UploadDropzone({
 				err instanceof ApiError
 					? err.message
 					: "Something went wrong. Please try again.";
+			const existingDocumentId =
+				err instanceof ApiError && err.code === "DUPLICATE_DOCUMENT"
+					? (err.detail as { existing_document_id?: string } | undefined)
+						?.existing_document_id
+					: undefined;
 			setUploads((prev) =>
 				prev.map((u) =>
-					u.id === id ? { ...u, status: "error", error: message } : u,
+					u.id === id
+						? { ...u, status: "error", error: message, existingDocumentId, file }
+						: u,
+				),
+			);
+		}
+	}
+
+	async function replaceUpload(uploadState: UploadState) {
+		if (!uploadState.existingDocumentId || !uploadState.file) return;
+		setUploads((prev) =>
+			prev.map((u) =>
+				u.id === uploadState.id
+					? { ...u, status: "uploading", error: undefined }
+					: u,
+			),
+		);
+		try {
+			await upload.mutateAsync({
+				file: uploadState.file,
+				replaceDocumentId: uploadState.existingDocumentId,
+			});
+			setUploads((prev) =>
+				prev.map((u) => (u.id === uploadState.id ? { ...u, status: "done" } : u)),
+			);
+			onUploaded();
+		} catch (err) {
+			const message = err instanceof ApiError ? err.message : "Could not replace the file. Please try again.";
+			setUploads((prev) =>
+				prev.map((u) =>
+					u.id === uploadState.id ? { ...u, status: "error", error: message } : u,
 				),
 			);
 		}
@@ -124,6 +161,15 @@ export function UploadDropzone({
 										? u.error
 										: "processing…"}
 							</span>
+							{u.status === "error" && u.existingDocumentId && (
+								<button
+									type="button"
+									onClick={() => replaceUpload(u)}
+									className="shrink-0 bg-transparent border-none p-0 text-[12.5px] font-semibold underline cursor-pointer"
+								>
+									Replace existing
+								</button>
+							)}
 						</div>
 					))}
 				</div>

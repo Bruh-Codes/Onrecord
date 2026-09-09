@@ -109,6 +109,15 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
 
 ## S2-Classify
 
+### Current implementation note
+
+`app/workers/tasks.py` runs Docling before classification. Docling supplies OCR,
+layout, and table-aware Markdown; `app/pipeline/s2_classify.py` applies
+explainable keyword and filename rules. MoMo exports whose OCR header is unclear
+are recognized when the filename contains `momo` plus `statement`, `report`,
+`transaction`, or `tx` (for example `MomoStatementReport.pdf`). The
+vision-classification fallback described below is not wired yet.
+
 Determines `doc_type`, `issuer`, `period_start`, `period_end`.
 
 ### Two passes

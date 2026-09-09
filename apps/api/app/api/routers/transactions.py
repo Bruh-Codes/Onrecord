@@ -9,6 +9,7 @@ from app.api.deps import Claims, require_business_access, require_role, verify_t
 from app.db import get_session
 from app.errors import not_found
 from app.models.enums import CategorySource
+from app.models.document import Document
 from app.models.transaction import Transaction
 from app.schemas.common import Page
 from app.schemas.transaction import TransactionDetail, TransactionPatch, TransactionSummary
@@ -48,7 +49,9 @@ async def list_transactions(
     if account_id is not None:
         cond.append(Transaction.account_id == account_id)
 
-    base_query = select(Transaction).where(*cond)
+    base_query = select(Transaction).join(Document, Transaction.document_id == Document.id).where(
+        *cond, Document.deleted_at.is_(None)
+    )
     total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
     rows = await session.scalars(
         base_query.order_by(Transaction.occurred_on.desc()).offset((page - 1) * page_size).limit(page_size)

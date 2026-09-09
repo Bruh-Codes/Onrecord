@@ -121,12 +121,14 @@ export type DocumentStatus =
 
 export type Document = {
 	id: string;
+	filename: string;
 	doc_type: string | null;
 	doc_type_confidence: number | null;
 	issuer: string | null;
 	period_start: string | null;
 	period_end: string | null;
 	status: DocumentStatus;
+	quality_flags: Record<string, unknown>;
 	created_at: string;
 };
 

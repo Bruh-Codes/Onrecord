@@ -23,10 +23,13 @@ export default function OverviewPage() {
   const cf = indicators.map.OPERATING_CASHFLOW?.value_json as { series?: { m: string; v: number }[] } | undefined;
   const opexRatio = indicators.map.OPEX_RATIO?.value_json as { v?: number; status?: string } | undefined;
   const unclassified = indicators.map.UNCLASSIFIED_RATIO?.value_json as { v?: number; status?: string } | undefined;
+  const transactionValue = indicators.map.TRANSACTION_VALUE?.value_json as { v?: number } | undefined;
 
-  const revenuePoints = seriesToPoints(rev?.series ?? []);
-  const cashflowPoints = seriesToPoints(cf?.series ?? []);
-  const revenueTotal = seriesTotal(rev?.series);
+  const revenueSeries = Array.isArray(rev?.series) ? rev.series : [];
+  const cashflowSeries = Array.isArray(cf?.series) ? cf.series : [];
+  const revenuePoints = seriesToPoints(revenueSeries);
+  const cashflowPoints = seriesToPoints(cashflowSeries);
+  const revenueTotal = seriesTotal(revenueSeries);
 
   return (
     <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
@@ -39,6 +42,7 @@ export default function OverviewPage() {
       <div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
         <TransactionValueBreakdown
           revenueTotal={revenueTotal}
+          transactionTotal={transactionValue?.v ?? revenueTotal}
           opexRatio={opexRatio?.status === "insufficient_data" ? null : (opexRatio?.v ?? null)}
           unclassifiedRatio={unclassified?.status === "insufficient_data" ? null : (unclassified?.v ?? null)}
         />
@@ -51,7 +55,7 @@ export default function OverviewPage() {
         />
         <TrendChart
           title="Operating cashflow, trailing 12mo"
-          totalLabel={formatGhs(seriesTotal(cf?.series))}
+          totalLabel={formatGhs(seriesTotal(cashflowSeries))}
           series={cashflowPoints}
           color="var(--color-muted)"
           idleCaption={`Coverage: ${coverage.data?.continuous_months ?? 0}/${coverage.data?.analysis_window_months ?? 12} months`}
@@ -65,7 +69,7 @@ export default function OverviewPage() {
         gaps={(gaps.data ?? []).filter((g) => g.status === "open")}
         coverage={coverage.data}
         allGapCount={(gaps.data ?? []).filter((g) => g.status === "open").length}
-        counterparties={counterparties.data ?? []}
+        counterparties={counterparties.data?.items ?? []}
         unclassifiedRatio={unclassified?.status === "insufficient_data" ? null : (unclassified?.v ?? null)}
       />
     </div>

@@ -97,7 +97,7 @@ export const api = {
   patchBusiness: (id: string, body: Record<string, unknown>) => request<Business>(`/v1/businesses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   // ---- documents ----
-  createDocument: (businessId: string, body: { filename: string; mime: string; size_bytes: number; sha256: string }) =>
+  createDocument: (businessId: string, body: { filename: string; mime: string; size_bytes: number; sha256: string; replace_document_id?: string }) =>
     request<UploadTarget>(`/v1/businesses/${businessId}/documents`, { method: "POST", body: JSON.stringify(body) }),
   listDocuments: (businessId: string, page = 1, pageSize = 50) =>
     request<{ items: Document[]; total: number }>(`/v1/businesses/${businessId}/documents?page=${page}&page_size=${pageSize}`),
@@ -124,7 +124,7 @@ export const api = {
     const qs = new URLSearchParams(
       Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])
     ).toString();
-    return request<Counterparty[]>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
+    return request<{ items: Counterparty[]; total: number }>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
   },
 
   // ---- analytics ----

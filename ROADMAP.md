@@ -58,8 +58,10 @@ _specs: `00-domain-model.md`, `09-api.md`_
 _specs: `01-ingest-classify.md`, `02-extract.md`_
 
 - [ ] S1 Ingest: virus scan, page split, image straighten, hash, quality flags
-- [ ] S2 Classify: doc_type + issuer + period (heuristics, then vision fallback)
-- [ ] S3 Extract-Tier 1: MTN MoMo statement parser
+- [x] S2 Classify: doc_type + issuer + period (Docling output + explainable heuristics; vision fallback remains open)
+- [x] S3 Extract: conservative Docling Markdown table parser for bank/MoMo statements
+- [x] S3 Extract: explicit financial-statement line-item parser
+- [ ] S3 Extract-Tier 1: issuer-specific MTN MoMo statement parser
 - [ ] S3 Extract-Tier 1: top-4 Ghanaian bank PDF parsers
 - [ ] S3 Extract-Tier 2: vision extraction (receipts, invoices, handwritten ledgers)
 - [ ] S3 Extract-Tier 3: reviewer queue for low-confidence fields
@@ -69,7 +71,7 @@ _specs: `01-ingest-classify.md`, `02-extract.md`_
 
 _specs: `03-normalise-reconcile.md`, `04-categorise.md`_
 
-- [ ] S4 Normalise: pesewa amounts, fee/levy split, counterparty cleanup
+- [ ] S4 Normalise: pesewa amounts, fee/levy split, counterparty cleanup (basic amount/direction/account persistence exists; full normalisation remains)
 - [ ] S5 Dedup: same-document and overlapping-statement detection
 - [ ] S5 Internal transfer pairing
 - [ ] S5 Period stitching + `missing_period` gap generation
