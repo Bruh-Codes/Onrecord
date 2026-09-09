@@ -62,8 +62,8 @@ if (coverage.isLoading || indicators.isLoading || gaps.isLoading || counterparti
     series?: { m: string; v: number }[];
   }[] | undefined;
   const transactionSeries = ((indicators.map.TRANSACTION_VALUE?.value_json?.series ?? []) as { m: string; v: number }[]);
-  const avgTicket = indicatorValue(indicators.map.AVG_TICKET);
-  const activeTradingDays = indicatorValue(indicators.map.ACTIVE_TRADING_DAYS);
+  const avgTicketSeries = ((indicators.map.AVG_TICKET?.value_json?.series ?? []) as { m: string; v: number }[]);
+  const activeTradingDaysSeries = ((indicators.map.ACTIVE_TRADING_DAYS?.value_json?.series ?? []) as { m: string; v: number }[]);
   const revenueGrowth = indicatorValue(indicators.map.REV_GROWTH_3M);
   const netCashflow = ((indicators.map.NET_CASHFLOW?.value_json?.series ?? []) as { m: string; v: number }[]);
   const negativeBalanceDays = indicatorValue(indicators.map.NEGATIVE_BALANCE_DAYS);
@@ -74,6 +74,14 @@ if (coverage.isLoading || indicators.isLoading || gaps.isLoading || counterparti
   const selectedCashflowSeries = cashflowSeries.slice(-periodMonths);
   const selectedTransactionSeries = transactionSeries.slice(-periodMonths);
   const selectedNetCashflow = netCashflow.slice(-periodMonths);
+  const selectedAvgTicket = avgTicketSeries.slice(-periodMonths);
+  const selectedActiveTradingDays = activeTradingDaysSeries.slice(-periodMonths);
+  const avgTicket = selectedAvgTicket.length > 0
+    ? Math.round(seriesTotal(selectedAvgTicket) / selectedAvgTicket.length)
+    : null;
+  const activeTradingDays = selectedActiveTradingDays.length > 0
+    ? seriesTotal(selectedActiveTradingDays)
+    : null;
   const revenueTotal = seriesTotal(selectedRevenueSeries);
   const transactionTotal = transactionSeries.length > 0
     ? seriesTotal(selectedTransactionSeries)
