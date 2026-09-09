@@ -102,6 +102,15 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
             direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
 
     balance = balance_after or _last_amount_for_headers(cells, header, ("balance", "running"))
+    # MoMo exports contain many numeric identifiers (account, phone, F_ID).
+    # If Docling shifts a cell while reconstructing the wide table, the amount
+    # header can accidentally select one of those identifiers. For rows with
+    # both balances, the movement is a safer recovery signal than an ID-sized
+    # number. A generous multiplier preserves legitimate fee/levy differences.
+    if balance_before is not None and balance_after is not None:
+        movement = abs(balance_before - balance_after)
+        if movement > 0 and amount > movement * 10:
+            amount = movement
     return ParsedRow(occurred_on, description, direction, amount, balance)
 
 
