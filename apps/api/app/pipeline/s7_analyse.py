@@ -99,6 +99,7 @@ def compute_indicators(ctx: AnalysisContext) -> list[dict]:
     txns = filter_transactions(ctx.txns, ctx.window_start, ctx.window_end)
 
     out: list[dict] = [
+        _transaction_value(txns, ctx),
         _monthly_revenue(txns, ctx),
         _revenue_ttm(txns, ctx),
         _opex_ratio(txns, ctx),
@@ -113,6 +114,21 @@ def compute_indicators(ctx: AnalysisContext) -> list[dict]:
         _revenue_growth(txns, ctx),
     ]
     return [r for r in out if r is not None]
+
+
+def _transaction_value(txns: list[Txn], ctx: AnalysisContext) -> dict:
+    if not txns:
+        return _insufficient("TRANSACTION_VALUE", "pesewas", "no transactions in window")
+    return {
+        "code": "TRANSACTION_VALUE",
+        "unit": "pesewas",
+        "value_json": {
+            "v": sum(t.amount_pesewas for t in txns),
+            "series": _series(txns, ctx.window_start, ctx.window_end, lambda t: True),
+        },
+        "inputs": _inputs(txns),
+        "formula_version": FORMULA_VERSION,
+    }
 
 
 def _monthly_revenue(txns: list[Txn], ctx: AnalysisContext) -> dict:

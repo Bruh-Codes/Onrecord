@@ -2,18 +2,20 @@ import { formatGhs, formatRatio } from "@/lib/format";
 
 export function TransactionValueBreakdown({
   revenueTotal,
+  transactionTotal,
   opexRatio,
   unclassifiedRatio,
 }: {
   revenueTotal: number;
+  transactionTotal: number;
   opexRatio: number | null;
   unclassifiedRatio: number | null;
 }) {
   const opexValue = opexRatio != null ? revenueTotal * opexRatio : 0;
-  const unclassifiedValue = unclassifiedRatio != null ? Math.round(revenueTotal * unclassifiedRatio) : 0;
-  const otherValue = Math.max(0, revenueTotal - opexValue - unclassifiedValue);
+  const unclassifiedValue = unclassifiedRatio != null ? Math.round(transactionTotal * unclassifiedRatio) : 0;
+  const otherValue = Math.max(0, transactionTotal - revenueTotal - opexValue - unclassifiedValue);
 
-  const total = revenueTotal || 1;
+  const total = transactionTotal || 1;
 
   const rows = [
     { label: "Revenue", value: revenueTotal, color: "var(--color-positive)", pct: (revenueTotal / total) * 100 },
@@ -21,7 +23,7 @@ export function TransactionValueBreakdown({
     { label: "Other / financing", value: otherValue, color: "var(--color-muted)", pct: (otherValue / total) * 100 },
   ];
 
-  const hasData = revenueTotal > 0;
+  const hasData = transactionTotal > 0;
 
   return (
     <div>

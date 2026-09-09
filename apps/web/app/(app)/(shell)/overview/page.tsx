@@ -23,6 +23,7 @@ export default function OverviewPage() {
   const cf = indicators.map.OPERATING_CASHFLOW?.value_json as { series?: { m: string; v: number }[] } | undefined;
   const opexRatio = indicators.map.OPEX_RATIO?.value_json as { v?: number; status?: string } | undefined;
   const unclassified = indicators.map.UNCLASSIFIED_RATIO?.value_json as { v?: number; status?: string } | undefined;
+  const transactionValue = indicators.map.TRANSACTION_VALUE?.value_json as { v?: number } | undefined;
 
   const revenueSeries = Array.isArray(rev?.series) ? rev.series : [];
   const cashflowSeries = Array.isArray(cf?.series) ? cf.series : [];
@@ -41,6 +42,7 @@ export default function OverviewPage() {
       <div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
         <TransactionValueBreakdown
           revenueTotal={revenueTotal}
+          transactionTotal={transactionValue?.v ?? revenueTotal}
           opexRatio={opexRatio?.status === "insufficient_data" ? null : (opexRatio?.v ?? null)}
           unclassifiedRatio={unclassified?.status === "insufficient_data" ? null : (unclassified?.v ?? null)}
         />

@@ -11,7 +11,7 @@ import type { ChecklistItem } from "@/lib/api-types";
 import { useChecklist, useDocuments, useMe } from "@/lib/hooks/use-business";
 
 const DOC_LABELS: Record<string, string> = {
-  bank_statement: "Bank statements",
+  bank_statement: "Bank or MoMo statements",
   momo_statement: "Mobile money statements",
   registration_cert: "Business registration certificate",
   tin_card: "TIN / Ghana Card",
