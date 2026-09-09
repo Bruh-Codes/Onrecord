@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from app.models.enums import DocType, Provider
 
@@ -61,11 +61,22 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
 
 
 def _statement_period(text: str) -> tuple[date | None, date | None]:
-    dates = re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+    dates = re.findall(
+        r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|"
+        r"\d{1,2}[- ](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[- ]\d{4})\b",
+        text,
+        re.IGNORECASE,
+    )
     parsed: list[date] = []
     for value in dates[:6]:
         try:
-            parsed.append(date.fromisoformat(value))
+            normalized = value.replace(".", "/")
+            for pattern in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y"):
+                try:
+                    parsed.append(datetime.strptime(normalized, pattern).date())
+                    break
+                except ValueError:
+                    continue
         except ValueError:
             continue
     return (parsed[0], parsed[1]) if len(parsed) >= 2 else (None, None)

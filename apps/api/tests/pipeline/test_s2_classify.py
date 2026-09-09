@@ -27,3 +27,13 @@ def test_classifies_momo_report_filename_when_ocr_header_is_unclear():
     assert result.doc_type == DocType.MOMO_STATEMENT
     assert result.issuer == Provider.MTN
     assert result.supported is True
+
+
+def test_statement_period_accepts_month_name_dates():
+    result = classify_document(
+        "MOBILE MONEY TRANSACTION HISTORY From: 03-May-2025 To: 31-May-2025",
+        "MomoStatementReport.pdf",
+    )
+
+    assert result.period_start.isoformat() == "2025-05-03"
+    assert result.period_end.isoformat() == "2025-05-31"
