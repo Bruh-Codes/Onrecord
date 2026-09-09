@@ -19,3 +19,11 @@ def test_flags_non_financial_document_as_unsupported():
     assert result.doc_type == DocType.OTHER
     assert result.supported is False
     assert "not a supported" in result.reason
+
+
+def test_classifies_momo_report_filename_when_ocr_header_is_unclear():
+    result = classify_document("Date Description Amount Balance", "MomoStatementReport.pdf")
+
+    assert result.doc_type == DocType.MOMO_STATEMENT
+    assert result.issuer == Provider.MTN
+    assert result.supported is True
