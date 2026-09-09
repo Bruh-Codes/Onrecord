@@ -25,3 +25,18 @@ def test_parser_rejects_text_without_unambiguous_rows():
 
     assert rows == []
     assert error is not None
+
+
+def test_parse_statement_when_index_precedes_date():
+    rows, error = parse_statement(
+        """
+        | # | Date | Type | Description | Amount | Balance |
+        | --- | --- | --- | --- | ---: | ---: |
+        | 1 | 2026-09-01 | Cash In | Customer payment | 100.00 | 100.00 |
+        """
+    )
+
+    assert error is None
+    assert len(rows) == 1
+    assert rows[0].occurred_on.isoformat() == "2026-09-01"
+    assert rows[0].amount_pesewas == 10_000
