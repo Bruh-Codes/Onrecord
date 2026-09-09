@@ -5,6 +5,8 @@ from app.config import get_settings
 settings = get_settings()
 
 celery_app = Celery("sme_api", broker=settings.redis_url, backend=settings.redis_url)
+celery_app.conf.task_always_eager = settings.task_always_eager
+celery_app.conf.task_store_eager_result = settings.task_always_eager
 
 # Import tasks so Celery registers them.
 import app.workers.tasks  # noqa: F401, E402
