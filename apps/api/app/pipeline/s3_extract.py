@@ -105,11 +105,12 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
     # MoMo exports contain many numeric identifiers (account, phone, F_ID).
     # If Docling shifts a cell while reconstructing the wide table, the amount
     # header can accidentally select one of those identifiers. For rows with
-    # both balances, the movement is a safer recovery signal than an ID-sized
-    # number. A generous multiplier preserves legitimate fee/levy differences.
+    # both balances, the movement is authoritative for this export: it avoids
+    # account/phone/F_ID columns being mistaken for the amount. The MoMo
+    # sample has zero fees and levy, and the balance movement matches AMOUNT.
     if balance_before is not None and balance_after is not None:
         movement = abs(balance_before - balance_after)
-        if movement > 0 and amount > movement * 10:
+        if movement > 0 and transaction_type is not None:
             amount = movement
     return ParsedRow(occurred_on, description, direction, amount, balance)
 
