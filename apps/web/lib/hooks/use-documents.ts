@@ -6,18 +6,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, sha256Hex, uploadFileToPresignedUrl, ApiError } from "@/lib/api";
 
 export type UploadProgress = { name: string; state: "uploading" | "done" | "error"; message?: string };
+type UploadInput = File | { file: File; replaceDocumentId: string };
 
 export function useUploadDocument(businessId: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (file: File): Promise<{ documentId: string; name: string }> => {
+    mutationFn: async (input: UploadInput): Promise<{ documentId: string; name: string }> => {
+      const file = input instanceof File ? input : input.file;
+      const replaceDocumentId = input instanceof File ? undefined : input.replaceDocumentId;
       const sha256 = await sha256Hex(file);
       const target = await api.createDocument(businessId, {
         filename: file.name,
         mime: file.type || "application/octet-stream",
         size_bytes: file.size,
         sha256,
+        ...(replaceDocumentId ? { replace_document_id: replaceDocumentId } : {}),
       });
       await uploadFileToPresignedUrl(target.upload_url, file, file.type || "application/octet-stream");
       await api.completeDocument(target.document_id);

@@ -20,14 +20,12 @@ export function UploadDropzone({
 	businessError,
 	onRetryBusiness,
 	onUploaded,
-	onReplaceExisting,
 }: {
 	businessId: string | null;
 	businessLoading: boolean;
 	businessError: boolean;
 	onRetryBusiness: () => void;
 	onUploaded: () => void;
-	onReplaceExisting: (documentId: string) => Promise<void>;
 }) {
 	const upload = useUploadDocument(businessId ?? "");
 	const [uploads, setUploads] = useState<UploadState[]>([]);
@@ -76,8 +74,10 @@ export function UploadDropzone({
 			),
 		);
 		try {
-			await onReplaceExisting(uploadState.existingDocumentId);
-			await upload.mutateAsync(uploadState.file);
+			await upload.mutateAsync({
+				file: uploadState.file,
+				replaceDocumentId: uploadState.existingDocumentId,
+			});
 			setUploads((prev) =>
 				prev.map((u) => (u.id === uploadState.id ? { ...u, status: "done" } : u)),
 			);

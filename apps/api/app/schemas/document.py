@@ -11,6 +11,7 @@ class DocumentCreate(BaseModel):
     mime: str
     size_bytes: int
     sha256: str
+    replace_document_id: uuid.UUID | None = None
 
 
 class DocumentUploadTarget(BaseModel):
