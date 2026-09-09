@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { PillButton } from "@/components/ui/PillButton";
 import { useAppActions } from "@/lib/app-state";
 import { useGaps, useMe } from "@/lib/hooks/use-business";
-import { RowSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { GapRowSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 export default function GapsPage() {
 	const { businessId } = useMe();
@@ -24,7 +24,7 @@ export default function GapsPage() {
 	return (
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
 			<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Gaps</h1>
-			{isLoading ? <div aria-busy="true" aria-label="Loading gaps" className="space-y-1 mb-6"><Skeleton className="h-4 w-3/4 mb-4" /><RowSkeleton /><RowSkeleton /><RowSkeleton /></div> : <p className="text-sm opacity-70 m-0 mb-6">
+			{isLoading ? <div aria-busy="true" aria-label="Loading gaps" className="mb-6"><Skeleton className="h-4 w-3/4 mb-5" /><GapRowSkeleton /><GapRowSkeleton /><GapRowSkeleton /></div> : <p className="text-sm opacity-70 m-0 mb-6">
 				{isLoading
 					? "Loading…"
 					: `${openGaps.length} open-resolve them here, in Documents, in Counterparties, or by talking to the assistant.`}

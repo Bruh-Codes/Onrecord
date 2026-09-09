@@ -3,6 +3,7 @@
 import { PillButton } from "@/components/ui/PillButton";
 import { Badge } from "@/components/ui/Badge";
 import { DocumentsIcon } from "@/components/icons";
+import { DocumentRowSkeleton } from "@/components/ui/Skeleton";
 import type { Document, DocumentStatus } from "@/lib/api-types";
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
@@ -55,12 +56,12 @@ export function UploadedDocumentsList({
 	if (loading) {
 		return (
 			<div
-				className="py-4 space-y-2.5"
+				className="py-4"
 				aria-busy="true"
 				aria-label="Loading your documents"
 			>
 				{[0, 1, 2].map((i) => (
-					<div key={i} className="h-[54px] rounded-xl bg-panel animate-pulse" />
+					<DocumentRowSkeleton key={i} />
 				))}
 			</div>
 		);
