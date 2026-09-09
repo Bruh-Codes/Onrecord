@@ -14,10 +14,10 @@ export default function CounterpartiesPage() {
         Classify a counterparty once and every transaction with them follows.
       </p>
       {isLoading && <p className="text-sm opacity-60">Loading…</p>}
-      {(counterparties ?? []).map((c) => (
+      {(counterparties?.items ?? []).map((c) => (
         <CounterpartyRow key={c.id} counterparty={c} />
       ))}
-      {!isLoading && (counterparties ?? []).length === 0 && (
+      {!isLoading && (counterparties?.items ?? []).length === 0 && (
         <p className="text-sm opacity-60">No counterparties found yet.</p>
       )}
     </div>

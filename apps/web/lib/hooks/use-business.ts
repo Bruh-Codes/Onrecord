@@ -91,7 +91,7 @@ export function useGaps(businessId: string | null) {
 }
 
 export function useCounterparties(businessId: string | null) {
-  return useQuery<Counterparty[]>({
+  return useQuery<{ items: Counterparty[]; total: number }>({
     queryKey: ["counterparties", businessId],
     queryFn: () => api.listCounterparties(businessId!),
     enabled: !!businessId,

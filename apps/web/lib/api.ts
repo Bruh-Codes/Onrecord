@@ -124,7 +124,7 @@ export const api = {
     const qs = new URLSearchParams(
       Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])
     ).toString();
-    return request<Counterparty[]>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
+    return request<{ items: Counterparty[]; total: number }>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
   },
 
   // ---- analytics ----

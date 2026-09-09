@@ -67,7 +67,7 @@ export default function OverviewPage() {
         gaps={(gaps.data ?? []).filter((g) => g.status === "open")}
         coverage={coverage.data}
         allGapCount={(gaps.data ?? []).filter((g) => g.status === "open").length}
-        counterparties={counterparties.data ?? []}
+        counterparties={counterparties.data?.items ?? []}
         unclassifiedRatio={unclassified?.status === "insufficient_data" ? null : (unclassified?.v ?? null)}
       />
     </div>
