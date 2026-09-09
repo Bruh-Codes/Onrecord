@@ -19,6 +19,10 @@ class ParsedRow:
     amount_pesewas: int
     balance_after_pesewas: int | None
     page: int = 1
+    category_l1: str | None = None
+    category_l2: str | None = None
+    category_confidence: float | None = None
+    category_source: str | None = None
 
 
 _DATE_PATTERNS = (
@@ -60,9 +64,16 @@ def _is_separator(cells: list[str]) -> bool:
 
 
 def _nearest_header(lines: list[str], index: int) -> list[str]:
-    for candidate in reversed(lines[max(0, index - 4) : index]):
+    # Statements commonly contain dozens of rows. Keep looking back to the
+    # current table header instead of falling back to the first numeric cell
+    # (which is often an account number) after four rows.
+    for candidate in reversed(lines[:index]):
         cells = _cells(candidate)
-        if any(re.search(r"date|description|debit|credit|withdraw|deposit|amount|balance", c, re.I) for c in cells):
+        lowered = [cell.lower() for cell in cells]
+        has_date = any("date" in cell for cell in lowered)
+        has_amount = any(any(word in cell for word in ("amount", "debit", "credit", "withdraw", "deposit")) for cell in lowered)
+        has_balance = any("balance" in cell or "bal before" in cell or "bal after" in cell for cell in lowered)
+        if has_date and has_amount and has_balance:
             return [c.lower() for c in cells]
     return []
 
@@ -112,7 +123,41 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         movement = abs(balance_before - balance_after)
         if movement > 0 and transaction_type is not None:
             amount = movement
-    return ParsedRow(occurred_on, description, direction, amount, balance)
+    category_l1, category_l2, confidence = categorize_transaction(description, transaction_type, direction)
+    return ParsedRow(
+        occurred_on,
+        description,
+        direction,
+        amount,
+        balance,
+        category_l1=category_l1,
+        category_l2=category_l2,
+        category_confidence=confidence,
+        category_source="rule" if category_l1 else None,
+    )
+
+
+def categorize_transaction(
+    description: str,
+    transaction_type: str | None,
+    direction: str,
+) -> tuple[str | None, str | None, float | None]:
+    text = f"{transaction_type or ''} {description}".lower()
+    if re.search(r"loan|borrow|overdraft|susu", text):
+        return ("financing_in" if direction == "in" else "financing_out", "loan", 0.94)
+    if direction == "in" and re.search(r"customer|sale|sales|merchant payment|settlement|cash in|received", text):
+        return "revenue", "sales", 0.9
+    if direction == "out" and re.search(r"ecg|gwcl|electricity|water bill|utility", text):
+        return "opex", "utilities", 0.97
+    if direction == "out" and re.search(r"airtime|data bundle|internet|telco", text):
+        return "opex", "airtime_data", 0.94
+    if direction == "out" and re.search(r"gra|ghana revenue|vat|ssnit|mmda|tax", text):
+        return "tax", "tax", 0.95
+    if direction == "out" and re.search(r"bank charge|service charge|fee|commission", text):
+        return "opex", "bank_charges", 0.93
+    if direction == "out" and re.search(r"supplier|stock|inventory|wholesale|purchase|fmcg", text):
+        return "cogs", "purchases", 0.82
+    return None, None, None
 
 
 def _amount_for_headers(cells: list[str], header: list[str], names: tuple[str, ...]) -> int | None:
