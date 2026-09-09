@@ -7,6 +7,7 @@ import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
@@ -127,8 +128,10 @@ async def require_document_access(
 
     from app.models.document import Document
 
-    document = await session.get(Document, document_id)
-    if document is None or document.deleted_at is not None:
+    document = await session.scalar(
+        select(Document).where(Document.id == document_id, Document.deleted_at.is_(None))
+    )
+    if document is None:
         raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
     if claims.role == Role.OWNER:
         resolved = await resolve_business_id(

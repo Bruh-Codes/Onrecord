@@ -46,11 +46,11 @@ def s1_ingest(document_id: str) -> dict:
     from app.services.storage import get_storage_backend
 
     with Session(engine_sync) as session:
-        doc = session.get(Document, document_id)
+        doc = session.scalar(
+            select(Document).where(Document.id == document_id, Document.deleted_at.is_(None))
+        )
         if doc is None:
             return {"status": "not_found"}
-        if doc.deleted_at is not None:
-            return {"status": "deleted", "document_id": str(doc.id)}
         if doc.status != DocStatus.RECEIVED:
             return {"status": doc.status.value, "document_id": str(doc.id)}
 
