@@ -21,8 +21,16 @@ class ParsedRow:
     page: int = 1
 
 
-_DATE_PATTERNS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y")
-_DATE_RE = re.compile(r"(?<!\d)(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4})(?!\d)")
+_DATE_PATTERNS = (
+    "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y",
+    "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y",
+)
+_DATE_RE = re.compile(
+    r"(?<!\d)(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|"
+    r"\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|"
+    r"\d{1,2}[ -](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[ -]\d{4})(?!\d)",
+    re.IGNORECASE,
+)
 _AMOUNT_RE = re.compile(r"[-+]?\(?\s*(?:GH[¢c]|GHS|₵)?\s*[-+]?\d[\d,]*(?:\.\d{1,2})?\s*\)?", re.IGNORECASE)
 
 
@@ -66,33 +74,34 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
     occurred_on = _parse_date(cells[date_index])
     if occurred_on is None:
         return None
-    descriptions = [
-        cell for index, cell in enumerate(cells) if index != date_index and not _amount_value(cell)
-    ]
+    descriptions = [cell for index, cell in enumerate(cells) if index != date_index and not _amount_value(cell)]
     description = " ".join(descriptions).strip()
     if not description:
         description = cells[1] if len(cells) > 1 else ""
 
     debit = _amount_for_headers(cells, header, ("debit", "withdraw", "outflow", "paid"))
     credit = _amount_for_headers(cells, header, ("credit", "deposit", "inflow", "received"))
+    amount_column = _amount_for_headers(cells, header, ("amount", "value", "total"))
+    transaction_type = _header_value(cells, header, ("trans. type", "transaction type", "type"))
+    balance_before = _amount_for_headers(cells, header, ("bal before", "balance before", "opening balance"))
+    balance_after = _amount_for_headers(cells, header, ("bal after", "balance after", "closing balance"))
     if debit is not None and debit > 0:
         direction, amount = "out", debit
     elif credit is not None and credit > 0:
         direction, amount = "in", credit
     else:
-        amount_column = _amount_for_headers(cells, header, ("amount", "value", "total"))
         candidates = [_amount_value(cell) for index, cell in enumerate(cells) if index != date_index]
         candidates = [value for value in candidates if value is not None]
         if amount_column is not None and amount_column > 0:
             amount = amount_column
-            direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
+            direction = _direction(transaction_type or description, balance_before, balance_after)
         elif not candidates:
             return None
         else:
             amount = candidates[0]
             direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
 
-    balance = _amount_for_headers(cells, header, ("balance", "running"))
+    balance = balance_after or _last_amount_for_headers(cells, header, ("balance", "running"))
     return ParsedRow(occurred_on, description, direction, amount, balance)
 
 
@@ -104,6 +113,33 @@ def _amount_for_headers(cells: list[str], header: list[str], names: tuple[str, .
         if value is not None:
             return value
     return None
+
+
+def _last_amount_for_headers(cells: list[str], header: list[str], names: tuple[str, ...]) -> int | None:
+    """Use the rightmost matching balance (useful for BAL BEFORE/BAL AFTER)."""
+    for index in range(min(len(cells), len(header)) - 1, -1, -1):
+        if any(name in header[index] for name in names):
+            value = _amount_value(cells[index])
+            if value is not None:
+                return value
+    return None
+
+
+def _header_value(cells: list[str], header: list[str], names: tuple[str, ...]) -> str | None:
+    for index, title in enumerate(header):
+        if index < len(cells) and any(name in title for name in names):
+            return cells[index]
+    return None
+
+
+def _direction(value: str, balance_before: int | None, balance_after: int | None) -> str:
+    if re.search(r"debit|payment|purchase|withdraw|cash[ -]?out|airtime|bill|fee", value, re.I):
+        return "out"
+    if re.search(r"credit|deposit|cash[ -]?in|receive|refund", value, re.I):
+        return "in"
+    if balance_before is not None and balance_after is not None:
+        return "out" if balance_after < balance_before else "in"
+    return "in"
 
 
 def _amount_value(value: str) -> int | None:
