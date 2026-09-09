@@ -116,13 +116,6 @@ async def complete_document_upload(
     )
     await session.commit()
 
-    # Removing a document changes the active transaction set and coverage.
-    # Recompute asynchronously so Overview does not continue showing stale
-    # indicators after the upload is removed.
-    from app.workers.tasks import recompute
-
-    recompute.delay(str(document.business_id))
-
     # Enqueue only after the document and its audit event are committed so the
     # worker cannot race the transaction and observe a missing document.
     from app.workers.tasks import s1_ingest
@@ -183,6 +176,7 @@ async def confirm_document_type(
         after={"doc_type": body.doc_type.value},
     )
     await session.commit()
+
     await session.refresh(document)
     return DocumentDetail.model_validate(document)
 
@@ -204,3 +198,10 @@ async def delete_document(
         target=f"document:{document.id}",
     )
     await session.commit()
+
+    # Removing a document changes the active transaction set and all derived
+    # analytics. Queue the same idempotent recomputation used after ingestion
+    # so Overview cannot continue serving indicators for the deleted file.
+    from app.workers.tasks import recompute
+
+    recompute.delay(str(document.business_id))

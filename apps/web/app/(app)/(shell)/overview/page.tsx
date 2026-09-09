@@ -11,6 +11,7 @@ import {
   useCounterparties,
 } from "@/lib/hooks/use-business";
 import { formatGhs, seriesToPoints, seriesTotal } from "@/lib/format";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function OverviewPage() {
   const { businessId } = useMe();
@@ -18,6 +19,20 @@ export default function OverviewPage() {
   const indicators = useIndicatorsMap(businessId);
   const gaps = useGaps(businessId);
   const counterparties = useCounterparties(businessId);
+
+  if (coverage.isLoading || indicators.isLoading || gaps.isLoading || counterparties.isLoading) {
+    return (
+      <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10" aria-busy="true" aria-label="Loading readiness overview">
+        <Skeleton className="h-9 w-80 mb-3" />
+        <Skeleton className="h-4 w-[430px] max-w-full mb-10" />
+        <Skeleton className="h-3 w-36 mb-5" />
+        <div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]"><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /><Skeleton className="h-[260px]" /></div>
+        <Skeleton className="h-px w-full mb-10" />
+        <Skeleton className="h-3 w-28 mb-5" />
+        <div className="grid gap-[52px] grid-cols-1 lg:grid-cols-[1.3fr_1fr_1fr]"><Skeleton className="h-44" /><Skeleton className="h-44" /><Skeleton className="h-44" /></div>
+      </div>
+    );
+  }
 
   const rev = indicators.map.REV_MONTHLY?.value_json as { series?: { m: string; v: number }[] } | undefined;
   const cf = indicators.map.OPERATING_CASHFLOW?.value_json as { series?: { m: string; v: number }[] } | undefined;

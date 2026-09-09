@@ -7,8 +7,8 @@ from app.models.enums import Band, GapKind, GapSeverity, GapStatus
 
 
 class CoverageRange(BaseModel):
-    from_: date = Field(alias="from")
-    to: date
+    from_: date | None = Field(alias="from")
+    to: date | None
 
     model_config = ConfigDict(populate_by_name=True)
 

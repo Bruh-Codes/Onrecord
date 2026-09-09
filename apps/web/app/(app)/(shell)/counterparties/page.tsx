@@ -2,6 +2,7 @@
 
 import { CounterpartyRow } from "@/components/counterparties/CounterpartyRow";
 import { useCounterparties, useMe } from "@/lib/hooks/use-business";
+import { RowSkeleton } from "@/components/ui/Skeleton";
 
 export default function CounterpartiesPage() {
   const { businessId } = useMe();
@@ -13,7 +14,7 @@ export default function CounterpartiesPage() {
       <p className="text-sm opacity-70 m-0 mb-6.5">
         Classify a counterparty once and every transaction with them follows.
       </p>
-      {isLoading && <p className="text-sm opacity-60">Loading…</p>}
+      {isLoading && <div aria-busy="true" aria-label="Loading counterparties"><RowSkeleton /><RowSkeleton /><RowSkeleton /></div>}
       {(counterparties?.items ?? []).map((c) => (
         <CounterpartyRow key={c.id} counterparty={c} />
       ))}
