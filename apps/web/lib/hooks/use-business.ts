@@ -158,7 +158,11 @@ export function useIndicatorsMap(businessId: string | null) {
   const q = useIndicators(businessId);
   const map = useMemo(() => {
     const m: Record<string, Indicator> = {};
-    for (const ind of q.data ?? []) {
+    // A transient API/CORS failure must not take down the whole overview.
+    // React Query leaves data undefined on request errors, but this guard also
+    // protects against a malformed cached response.
+    const indicators = Array.isArray(q.data) ? q.data : [];
+    for (const ind of indicators) {
       m[ind.code] = ind;
     }
     return m;

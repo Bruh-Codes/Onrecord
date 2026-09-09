@@ -24,9 +24,11 @@ export default function OverviewPage() {
   const opexRatio = indicators.map.OPEX_RATIO?.value_json as { v?: number; status?: string } | undefined;
   const unclassified = indicators.map.UNCLASSIFIED_RATIO?.value_json as { v?: number; status?: string } | undefined;
 
-  const revenuePoints = seriesToPoints(rev?.series ?? []);
-  const cashflowPoints = seriesToPoints(cf?.series ?? []);
-  const revenueTotal = seriesTotal(rev?.series);
+  const revenueSeries = Array.isArray(rev?.series) ? rev.series : [];
+  const cashflowSeries = Array.isArray(cf?.series) ? cf.series : [];
+  const revenuePoints = seriesToPoints(revenueSeries);
+  const cashflowPoints = seriesToPoints(cashflowSeries);
+  const revenueTotal = seriesTotal(revenueSeries);
 
   return (
     <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
@@ -51,7 +53,7 @@ export default function OverviewPage() {
         />
         <TrendChart
           title="Operating cashflow, trailing 12mo"
-          totalLabel={formatGhs(seriesTotal(cf?.series))}
+          totalLabel={formatGhs(seriesTotal(cashflowSeries))}
           series={cashflowPoints}
           color="var(--color-muted)"
           idleCaption={`Coverage: ${coverage.data?.continuous_months ?? 0}/${coverage.data?.analysis_window_months ?? 12} months`}
