@@ -10,7 +10,7 @@ version and replaced, never appended.
 import uuid
 from datetime import UTC, datetime, date
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.business import Account, Business
@@ -147,6 +147,13 @@ def _sync_indicators(
     window_end: date | None,
     indicators: list[dict],
 ) -> None:
+    if not indicators:
+        # A document can be removed after indicators were computed. Do not
+        # leave the previous period's analytics visible when no active data
+        # remains for this business.
+        db.execute(delete(Indicator).where(Indicator.business_id == business_id))
+        db.flush()
+        return
     for payload in indicators:
         existing = db.scalar(
             select(Indicator).where(
