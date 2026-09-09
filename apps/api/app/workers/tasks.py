@@ -1,13 +1,20 @@
 """Background pipeline tasks."""
 
 import logging
+import hashlib
+import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.business import Account
+from app.models.document import Document, Extraction
+from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
+from app.pipeline.s3_extract import ParsedRow, parse_statement
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -29,16 +36,13 @@ def ping() -> str:
 
 @celery_app.task(name="ingest_document.s1")
 def s1_ingest(document_id: str) -> dict:
-    """Read an upload with Docling, classify supported financial documents."""
+    """Read, classify, and extract a supported financial statement."""
     from app.db import engine_sync
-    from app.models.enums import DocStatus
     from app.pipeline.s2_classify import classify_document
     from app.services.document_processing import DoclingProcessor
     from app.services.storage import get_storage_backend
 
     with Session(engine_sync) as session:
-        from app.models.document import Document
-
         doc = session.get(Document, document_id)
         if doc is None:
             return {"status": "not_found"}
@@ -74,9 +78,94 @@ def s1_ingest(document_id: str) -> dict:
             "classification_reason": result.reason,
             "supported": result.supported,
         }
-        doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
+        if result.supported and doc.doc_type in {
+            DocType.BANK_STATEMENT,
+            DocType.MOMO_STATEMENT,
+            DocType.MOMO_MERCHANT_STATEMENT,
+        }:
+            parsed_rows, extraction_error = parse_statement(processed.text)
+            if extraction_error:
+                doc.status = DocStatus.CLASSIFIED
+                doc.quality_flags["extraction_error"] = extraction_error
+                session.commit()
+                return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
+            _persist_transactions(session, doc, processed.text, parsed_rows)
+            doc.status = DocStatus.EXTRACTED
+        else:
+            doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
         session.commit()
+        if doc.status == DocStatus.EXTRACTED:
+            recompute.delay(str(doc.business_id))
         return {"status": doc.status.value, "document_id": str(doc.id), "supported": result.supported}
+
+
+def _persist_transactions(session: Session, doc: Document, text: str, rows: list[ParsedRow]) -> None:
+    identifier = _account_identifier(text, doc)
+    identifier_hash = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    account = session.scalar(
+        select(Account).where(Account.business_id == doc.business_id, Account.identifier_hash == identifier_hash)
+    )
+    if account is None:
+        provider = doc.issuer or Provider.OTHER_BANK
+        kind = AccountKind.MOMO if doc.doc_type in {DocType.MOMO_STATEMENT, DocType.MOMO_MERCHANT_STATEMENT} else AccountKind.BANK
+        account = Account(
+            business_id=doc.business_id,
+            kind=kind,
+            provider=provider,
+            identifier_hash=identifier_hash,
+            display_suffix=identifier[-4:],
+        )
+        session.add(account)
+        session.flush()
+
+    extraction_rows: list[Extraction] = []
+    for row in rows:
+        extraction = Extraction(
+            document_id=doc.id,
+            page=row.page,
+            field_path=f"transactions[{len(extraction_rows)}]",
+            value_json={
+                "occurred_on": row.occurred_on.isoformat(),
+                "description": row.description,
+                "direction": row.direction,
+                "amount_pesewas": row.amount_pesewas,
+                "balance_after_pesewas": row.balance_after_pesewas,
+            },
+            extractor="parser:docling_markdown_table_v1",
+            confidence=0.85,
+        )
+        session.add(extraction)
+        extraction_rows.append(extraction)
+    session.flush()
+
+    from app.models.transaction import Transaction
+
+    for row, extraction in zip(rows, extraction_rows, strict=True):
+        session.add(
+            Transaction(
+                business_id=doc.business_id,
+                account_id=account.id,
+                document_id=doc.id,
+                occurred_on=row.occurred_on,
+                direction=row.direction,
+                amount_pesewas=row.amount_pesewas,
+                balance_after_pesewas=row.balance_after_pesewas,
+                counterparty_raw=row.description or None,
+                flags={},
+                provenance={"extraction_ids": [str(extraction.id)]},
+            )
+        )
+
+
+def _account_identifier(text: str, doc: Document) -> str:
+    match = re.search(
+        r"(?:account|wallet|mobile)\s*(?:number|no|id)?\s*[:#-]?\s*([A-Za-z0-9+/-]{5,})",
+        text,
+        re.IGNORECASE,
+    )
+    if match:
+        return match.group(1)
+    return f"{doc.issuer.value if doc.issuer else 'unknown'}:{doc.id}"
 
 
 def _safe_filename(storage_key: str) -> str:
