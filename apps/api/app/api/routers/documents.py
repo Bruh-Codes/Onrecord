@@ -116,6 +116,13 @@ async def complete_document_upload(
     )
     await session.commit()
 
+    # Removing a document changes the active transaction set and coverage.
+    # Recompute asynchronously so Overview does not continue showing stale
+    # indicators after the upload is removed.
+    from app.workers.tasks import recompute
+
+    recompute.delay(str(document.business_id))
+
     # Enqueue only after the document and its audit event are committed so the
     # worker cannot race the transaction and observe a missing document.
     from app.workers.tasks import s1_ingest
