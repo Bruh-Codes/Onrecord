@@ -57,8 +57,14 @@ async def create_document(
             Document.deleted_at.is_(None),
         )
     )
-    if existing is not None:
+    if existing is not None and body.replace_document_id != existing.id:
         raise duplicate_document_error(str(existing.id))
+
+    if existing is not None:
+        # Replacing is one transaction: the prior active document stops
+        # participating in the uniqueness check before the new one is made.
+        existing.deleted_at = datetime.now(UTC)
+        await session.flush()
 
     storage_key = f"{business_id}/{uuid.uuid4()}/{body.filename}"
     document = Document(
@@ -76,7 +82,12 @@ async def create_document(
         actor=claims.user_id,
         action="document.create",
         target=f"document:{document.id}",
-        after={"filename": body.filename, "mime": body.mime, "size_bytes": body.size_bytes},
+        after={
+            "filename": body.filename,
+            "mime": body.mime,
+            "size_bytes": body.size_bytes,
+            "replaced_document_id": str(existing.id) if existing is not None else None,
+        },
     )
     await session.commit()
 

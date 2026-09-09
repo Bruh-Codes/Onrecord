@@ -6,7 +6,7 @@ import { ManualEntryPanel } from "@/components/documents/ManualEntryPanel";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
 import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
 import { useAppState } from "@/lib/app-state";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import type { ChecklistItem } from "@/lib/api-types";
 import { useChecklist, useDocuments, useMe } from "@/lib/hooks/use-business";
 
@@ -63,16 +63,6 @@ export default function DocumentsPage() {
 		}
 	}
 
-	async function replaceDocument(documentId: string) {
-		try {
-			await removeDocument(documentId);
-		} catch (error) {
-			// The document can already have been removed from a second tab or by
-			// the visible Remove button. In that case, retrying the file is safe.
-			if (!(error instanceof ApiError) || error.status !== 404) throw error;
-		}
-	}
-
   return (
     <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
       <h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Documents</h1>
@@ -86,7 +76,6 @@ export default function DocumentsPage() {
         businessError={me.isError}
         onRetryBusiness={() => me.refetch()}
         onUploaded={() => documents.refetch()}
-		onReplaceExisting={replaceDocument}
       />
       <ManualEntryPanel />
 

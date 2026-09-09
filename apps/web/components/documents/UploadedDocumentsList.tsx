@@ -24,6 +24,12 @@ const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> =
 		superseded: "neutral",
 	};
 
+const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
+	dateStyle: "short",
+	timeStyle: "medium",
+	timeZone: "UTC",
+});
+
 export function UploadedDocumentsList({
 	documents,
 	loading,
@@ -85,7 +91,7 @@ export function UploadedDocumentsList({
 						{doc.filename}
 						</div>
 						<div className="text-xs opacity-60">
-							{new Date(doc.created_at).toLocaleString()}
+							{documentDateFormatter.format(new Date(doc.created_at))}
 						</div>
 					</div>
 					<div className="shrink-0 flex items-center gap-2">
