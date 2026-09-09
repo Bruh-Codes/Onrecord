@@ -14,7 +14,23 @@ if (!databaseUrl) {
 // back onto auth_user directly (those fields are `input: false` below —
 // deliberately not settable through Better Auth's own update-user API, so
 // the trusted server-side write goes through this same pool instead).
-export const pool = new Pool({ connectionString: databaseUrl });
+// Vercel functions may be created concurrently and Railway's public TCP proxy
+// may retire idle sockets. Keep each function instance to one short-lived
+// connection instead of the `pg` default of ten.
+export const pool = new Pool({
+	connectionString: databaseUrl,
+	max: 1,
+	idleTimeoutMillis: 5_000,
+	connectionTimeoutMillis: 5_000,
+	allowExitOnIdle: true,
+});
+
+pool.on("error", (error) => {
+	console.error("Better Auth database connection closed", {
+	name: error.name,
+	message: error.message,
+	});
+});
 
 // apps/api's domain model (specs/00-domain-model.md) already has its own
 // `user` and `account` tables in the same Postgres database. Every Better
@@ -35,6 +51,11 @@ export const auth = betterAuth({
 	advanced: {
 		database: {
 			generateId: () => crypto.randomUUID(),
+			// Schema changes are applied with `bunx auth migrate`; validating the
+			// schema during every serverless cold start adds an avoidable database
+			// round trip and can fail when the public TCP proxy has just retired an
+			// idle connection.
+			validateSchema: false,
 		},
 	},
 
