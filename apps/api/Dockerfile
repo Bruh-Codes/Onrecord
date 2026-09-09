@@ -22,7 +22,9 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
-RUN pip install --no-cache-dir .
+# Reuse Railway's BuildKit pip cache between deploys without putting the
+# package download cache into the runtime image.
+RUN --mount=type=cache,id=s/0025521f-c35b-4733-97a2-4a148695dfc0-/root/.cache/pip,target=/root/.cache/pip pip install .
 
 # Mount a Railway volume at this path on the worker to persist Docling and
 # Hugging Face model downloads across worker restarts.
