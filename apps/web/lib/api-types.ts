@@ -128,6 +128,7 @@ export type Document = {
 	period_start: string | null;
 	period_end: string | null;
 	status: DocumentStatus;
+	quality_flags: Record<string, unknown>;
 	created_at: string;
 };
 

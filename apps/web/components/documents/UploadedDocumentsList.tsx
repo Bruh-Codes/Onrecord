@@ -24,6 +24,13 @@ const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> =
 		superseded: "neutral",
 	};
 
+function needsReview(document: Document) {
+	return Boolean(
+		document.quality_flags?.extraction_error ||
+		document.quality_flags?.processing_error,
+	);
+}
+
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
 	dateStyle: "short",
 	timeStyle: "medium",
@@ -95,8 +102,10 @@ export function UploadedDocumentsList({
 						</div>
 					</div>
 					<div className="shrink-0 flex items-center gap-2">
-						<Badge tone={STATUS_TONE[doc.status]}>
-							{doc.status === "failed" && doc.doc_type === "other"
+						<Badge tone={needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
+							{needsReview(doc)
+								? "Needs review"
+								: doc.status === "failed" && doc.doc_type === "other"
 								? "Not financial data"
 								: STATUS_LABEL[doc.status]}
 						</Badge>
