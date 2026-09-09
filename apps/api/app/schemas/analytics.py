@@ -27,6 +27,8 @@ class Coverage(BaseModel):
 
 
 class IndicatorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     code: str
     period_start: date
@@ -39,6 +41,8 @@ class IndicatorOut(BaseModel):
 
 
 class ReadinessScoreOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     business_id: uuid.UUID
     computed_at: datetime
@@ -50,6 +54,8 @@ class ReadinessScoreOut(BaseModel):
 
 
 class ChecklistItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     rule_pack_id: str
     doc_type: str
@@ -61,6 +67,8 @@ class ChecklistItemOut(BaseModel):
 
 
 class GapOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     kind: GapKind
     severity: GapSeverity
