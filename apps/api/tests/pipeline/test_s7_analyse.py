@@ -36,6 +36,23 @@ def test_revenue_monthly_series():
     assert jan["v"] == 15_000
 
 
+def test_transaction_value_contains_dynamic_category_breakdown():
+    txns = [
+        _txn("2026-01-05", "in", "revenue", 10_000),
+        _txn("2026-01-06", "out", "opex", 2_000),
+        _txn("2026-01-07", "in", "financing_in", 5_000),
+    ]
+
+    indicator = next(i for i in s7_analyse.compute_indicators(_ctx(txns)) if i["code"] == "TRANSACTION_VALUE")
+    breakdown = indicator["value_json"]["breakdown"]
+    assert [(item["key"], item["label"], item["value"]) for item in breakdown] == [
+        ("revenue", "Revenue", 10_000),
+        ("financing_in", "Financing in", 5_000),
+        ("opex", "Operating expenses", 2_000),
+    ]
+    assert breakdown[0]["series"][-1] == {"m": "2026-12", "v": 0}
+
+
 def test_financing_in_is_not_revenue():
     txns = [
         _txn("2026-01-05", "in", "revenue", 10_000),

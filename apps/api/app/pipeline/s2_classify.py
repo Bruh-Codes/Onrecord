@@ -53,7 +53,32 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
         return ClassificationResult(DocType.RECEIPT, 0.80, None, None, None, True, "Receipt markers detected")
     if "cash book" in haystack or "cashbook" in haystack or "ledger" in haystack:
         return ClassificationResult(DocType.INFORMAL_LEDGER, 0.78, None, None, None, True, "Ledger markers detected")
-    if "financial statement" in haystack or "profit and loss" in haystack or "balance sheet" in haystack:
+    financial_statement_markers = (
+        "financial statement",
+        "financial statements",
+        "profit and loss",
+        "income statement",
+        "statement of profit or loss",
+        "statement of comprehensive income",
+        "balance sheet",
+        "statement of financial position",
+        "cash flow statement",
+        "statement of cash flows",
+        "statement of changes in equity",
+        "management accounts",
+    )
+    financial_line_markers = (
+        "gross profit",
+        "profit before tax",
+        "total assets",
+        "total liabilities",
+        "current assets",
+        "current liabilities",
+        "cash and cash equivalents",
+        "retained earnings",
+    )
+    has_financial_lines = sum(marker in haystack for marker in financial_line_markers) >= 2
+    if any(marker in haystack for marker in financial_statement_markers) or has_financial_lines:
         return ClassificationResult(DocType.FINANCIAL_STATEMENT, 0.78, None, None, None, True, "Financial statement markers detected")
     if not text.strip():
         return ClassificationResult(DocType.OTHER, 0.0, None, None, None, False, "No readable text or tables were found")

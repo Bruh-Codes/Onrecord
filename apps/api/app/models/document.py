@@ -35,6 +35,7 @@ class Document(IdMixin, Base):
     period_end: Mapped[date | None] = mapped_column(nullable=True)
     status: Mapped[DocStatus] = mapped_column(default=DocStatus.RECEIVED)
     quality_flags: Mapped[dict] = mapped_column(JSONB, default=dict)
+    docling_document: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # soft delete
 
     extractions: Mapped[list["Extraction"]] = relationship(back_populates="document")

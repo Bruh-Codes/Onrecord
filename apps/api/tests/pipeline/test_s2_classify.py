@@ -37,3 +37,22 @@ def test_statement_period_accepts_month_name_dates():
 
     assert result.period_start.isoformat() == "2025-05-03"
     assert result.period_end.isoformat() == "2025-05-31"
+
+
+def test_classifies_standard_financial_statement_titles():
+    for title in (
+        "Statement of Financial Position",
+        "Statement of Comprehensive Income",
+        "Statement of Cash Flows",
+        "Statement of Changes in Equity",
+    ):
+        result = classify_document(title, "accounts.pdf")
+        assert result.doc_type == DocType.FINANCIAL_STATEMENT
+        assert result.supported is True
+
+
+def test_classifies_untitled_statement_from_multiple_financial_rows():
+    result = classify_document("Total assets 100 Total liabilities 40 Retained earnings 60", "scan.pdf")
+
+    assert result.doc_type == DocType.FINANCIAL_STATEMENT
+    assert result.supported is True

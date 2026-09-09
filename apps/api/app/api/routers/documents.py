@@ -1,8 +1,9 @@
+import re
 import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Claims, require_business_access, require_document_access, verify_token
@@ -10,12 +11,15 @@ from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import file_too_large
 from app.errors import duplicate_document as duplicate_document_error
-from app.models.document import Document
+from app.models.document import Document, Extraction
+from app.models.scoring import Indicator, ReadinessScore
 from app.schemas.common import Page
 from app.schemas.document import (
     DocumentConfirm,
     DocumentCreate,
     DocumentDetail,
+    FinancialStatement,
+    FinancialStatementValue,
     DocumentSummary,
     DocumentUploadTarget,
 )
@@ -149,7 +153,15 @@ async def get_document(
     session: AsyncSession = Depends(get_session),
 ) -> DocumentDetail:
     _, document = await require_document_access(document_id, claims=claims, session=session)
-    return DocumentDetail.model_validate(document)
+    detail = DocumentDetail.model_validate(document)
+    extractions = await session.scalars(
+        select(Extraction).where(
+            Extraction.document_id == document.id,
+            Extraction.superseded_by.is_(None),
+            Extraction.field_path.like("financial_statements[%"),
+        ).order_by(Extraction.field_path)
+    )
+    return detail.model_copy(update={"financial_statements": _financial_statements(document, list(extractions))})
 
 
 @router.post("/v1/documents/{document_id}/confirm", response_model=DocumentDetail)
@@ -197,6 +209,12 @@ async def delete_document(
         action="document.delete",
         target=f"document:{document.id}",
     )
+    # Derived analytics have no document foreign key, so remove the cached
+    # snapshot immediately. The queued recompute will rebuild it from active
+    # documents only; an API read can never serve the deleted document's old
+    # totals during that interval.
+    await session.execute(delete(Indicator).where(Indicator.business_id == document.business_id))
+    await session.execute(delete(ReadinessScore).where(ReadinessScore.business_id == document.business_id))
     await session.commit()
 
     # Removing a document changes the active transaction set and all derived
@@ -205,3 +223,50 @@ async def delete_document(
     from app.workers.tasks import recompute
 
     recompute.delay(str(document.business_id))
+
+
+def _financial_statements(document: Document, rows: list[Extraction]) -> list[FinancialStatement]:
+    summary_rows = (document.quality_flags or {}).get("financial_statements", [])
+    summaries = {int(item["statement_index"]): item for item in summary_rows}
+    grouped: dict[int, list[FinancialStatementValue]] = {}
+    for row in rows:
+        match = re.match(r"financial_statements\[(\d+)\]\.line_items\[(\d+)\]", row.field_path)
+        if match is None:
+            continue
+        statement_index, line_index = (int(value) for value in match.groups())
+        value = row.value_json
+        grouped.setdefault(statement_index, []).append(FinancialStatementValue(
+            extraction_id=row.id,
+            line_index=line_index,
+            source_id=value.get("source_id", f"s{statement_index}:l{line_index}"),
+            label=value["label"],
+            section=value.get("section"),
+            parent_line_index=value.get("parent_line_index"),
+            depth=value.get("depth", 0),
+            is_total=value.get("is_total", False),
+            period=value["period"],
+            value_pesewas=value["value_pesewas"],
+            raw_value=value["raw_value"],
+            kind=value.get("kind", "extracted"),
+            canonical_concept=value.get("canonical_concept"),
+            mapping_confidence=value.get("mapping_confidence"),
+            mapping_method=value.get("mapping_method"),
+            structure_confidence=value.get("structure_confidence"),
+            structure_method=value.get("structure_method"),
+            page=row.page,
+            bbox=row.bbox,
+            confidence=float(row.confidence) if row.confidence is not None else None,
+        ))
+    output: list[FinancialStatement] = []
+    for statement_index, values in sorted(grouped.items()):
+        summary = summaries.get(statement_index, {})
+        output.append(FinancialStatement(
+            statement_index=statement_index,
+            statement_type=summary.get("statement_type", "other"),
+            periods=summary.get("periods", list(dict.fromkeys(value.period for value in values))),
+            currency=summary.get("currency", "GHS"),
+            scale=summary.get("scale", 1),
+            validation_issues=summary.get("validation_issues", []),
+            values=values,
+        ))
+    return output

@@ -1,5 +1,9 @@
 import hashlib
 import uuid
+from decimal import Decimal
+from types import SimpleNamespace
+
+from app.api.routers.documents import _financial_statements
 
 from tests.conftest import bearer_header
 
@@ -94,6 +98,13 @@ async def test_deleted_document_can_be_uploaded_again(client):
     deleted = await client.delete(f"/v1/documents/{first.json()['document_id']}", headers=owner_headers)
     assert deleted.status_code == 204
 
+    deleted_id = first.json()["document_id"]
+    listed = await client.get(f"/v1/businesses/{business_id}/documents", headers=owner_headers)
+    assert listed.status_code == 200
+    assert deleted_id not in {item["id"] for item in listed.json()["items"]}
+    hidden = await client.get(f"/v1/documents/{deleted_id}", headers=owner_headers)
+    assert hidden.status_code == 404
+
     replacement = await client.post(f"/v1/businesses/{business_id}/documents", json=payload, headers=owner_headers)
     assert replacement.status_code == 201
 
@@ -166,3 +177,41 @@ async def test_list_documents_is_paginated(client):
     assert len(body["items"]) == 2
     assert body["page"] == 1
     assert body["page_size"] == 2
+
+
+def test_document_detail_groups_dynamic_statement_values():
+    document = SimpleNamespace(quality_flags={"financial_statements": [{
+        "statement_index": 0,
+        "statement_type": "income_statement",
+        "periods": ["2025"],
+        "currency": "GHS",
+        "scale": 1,
+        "validation_issues": [],
+    }]})
+    extraction_id = uuid.uuid4()
+    rows = [SimpleNamespace(
+        id=extraction_id,
+        field_path="financial_statements[0].line_items[0].values[0]",
+        value_json={
+            "label": "Unusual but printed item",
+            "section": "Other income",
+            "depth": 1,
+            "is_total": False,
+            "period": "2025",
+            "value_pesewas": 12_345,
+            "raw_value": "123.45",
+            "kind": "extracted",
+            "canonical_concept": None,
+            "mapping_confidence": None,
+            "mapping_method": None,
+        },
+        page=3,
+        bbox={"l": 1, "t": 2, "r": 3, "b": 4},
+        confidence=Decimal("0.85"),
+    )]
+
+    statements = _financial_statements(document, rows)
+
+    assert statements[0].values[0].label == "Unusual but printed item"
+    assert statements[0].values[0].value_pesewas == 12_345
+    assert statements[0].values[0].extraction_id == extraction_id

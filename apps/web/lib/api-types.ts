@@ -130,6 +130,41 @@ export type Document = {
 	status: DocumentStatus;
 	quality_flags: Record<string, unknown>;
 	created_at: string;
+	page_count?: number | null;
+	financial_statements?: FinancialStatement[];
+};
+
+export type FinancialStatementValue = {
+	extraction_id: string;
+	line_index: number;
+	source_id: string;
+	label: string;
+	section: string | null;
+	parent_line_index: number | null;
+	depth: number;
+	is_total: boolean;
+	period: string;
+	value_pesewas: number;
+	raw_value: string;
+	kind: "extracted";
+	canonical_concept: string | null;
+	mapping_confidence: number | null;
+	mapping_method: string | null;
+	structure_confidence: number | null;
+	structure_method: string | null;
+	page: number;
+	bbox: Record<string, unknown> | null;
+	confidence: number | null;
+};
+
+export type FinancialStatement = {
+	statement_index: number;
+	statement_type: string;
+	periods: string[];
+	currency: string;
+	scale: number;
+	validation_issues: string[];
+	values: FinancialStatementValue[];
 };
 
 export type UploadTarget = {
