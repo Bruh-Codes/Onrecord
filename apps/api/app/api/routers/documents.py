@@ -24,6 +24,15 @@ from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
 
+_SUPPORTED_MIMES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/heic",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
 
 @router.post("/v1/businesses/{business_id}/documents", response_model=DocumentUploadTarget, status_code=201)
 async def create_document(
@@ -34,6 +43,10 @@ async def create_document(
     settings: Settings = Depends(get_settings),
     storage: StorageBackend = Depends(get_storage_backend),
 ) -> DocumentUploadTarget:
+    if body.mime not in _SUPPORTED_MIMES:
+        from app.errors import unsupported_mime
+
+        raise unsupported_mime(body.mime)
     if body.size_bytes > settings.max_document_size_bytes:
         raise file_too_large(settings.max_document_size_bytes)
 

@@ -103,6 +103,10 @@ export function useDocuments(businessId: string | null) {
     queryKey: ["documents", businessId],
     queryFn: () => api.listDocuments(businessId!),
     enabled: !!businessId,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((document) => document.status === "received")
+        ? 3_000
+        : false,
   });
 }
 

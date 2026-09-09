@@ -64,6 +64,7 @@ export function UploadDropzone({
 					id="upload-input"
 					type="file"
 					multiple
+					accept="application/pdf,image/jpeg,image/png,image/heic,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.jpg,.jpeg,.png,.heic,.csv,.xlsx"
 					disabled={!uploadReady}
 					className="absolute inset-0 h-full w-full cursor-inherit opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {

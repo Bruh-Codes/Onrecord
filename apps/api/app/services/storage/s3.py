@@ -34,3 +34,7 @@ class S3StorageBackend:
             ExpiresIn=int(_UPLOAD_URL_TTL.total_seconds()),
         )
         return url, datetime.now(UTC) + _UPLOAD_URL_TTL
+
+    def read_bytes(self, key: str) -> bytes:
+        response = self._client.get_object(Bucket=self._bucket, Key=key)
+        return response["Body"].read()
