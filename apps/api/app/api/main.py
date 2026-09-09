@@ -20,7 +20,12 @@ app.add_middleware(
     # The web app calls this API cross-origin with an Authorization header, so
     # the browser enforces CORS. Defaults to local dev; set CORS_ALLOW_ORIGINS
     # to the deployed web URL (comma-separated for extra origins).
-    allow_origins=[o.strip() for o in get_settings().cors_allow_origins.split(",") if o.strip()],
+    allow_origins=[
+        *[o.strip() for o in get_settings().cors_allow_origins.split(",") if o.strip()],
+        # Keep the production client available even if Railway has an older
+        # CORS_ALLOW_ORIGINS value during a rolling deployment.
+        "https://onrecord-woad.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
