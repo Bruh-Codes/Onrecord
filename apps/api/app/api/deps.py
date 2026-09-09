@@ -34,9 +34,14 @@ def _decode_eddsa_jwt(token: str, settings: Settings) -> dict:
         token,
         signing_key.key,
         algorithms=["EdDSA"],
-        issuer=settings.better_auth_issuer,
-        audience=settings.better_auth_audience,
+        issuer=_allowed_values(settings.better_auth_issuer),
+        audience=_allowed_values(settings.better_auth_audience),
     )
+
+
+def _allowed_values(configured: str) -> list[str]:
+    """Parse an exact comma-separated allowlist for local and production auth."""
+    return [value.strip() for value in configured.split(",") if value.strip()]
 
 
 @dataclass
