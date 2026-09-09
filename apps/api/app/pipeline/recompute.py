@@ -21,6 +21,8 @@ from app.models.transaction import Transaction
 from app.pipeline import s7_analyse
 from app.pipeline import s8_score
 from app.pipeline import s9_checklist
+from app.pipeline.s3_extract import categorize_transaction
+from app.models.enums import CategorySource
 from app.services.coverage import build_coverage_sync
 
 RULE_PACK_ID = "gh_mfi_working_capital_v1"
@@ -43,6 +45,24 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
         .where(Transaction.business_id == business_id, Document.deleted_at.is_(None))
         .order_by(Transaction.occurred_on)
     ).all()
+
+    # Backfill the deterministic S6 rules for rows ingested before the
+    # categorization stage was wired into the worker. Human and owner labels
+    # always win and are never overwritten by rules.
+    for txn in txns:
+        if txn.category_source in {CategorySource.HUMAN, CategorySource.OWNER_STATED}:
+            continue
+        if txn.category_l1 not in (None, "unknown"):
+            continue
+        category_l1, category_l2, confidence = categorize_transaction(
+            txn.counterparty_raw or "", None, txn.direction.value
+        )
+        if category_l1 is not None:
+            txn.category_l1 = category_l1
+            txn.category_l2 = category_l2
+            txn.category_confidence = confidence
+            txn.category_source = CategorySource.RULE
+    db.flush()
 
     # ---- Coverage (S5.3) ----
     coverage = build_coverage_sync(db, business_id)
