@@ -35,6 +35,7 @@ class DocumentSummary(BaseModel):
     period_start: date | None
     period_end: date | None
     status: DocStatus
+    quality_flags: dict
     created_at: datetime
 
 
