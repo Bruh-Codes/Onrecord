@@ -4,6 +4,8 @@
 #   celery -A app.workers.celery_app worker --loglevel INFO
 # docker-compose.yml (repo root, once added) picks the command per service.
 
+# syntax=docker/dockerfile:1.7
+
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -20,6 +22,12 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
-RUN pip install --no-cache-dir .
+# Reuse Railway's BuildKit pip cache between deploys without putting the
+# package download cache into the runtime image.
+RUN --mount=type=cache,target=/root/.cache/pip pip install .
+
+# Mount a Railway volume at this path on the worker to persist Docling and
+# Hugging Face model downloads across worker restarts.
+ENV HF_HOME=/root/.cache/huggingface
 
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
