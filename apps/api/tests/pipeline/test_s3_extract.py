@@ -57,3 +57,16 @@ def test_parse_momo_wide_transaction_history():
     assert rows[0].direction == "out"
     assert rows[0].amount_pesewas == 1_000
     assert rows[0].balance_after_pesewas == 66_656
+
+
+def test_parse_momo_uses_balance_movement_when_amount_cell_is_shifted():
+    rows, error = parse_statement(
+        """
+        | TRANSACTION DATE | TRANS. TYPE | AMOUNT | BAL BEFORE | BAL AFTER |
+        | --- | --- | ---: | ---: | ---: |
+        | 27-May-2025 01:17:49 PM | DEBIT | 73579432 | 676.56 | 666.56 |
+        """
+    )
+
+    assert error is None
+    assert rows[0].amount_pesewas == 1_000
