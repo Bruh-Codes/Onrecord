@@ -15,6 +15,7 @@ from app.models.document import Document, Extraction
 from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
+from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,16 @@ def s1_ingest(document_id: str) -> dict:
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
+        elif result.supported and doc.doc_type == DocType.FINANCIAL_STATEMENT:
+            fields, extraction_error = parse_financial_statement(processed.text)
+            if extraction_error:
+                doc.status = DocStatus.CLASSIFIED
+                doc.quality_flags["extraction_error"] = extraction_error
+                session.commit()
+                return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
+            _persist_financial_fields(session, doc, fields)
+            doc.quality_flags["financial_statement_fields"] = len(fields)
+            doc.status = DocStatus.EXTRACTED
         else:
             doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
         session.commit()
@@ -153,6 +164,24 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 counterparty_raw=row.description or None,
                 flags={},
                 provenance={"extraction_ids": [str(extraction.id)]},
+            )
+        )
+
+
+def _persist_financial_fields(session: Session, doc: Document, fields: list[FinancialField]) -> None:
+    for field in fields:
+        session.add(
+            Extraction(
+                document_id=doc.id,
+                page=field.page,
+                field_path=f"financial_statement.{field.key}",
+                value_json={
+                    "label": field.label,
+                    "value_pesewas": field.value_pesewas,
+                    "raw_value": field.raw_value,
+                },
+                extractor="parser:financial_statement_markdown_v1",
+                confidence=0.85,
             )
         )
 
