@@ -29,11 +29,15 @@ export function UploadedDocumentsList({
 	loading,
 	error,
 	onRetry,
+	onRemove,
+	removingId,
 }: {
 	documents: Document[] | null;
 	loading: boolean;
 	error: string | null;
 	onRetry: () => void;
+	onRemove: (documentId: string) => void;
+	removingId: string | null;
 }) {
 	if (loading) {
 		return (
@@ -78,19 +82,26 @@ export function UploadedDocumentsList({
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="text-sm font-semibold">
-						{doc.doc_type === "other" && doc.status === "failed"
-							? "Unsupported document"
-							: doc.doc_type ?? "Uploaded document"}
+						{doc.filename}
 						</div>
 						<div className="text-xs opacity-60">
 							{new Date(doc.created_at).toLocaleString()}
 						</div>
 					</div>
-					<Badge tone={STATUS_TONE[doc.status]}>
-						{doc.status === "failed" && doc.doc_type === "other"
-							? "Not financial data"
-							: STATUS_LABEL[doc.status]}
-					</Badge>
+					<div className="shrink-0 flex items-center gap-2">
+						<Badge tone={STATUS_TONE[doc.status]}>
+							{doc.status === "failed" && doc.doc_type === "other"
+								? "Not financial data"
+								: STATUS_LABEL[doc.status]}
+						</Badge>
+						<PillButton
+							variant="danger"
+							onClick={() => onRemove(doc.id)}
+							disabled={removingId === doc.id}
+						>
+							{removingId === doc.id ? "Removing..." : "Remove"}
+						</PillButton>
+					</div>
 				</div>
 			))}
 		</div>

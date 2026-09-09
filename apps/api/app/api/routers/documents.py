@@ -51,7 +51,11 @@ async def create_document(
         raise file_too_large(settings.max_document_size_bytes)
 
     existing = await session.scalar(
-        select(Document).where(Document.business_id == business_id, Document.sha256 == body.sha256)
+        select(Document).where(
+            Document.business_id == business_id,
+            Document.sha256 == body.sha256,
+            Document.deleted_at.is_(None),
+        )
     )
     if existing is not None:
         raise duplicate_document_error(str(existing.id))

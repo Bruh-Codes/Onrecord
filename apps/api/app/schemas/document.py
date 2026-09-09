@@ -27,6 +27,7 @@ class DocumentSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    filename: str
     doc_type: DocType | None
     doc_type_confidence: float | None
     issuer: Provider | None

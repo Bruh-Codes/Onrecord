@@ -76,6 +76,28 @@ async def test_duplicate_sha256_is_rejected(client):
     assert second.json()["error"]["code"] == "DUPLICATE_DOCUMENT"
 
 
+async def test_deleted_document_can_be_uploaded_again(client):
+    owner_id = uuid.uuid4()
+    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    business_id = await _create_business(client, admin_headers)
+    owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
+    payload = {
+        "filename": "replacement.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 10,
+        "sha256": hashlib.sha256(b"replacement-file").hexdigest(),
+    }
+
+    first = await client.post(f"/v1/businesses/{business_id}/documents", json=payload, headers=owner_headers)
+    assert first.status_code == 201
+
+    deleted = await client.delete(f"/v1/documents/{first.json()['document_id']}", headers=owner_headers)
+    assert deleted.status_code == 204
+
+    replacement = await client.post(f"/v1/businesses/{business_id}/documents", json=payload, headers=owner_headers)
+    assert replacement.status_code == 201
+
+
 async def test_file_too_large_is_rejected(client):
     owner_id = uuid.uuid4()
     admin_headers = bearer_header(role="admin", user_id=owner_id)

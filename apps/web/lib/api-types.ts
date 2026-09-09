@@ -121,6 +121,7 @@ export type DocumentStatus =
 
 export type Document = {
 	id: string;
+	filename: string;
 	doc_type: string | null;
 	doc_type_confidence: number | null;
 	issuer: string | null;

@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { DocumentChecklistRow } from "@/components/documents/DocumentChecklistRow";
 import { ManualEntryPanel } from "@/components/documents/ManualEntryPanel";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
 import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
 import { useAppState } from "@/lib/app-state";
+import { api } from "@/lib/api";
 import type { ChecklistItem } from "@/lib/api-types";
 import { useChecklist, useDocuments, useMe } from "@/lib/hooks/use-business";
 
@@ -43,12 +45,23 @@ export default function DocumentsPage() {
   const me = useMe();
   const { businessId } = me;
   const { data: checklist, isLoading } = useChecklist(businessId);
-  const documents = useDocuments(businessId);
+	const documents = useDocuments(businessId);
+	const [removingId, setRemovingId] = useState<string | null>(null);
   const docItems = toDocItems(checklist ?? []);
 
-  function focusUpload() {
+	function focusUpload() {
     document.getElementById("upload-input")?.click();
-  }
+	}
+
+	async function removeDocument(documentId: string) {
+		setRemovingId(documentId);
+		try {
+			await api.deleteDocument(documentId);
+			await documents.refetch();
+		} finally {
+			setRemovingId(null);
+		}
+	}
 
   return (
     <div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
@@ -63,6 +76,7 @@ export default function DocumentsPage() {
         businessError={me.isError}
         onRetryBusiness={() => me.refetch()}
         onUploaded={() => documents.refetch()}
+		onReplaceExisting={removeDocument}
       />
       <ManualEntryPanel />
 
@@ -74,6 +88,8 @@ export default function DocumentsPage() {
             loading={documents.isLoading}
             error={documents.isError ? "Couldn't load your documents." : null}
             onRetry={() => documents.refetch()}
+			onRemove={removeDocument}
+			removingId={removingId}
           />
         </section>
       )}
