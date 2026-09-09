@@ -1,15 +1,26 @@
 import { formatGhs, formatRatio } from "@/lib/format";
 
+type BreakdownItem = {
+  key: string;
+  label: string;
+  value: number;
+  series?: { m: string; v: number }[];
+};
+
 export function TransactionValueBreakdown({
   revenueTotal,
   transactionTotal,
   opexRatio,
   unclassifiedRatio,
+  breakdown,
+  months,
 }: {
   revenueTotal: number;
   transactionTotal: number;
   opexRatio: number | null;
   unclassifiedRatio: number | null;
+  breakdown?: BreakdownItem[];
+  months?: number;
 }) {
   const opexValue = opexRatio != null ? revenueTotal * opexRatio : 0;
   const unclassifiedValue = unclassifiedRatio != null ? Math.round(transactionTotal * unclassifiedRatio) : 0;
@@ -17,7 +28,14 @@ export function TransactionValueBreakdown({
 
   const total = transactionTotal || 1;
 
-  const rows = [
+  const colors = ["var(--color-positive)", "var(--color-amber)", "var(--color-muted)", "var(--color-negative)"];
+  const dynamicRows = breakdown?.map((item, index) => {
+    const values = months && item.series?.length
+      ? item.series.slice(-months).reduce((sum, point) => sum + point.v, 0)
+      : item.value;
+    return { label: item.label, value: values, color: colors[index % colors.length], pct: (values / total) * 100 };
+  });
+  const rows = dynamicRows?.length ? dynamicRows : [
     { label: "Revenue", value: revenueTotal, color: "var(--color-positive)", pct: (revenueTotal / total) * 100 },
     { label: "COGS + opex", value: opexValue, color: "var(--color-amber)", pct: (opexValue / total) * 100 },
     { label: "Other / financing", value: otherValue, color: "var(--color-muted)", pct: (otherValue / total) * 100 },
@@ -34,7 +52,7 @@ export function TransactionValueBreakdown({
             {rows.map((r) => (
               <div key={r.label} style={{ width: `${r.pct}%`, background: r.color }} />
             ))}
-            {unclassifiedValue > 0 && <div style={{ width: `${Math.max(1, (unclassifiedValue / total) * 100)}%`, background: "var(--color-negative)" }} />}
+            {!dynamicRows?.length && unclassifiedValue > 0 && <div style={{ width: `${Math.max(1, (unclassifiedValue / total) * 100)}%`, background: "var(--color-negative)" }} />}
           </>
         ) : null}
       </div>
@@ -46,13 +64,15 @@ export function TransactionValueBreakdown({
             <span className="ml-auto font-semibold">{formatGhs(r.value)}</span>
           </div>
         ))}
-        <div className={`flex items-center gap-2 ${unclassifiedValue === 0 ? "opacity-40" : ""}`}>
-          <span className="w-[9px] h-[9px] rounded-full shrink-0 bg-negative" />
-          Unclassified
-          <span className={`ml-auto font-semibold ${unclassifiedValue === 0 ? "" : "text-negative"}`}>
-            {formatGhs(unclassifiedValue)}{unclassifiedValue > 0 ? ` (${formatRatio(unclassifiedRatio)})` : ""}
-          </span>
-        </div>
+        {!dynamicRows?.some((row) => row.label === "Unclassified") && (
+          <div className={`flex items-center gap-2 ${unclassifiedValue === 0 ? "opacity-40" : ""}`}>
+            <span className="w-[9px] h-[9px] rounded-full shrink-0 bg-negative" />
+            Unclassified
+            <span className={`ml-auto font-semibold ${unclassifiedValue === 0 ? "" : "text-negative"}`}>
+              {formatGhs(unclassifiedValue)}{unclassifiedValue > 0 ? ` (${formatRatio(unclassifiedRatio)})` : ""}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

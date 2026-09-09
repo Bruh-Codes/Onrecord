@@ -119,16 +119,51 @@ def compute_indicators(ctx: AnalysisContext) -> list[dict]:
 def _transaction_value(txns: list[Txn], ctx: AnalysisContext) -> dict:
     if not txns:
         return _insufficient("TRANSACTION_VALUE", "pesewas", "no transactions in window")
+    grouped: dict[str, int] = {}
+    grouped_series: dict[str, dict[str, int]] = {}
+    months = _month_keys(ctx.window_start, ctx.window_end)
+    for txn in txns:
+        key = txn.category_l1 or "unclassified"
+        grouped[key] = grouped.get(key, 0) + txn.amount_pesewas
+        grouped_series.setdefault(key, {})[_month_key(txn.occurred_on)] = (
+            grouped_series.setdefault(key, {}).get(_month_key(txn.occurred_on), 0) + txn.amount_pesewas
+        )
+    breakdown = [
+        {
+            "key": key,
+            "label": _category_label(key),
+            "value": value,
+            "series": [{"m": month, "v": grouped_series[key].get(month, 0)} for month in months],
+        }
+        for key, value in sorted(grouped.items(), key=lambda item: item[1], reverse=True)
+    ]
     return {
         "code": "TRANSACTION_VALUE",
         "unit": "pesewas",
         "value_json": {
             "v": sum(t.amount_pesewas for t in txns),
             "series": _series(txns, ctx.window_start, ctx.window_end, lambda t: True),
+            "breakdown": breakdown,
         },
         "inputs": _inputs(txns),
         "formula_version": FORMULA_VERSION,
     }
+
+
+def _category_label(category: str) -> str:
+    labels = {
+        "revenue": "Revenue",
+        "cogs": "Cost of sales",
+        "opex": "Operating expenses",
+        "tax": "Tax",
+        "financing_in": "Financing in",
+        "financing_out": "Financing out",
+        "owner": "Owner activity",
+        "internal": "Internal transfers",
+        "unknown": "Unclassified",
+        "unclassified": "Unclassified",
+    }
+    return labels.get(category, category.replace("_", " ").title())
 
 
 def _monthly_revenue(txns: list[Txn], ctx: AnalysisContext) -> dict:

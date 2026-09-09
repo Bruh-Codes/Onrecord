@@ -14,11 +14,15 @@ export function seriesToPoints(
   series: Array<{ m: string; v: number }>,
   hasX = false
 ): { month: string; value: number; x: number; y: number }[] {
-  return series.map((s) => ({
+  if (series.length === 0) return [];
+  const values = series.map((s) => s.v);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  return series.map((s, index) => ({
     month: s.m,
     value: s.v,
-    x: hasX ? 0 : s.m.length,
-    y: s.v,
+    x: hasX ? 0 : series.length === 1 ? 160 : (index / (series.length - 1)) * 320,
+    y: max === min ? 45 : 82 - ((s.v - min) / (max - min)) * 74,
   }));
 }
 
