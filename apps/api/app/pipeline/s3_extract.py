@@ -23,6 +23,7 @@ class ParsedRow:
     category_l2: str | None = None
     category_confidence: float | None = None
     category_source: str | None = None
+    internal_transfer: bool = False
 
 
 _DATE_PATTERNS = (
@@ -124,6 +125,7 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         if movement > 0 and transaction_type is not None:
             amount = movement
     category_l1, category_l2, confidence = categorize_transaction(description, transaction_type, direction)
+    internal_transfer = bool(re.search(r"\binternal\b", f"{description} {transaction_type or ''}", re.I))
     return ParsedRow(
         occurred_on,
         description,
@@ -134,6 +136,7 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         category_l2=category_l2,
         category_confidence=confidence,
         category_source="rule" if category_l1 else None,
+        internal_transfer=internal_transfer,
     )
 
 

@@ -38,6 +38,19 @@ def test_rule_categorises_common_operating_outflows():
     ]
 
 
+def test_marks_statement_internal_transfers_for_analytics_exclusion():
+    rows, error = parse_statement(
+        """
+        | Date | Type | Description | Amount | Balance |
+        | --- | --- | --- | ---: | ---: |
+        | 2026-09-01 | TRANSFER | Family Internal | 100 | 100 |
+        """
+    )
+
+    assert error is None
+    assert rows[0].internal_transfer is True
+
+
 def test_parser_rejects_text_without_unambiguous_rows():
     rows, error = parse_statement("This is a bank statement with no readable transaction table.")
 

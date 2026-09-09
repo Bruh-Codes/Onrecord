@@ -7,6 +7,7 @@ documents already exist. Re-running is safe (INV-4)-rows are keyed by a
 version and replaced, never appended.
 """
 
+import re
 import uuid
 from datetime import UTC, datetime, date
 
@@ -24,6 +25,7 @@ from app.pipeline import s9_checklist
 from app.pipeline.s3_extract import categorize_transaction
 from app.models.enums import CategorySource
 from app.services.coverage import build_coverage_sync
+from app.services.transaction_mapping import TransactionLabel, get_transaction_categorizer
 
 RULE_PACK_ID = "gh_mfi_working_capital_v1"
 _ACTIVE_GAP_STATUSES = [GapStatus.OPEN, GapStatus.ANSWERED, GapStatus.DOCUMENT_RECEIVED]
@@ -50,6 +52,8 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     # categorization stage was wired into the worker. Human and owner labels
     # always win and are never overwritten by rules.
     for txn in txns:
+        if re.search(r"\binternal\b", txn.counterparty_raw or "", re.I):
+            txn.flags = {**(txn.flags or {}), "internal_transfer": True}
         if txn.category_source in {CategorySource.HUMAN, CategorySource.OWNER_STATED}:
             continue
         if txn.category_l1 not in (None, "unknown"):
@@ -62,6 +66,7 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
             txn.category_l2 = category_l2
             txn.category_confidence = confidence
             txn.category_source = CategorySource.RULE
+    _apply_model_categories(txns)
     db.flush()
 
     # ---- Coverage (S5.3) ----
@@ -125,6 +130,47 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
 
     db.commit()
     return {"business_id": str(business_id), "score": score_payload, "coverage": coverage}
+
+
+def _apply_model_categories(txns: list[Transaction]) -> None:
+    """Use OpenAI only for unresolved, non-internal labels in batches of 50."""
+    categorizer = get_transaction_categorizer()
+    if categorizer is None:
+        return
+    grouped: dict[str, list[Transaction]] = {}
+    for txn in txns:
+        if (txn.flags or {}).get("internal_transfer") or txn.category_l1 not in (None, "unknown"):
+            continue
+        label = " ".join((txn.counterparty_raw or "Unidentified transaction").split())[:300]
+        grouped.setdefault(label, []).append(txn)
+
+    labels = list(grouped.items())
+    for offset in range(0, len(labels), 50):
+        batch = labels[offset : offset + 50]
+        source_map = {
+            f"c{offset + index}": transactions
+            for index, (_, transactions) in enumerate(batch)
+        }
+        model_labels = [
+            TransactionLabel(
+                source_id=source_id,
+                label=label,
+                direction_mix={
+                    direction: sum(transaction.direction.value == direction for transaction in transactions)
+                    for direction in ("in", "out")
+                },
+                transaction_count=len(transactions),
+            )
+            for source_id, (label, transactions) in zip(source_map, batch, strict=True)
+        ]
+        for category in categorizer.categorize(model_labels):
+            if category.confidence < 0.60 or category.category_l1 == "unknown":
+                continue
+            for txn in source_map.get(category.source_id, ()):
+                txn.category_l1 = category.category_l1
+                txn.category_l2 = category.category_l2
+                txn.category_confidence = category.confidence
+                txn.category_source = CategorySource.LLM
 
 
 # --------------------------------------------------------------------------- #
