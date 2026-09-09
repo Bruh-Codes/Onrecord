@@ -32,7 +32,7 @@ def parse_statement(text: str) -> tuple[list[ParsedRow], str | None]:
     rows: list[ParsedRow] = []
     for index, line in enumerate(lines):
         cells = _cells(line)
-        if not cells or _is_separator(cells) or not _looks_like_date(cells[0]):
+        if not cells or _is_separator(cells) or not any(_looks_like_date(cell) for cell in cells):
             continue
         header = _nearest_header(lines, index)
         parsed = _parse_row(cells, header)
@@ -60,10 +60,15 @@ def _nearest_header(lines: list[str], index: int) -> list[str]:
 
 
 def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
-    occurred_on = _parse_date(cells[0])
+    date_index = next((index for index, cell in enumerate(cells) if _looks_like_date(cell)), None)
+    if date_index is None:
+        return None
+    occurred_on = _parse_date(cells[date_index])
     if occurred_on is None:
         return None
-    descriptions = [cell for cell in cells[1:] if not _amount_value(cell)]
+    descriptions = [
+        cell for index, cell in enumerate(cells) if index != date_index and not _amount_value(cell)
+    ]
     description = " ".join(descriptions).strip()
     if not description:
         description = cells[1] if len(cells) > 1 else ""
@@ -75,12 +80,17 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
     elif credit is not None and credit > 0:
         direction, amount = "in", credit
     else:
-        candidates = [_amount_value(cell) for cell in cells[1:]]
+        amount_column = _amount_for_headers(cells, header, ("amount", "value", "total"))
+        candidates = [_amount_value(cell) for index, cell in enumerate(cells) if index != date_index]
         candidates = [value for value in candidates if value is not None]
-        if not candidates:
+        if amount_column is not None and amount_column > 0:
+            amount = amount_column
+            direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
+        elif not candidates:
             return None
-        amount = candidates[0]
-        direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
+        else:
+            amount = candidates[0]
+            direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
 
     balance = _amount_for_headers(cells, header, ("balance", "running"))
     return ParsedRow(occurred_on, description, direction, amount, balance)

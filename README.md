@@ -33,6 +33,25 @@ flowchart LR
 
 The API and worker pool ship from a single image with two entrypoints: the API serves the web client over REST + SSE and reads Postgres directly; the worker pool claims jobs off Redis and runs the S1–S10 pipeline (ingest → classify → extract → normalise → reconcile → categorise → analyse → score → checklist → export), writing results back to Postgres, storing originals/renders in the object store, and calling out to Document AI / PaddleOCR for OCR and the LLM API for vision extraction and the gap-filling agent.
 
+### Current document-processing path
+
+The production worker uses Docling for PDF/image OCR, layout, table extraction,
+and Markdown export. The active path is:
+
+`upload → presigned object storage → Celery worker → Docling → classification → extraction → recompute`
+
+Bank and MoMo statement tables are parsed into auditable `extraction` and
+`transaction` rows with provenance. Financial statements are parsed into
+explicit line-item `extraction` rows (revenue, profit, assets, liabilities,
+equity, and similar fields). The parser never invents totals or transactions
+when a value is not printed. Unsupported or ambiguous files remain flagged for
+review.
+
+In Railway production, the API and worker must share the same S3-compatible
+bucket settings (`STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY`,
+`STORAGE_SECRET_KEY`, `STORAGE_BUCKET`, `STORAGE_REGION`). The worker runs with
+Celery concurrency `1` because Docling's local models are CPU/memory intensive.
+
 ## Repo layout
 
 ```
