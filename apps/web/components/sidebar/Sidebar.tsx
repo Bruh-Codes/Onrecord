@@ -22,6 +22,7 @@ const COLLAPSE_THRESHOLD = 150;
 const NAV_ITEMS = [
 	{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
 	{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
+	{ href: "/readiness", icon: <GapsIcon />, label: "Readiness" },
 	{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },
 	{ href: "/counterparties", icon: <CounterpartiesIcon />, label: "Counterparties" },
 	{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
