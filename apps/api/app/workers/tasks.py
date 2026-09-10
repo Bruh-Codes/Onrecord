@@ -192,6 +192,7 @@ def s1_ingest(document_id: str) -> dict:
                 row_count=len(invoice.line_items) + len(invoice.fields),
                 review_context={
                     "invoice_fields_found": [field.key for field in invoice.fields],
+                    "required_fields_complete": bool(invoice.get("supplier") and invoice.get("total")),
                     "line_item_count": len(invoice.line_items),
                     "validation_issues": invoice.validation_issues,
                 },
