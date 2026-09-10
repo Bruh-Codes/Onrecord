@@ -30,6 +30,7 @@ export function TrendChart({
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const hovered = hoverIndex != null ? series[hoverIndex] : null;
 	const hasData = series.length > 0;
+	const isNegative = totalLabel.includes("-");
 	const linePoints = hasData
 		? series.map((p) => `${p.x},${p.y}`).join(" ")
 		: `0,${VIEW_HEIGHT / 2} ${VIEW_WIDTH},${VIEW_HEIGHT / 2}`;
@@ -42,7 +43,7 @@ export function TrendChart({
 					<InfoHint text={info ?? CHART_INFO[title.split(",")[0]]} />
 				)}
 			</div>
-			<div className="font-[family-name:var(--font-display)] text-[26px] mb-0.5">
+			<div className={`font-[family-name:var(--font-display)] text-[26px] mb-0.5 ${isNegative ? "text-negative" : ""}`}>
 				{totalLabel}
 			</div>
 			<div className="text-[12px] text-ink/55 mb-3.5">
