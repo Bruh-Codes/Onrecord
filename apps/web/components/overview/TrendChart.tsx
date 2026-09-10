@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatGhs } from "@/lib/format";
 import type { SeriesPoint } from "@/lib/types";
 import { InfoHint } from "./InfoHint";
 
@@ -51,7 +52,7 @@ export function TrendChart({
 			</div>
 			<div className="text-[12px] text-ink/55 mb-3.5">
 				{hovered
-					? `${hovered.month}-GH¢${hovered.value.toLocaleString()}`
+					? `${hovered.month} · ${formatGhs(hovered.value)}`
 					: hasData
 						? "Hover to inspect monthly values"
 						: idleCaption}
@@ -103,7 +104,7 @@ export function TrendChart({
 							background: color,
 						}}
 					>
-						{hovered.month}-GH¢{hovered.value.toLocaleString()}
+						{hovered.month} · {formatGhs(hovered.value)}
 					</div>
 				)}
 			</div>
