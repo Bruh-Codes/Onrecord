@@ -7,6 +7,10 @@
   --color-panel: #ececea;
   --color-panel-strong: #e5e5e3;
   --color-border: rgba(20, 20, 20, 0.14);
+  --color-primary: #1e6b45;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #c17d11;
+  --color-secondary-foreground: #141414;
   --color-positive-bg: #e3f3e9;
   --color-positive: #1e6b45;
   --color-amber: #c17d11;
@@ -30,6 +34,10 @@ html.dark {
   --color-panel: #1e1e1c;
   --color-panel-strong: #262624;
   --color-border: rgba(242, 242, 240, 0.14);
+  --color-primary: #5fcf94;
+  --color-primary-foreground: #131312;
+  --color-secondary: #e0a952;
+  --color-secondary-foreground: #131312;
   --color-positive-bg: #163726;
   --color-positive: #5fcf94;
   --color-amber: #e0a952;
