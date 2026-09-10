@@ -205,6 +205,9 @@ async def waive_gap(
         after={"status": gap.status.value, "reason": body.reason},
     )
     await session.commit()
+    from app.workers.tasks import recompute
+
+    recompute.delay(str(gap.business_id))
     await session.refresh(gap)
     return GapOut.model_validate(gap)
 

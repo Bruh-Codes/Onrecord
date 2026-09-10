@@ -135,6 +135,10 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     )
     _sync_score(db, business_id, score_payload)
 
+    from app.services.notifications import sync_business_notifications
+
+    sync_business_notifications(db, business_id)
+
     db.commit()
     return {"business_id": str(business_id), "score": score_payload, "coverage": coverage}
 
@@ -171,9 +175,22 @@ def _apply_model_categories(txns: list[Transaction]) -> None:
             for source_id, (label, transactions) in zip(source_map, batch, strict=True)
         ]
         for category in categorizer.categorize(model_labels):
+            transactions = source_map.get(category.source_id, ())
+            # Keep the model's bounded suggestion visible to a reviewer even
+            # when confidence is too low to affect the ledger automatically.
+            for txn in transactions:
+                txn.flags = {
+                    **(txn.flags or {}),
+                    "ai_category_suggestion": {
+                        "category_l1": category.category_l1,
+                        "category_l2": category.category_l2,
+                        "confidence": category.confidence,
+                        "basis": "sanitized transaction description and direction",
+                    },
+                }
             if category.confidence < 0.60 or category.category_l1 == "unknown":
                 continue
-            for txn in source_map.get(category.source_id, ()):
+            for txn in transactions:
                 txn.category_l1 = category.category_l1
                 txn.category_l2 = category.category_l2
                 txn.category_confidence = category.confidence

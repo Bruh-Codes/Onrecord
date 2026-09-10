@@ -18,6 +18,7 @@ from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
 from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement, summarize_financial_fields
 from app.pipeline.s3_invoice import ParsedInvoice, extract_invoice
+from app.services.notifications import sync_business_notifications
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ def s1_ingest(document_id: str) -> dict:
             doc.status = DocStatus.FAILED
             doc.quality_flags = {**(doc.quality_flags or {}), "processing_error": type(exc).__name__}
             session.commit()
+            sync_business_notifications(session, doc.business_id)
+            session.commit()
             return {"status": doc.status.value, "document_id": str(doc.id)}
 
         doc.page_count = processed.page_count
@@ -102,6 +105,8 @@ def s1_ingest(document_id: str) -> dict:
                     extraction_error=extraction_error,
                 ))
                 session.commit()
+                sync_business_notifications(session, doc.business_id)
+                session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
@@ -126,6 +131,8 @@ def s1_ingest(document_id: str) -> dict:
                     extracted_text=processed.text,
                     extraction_error=extraction_error,
                 ))
+                session.commit()
+                sync_business_notifications(session, doc.business_id)
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             _persist_financial_fields(session, doc, fields)
@@ -165,6 +172,8 @@ def s1_ingest(document_id: str) -> dict:
                     extraction_error=doc.quality_flags["extraction_error"],
                 ))
                 session.commit()
+                sync_business_notifications(session, doc.business_id)
+                session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             _persist_invoice(session, doc, invoice)
             doc.quality_flags["invoice"] = {
@@ -193,6 +202,7 @@ def s1_ingest(document_id: str) -> dict:
                 extracted_text=processed.text,
                 extraction_error="Document type is not supported for evidence scoring.",
             ))
+        sync_business_notifications(session, doc.business_id)
         session.commit()
         if doc.status == DocStatus.EXTRACTED:
             recompute.delay(str(doc.business_id))
