@@ -51,9 +51,9 @@ function evidenceReviewMessage(document: Document): string | null {
 }
 
 function canDelete(document: Document) {
-	// Any active document can be removed, including clean extracted evidence.
-	// Superseded records are historical and are not actionable in this list.
-	return document.status !== "superseded";
+	// Do not expose deletion while the worker is still processing the upload.
+	// Once processing finishes, extracted or failed documents remain removable.
+	return ["extracted", "failed", "reconciliation_failed"].includes(document.status);
 }
 
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
