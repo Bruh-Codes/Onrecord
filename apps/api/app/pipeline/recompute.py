@@ -47,6 +47,10 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
         .where(Transaction.business_id == business_id, Document.deleted_at.is_(None))
         .order_by(Transaction.occurred_on)
     ).all()
+    eligible_document_ids = {
+        document.id for document in documents if _document_is_scoring_eligible(document)
+    }
+    score_txns = [txn for txn in txns if txn.document_id in eligible_document_ids]
 
     # Backfill the deterministic S6 rules for rows ingested before the
     # categorization stage was wired into the worker. Human and owner labels
@@ -73,6 +77,7 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     coverage = build_coverage_sync(db, business_id)
     business.coverage_json = coverage
     db.flush()
+    score_coverage = build_coverage_sync(db, business_id, document_ids=eligible_document_ids)
 
     # ---- Indicators (S7) ----
     window_start = _parse_date(coverage["analysis_window"]["from"])
@@ -109,18 +114,20 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     open_period_gaps = _sync_missing_period_gaps(db, business_id, coverage)
 
     # ---- Score (S8) ----
-    unclassified_ratio = _indicator_float(indicators, "UNCLASSIFIED_RATIO")
+    unclassified_ratio = _score_unclassified_ratio(score_txns, window_start, window_end)
     accounts_declared = len(accounts)
-    accounts_captured = len({t.account_id for t in txns})
-    statement_value = _statement_value_pesewas(txns, documents)
-    total_value = sum(t.amount_pesewas for t in txns)
+    accounts_captured = len({t.account_id for t in score_txns})
+    score_documents = [document for document in documents if document.id in eligible_document_ids]
+    statement_value = _statement_value_pesewas(score_txns, score_documents)
+    total_value = sum(t.amount_pesewas for t in score_txns)
+    score_missing_periods = sum(len(account["holes"]) for account in score_coverage["accounts"])
 
     score_payload = s8_score.compute_score(
-        continuous_months=coverage["continuous_months"],
+        continuous_months=score_coverage["continuous_months"],
         unclassified_ratio=unclassified_ratio,
         accounts_declared=accounts_declared,
         accounts_captured=accounts_captured,
-        open_missing_periods=open_period_gaps,
+        open_missing_periods=score_missing_periods,
         computable_codes=computable,
         checklist=[_checklist_as_dict(c) for c in checklist_model],
         statement_value_pesewas=statement_value,
@@ -171,6 +178,28 @@ def _apply_model_categories(txns: list[Transaction]) -> None:
                 txn.category_l2 = category.category_l2
                 txn.category_confidence = category.confidence
                 txn.category_source = CategorySource.LLM
+
+
+def _document_is_scoring_eligible(document: Document) -> bool:
+    review = (document.quality_flags or {}).get("evidence_review")
+    # Documents ingested before evidence review existed remain eligible. New
+    # documents must explicitly be clear or reviewer-approved.
+    return review is None or bool(review.get("scoring_eligible"))
+
+
+def _score_unclassified_ratio(txns: list[Transaction], window_start: date | None, window_end: date | None) -> float | None:
+    if window_start is None or window_end is None:
+        return None
+    active = [
+        txn for txn in txns
+        if window_start <= txn.occurred_on <= window_end
+        and not (txn.flags or {}).get("duplicate")
+        and not (txn.flags or {}).get("internal_transfer")
+        and not (txn.flags or {}).get("fx")
+        and not (txn.flags or {}).get("reversal")
+    ]
+    total = sum(txn.amount_pesewas for txn in active)
+    return sum(txn.amount_pesewas for txn in active if txn.category_l1 in (None, "unknown")) / total if total else None
 
 
 # --------------------------------------------------------------------------- #

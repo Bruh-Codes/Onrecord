@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Claims, require_business_access, require_document_access, verify_token
+from app.api.deps import Claims, require_business_access, require_document_access, require_role, verify_token
 from app.config import Settings, get_settings
 from app.db import get_session
-from app.errors import file_too_large
+from app.errors import file_too_large, not_found
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
 from app.models.scoring import Indicator, ReadinessScore
@@ -22,7 +22,10 @@ from app.schemas.document import (
     FinancialStatementValue,
     DocumentSummary,
     DocumentUploadTarget,
+    EvidenceReviewDecision,
+    EvidenceReviewOut,
 )
+from app.models.enums import Role
 from app.services.audit import write_audit_event
 from app.services.storage import StorageBackend, get_storage_backend
 
@@ -36,6 +39,99 @@ _SUPPORTED_MIMES = {
     "text/csv",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
+
+
+def _review_out(document: Document) -> EvidenceReviewOut:
+    review = (document.quality_flags or {}).get("evidence_review")
+    if not isinstance(review, dict):
+        review = {
+            "status": "pending",
+            "risk_level": "unknown",
+            "scoring_eligible": False,
+            "summary": "This document has not completed evidence review.",
+            "findings": [],
+            "model": None,
+            "input_hash": "",
+        }
+    return EvidenceReviewOut(
+        document_id=document.id,
+        business_id=document.business_id,
+        status=review.get("status", "pending"),
+        risk_level=review.get("risk_level", "unknown"),
+        scoring_eligible=bool(review.get("scoring_eligible", False)),
+        summary=review.get("summary", "Evidence review is pending."),
+        findings=review.get("findings", []),
+        model=review.get("model"),
+        input_hash=review.get("input_hash", ""),
+        reviewed_by=review.get("reviewed_by"),
+        reviewed_at=review.get("reviewed_at"),
+    )
+
+
+@router.get("/v1/businesses/{business_id}/evidence-reviews", response_model=list[EvidenceReviewOut])
+async def list_evidence_reviews(
+    business_id: uuid.UUID,
+    status: str | None = Query(None),
+    claims: Claims = Depends(require_business_access),
+    session: AsyncSession = Depends(get_session),
+) -> list[EvidenceReviewOut]:
+    documents = (await session.scalars(
+        select(Document).where(Document.business_id == business_id, Document.deleted_at.is_(None)).order_by(Document.created_at.desc())
+    )).all()
+    reviews = [_review_out(document) for document in documents]
+    return [review for review in reviews if status is None or review.status == status]
+
+
+@router.get("/v1/documents/{document_id}/evidence-review", response_model=EvidenceReviewOut)
+async def get_evidence_review(
+    document_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> EvidenceReviewOut:
+    _, document = await require_document_access(document_id, claims=claims, session=session)
+    return _review_out(document)
+
+
+@router.post("/v1/documents/{document_id}/evidence-review/resolve", response_model=EvidenceReviewOut)
+async def resolve_evidence_review(
+    document_id: uuid.UUID,
+    body: EvidenceReviewDecision,
+    claims: Claims = Depends(require_role(Role.REVIEWER, Role.ADMIN)),
+    session: AsyncSession = Depends(get_session),
+) -> EvidenceReviewOut:
+    document = await session.scalar(select(Document).where(Document.id == document_id, Document.deleted_at.is_(None)))
+    if document is None:
+        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    before = (document.quality_flags or {}).get("evidence_review", {})
+    review = dict(before)
+    review.update({
+        "status": body.decision,
+        "scoring_eligible": body.decision == "approved",
+        "reviewed_by": str(claims.user_id),
+        "reviewed_at": datetime.now(UTC).isoformat(),
+        "reviewer_note": body.note,
+    })
+    flags = {**(document.quality_flags or {})}
+    history = list(flags.get("evidence_review_history", []))
+    history.append(review)
+    flags["evidence_review"] = review
+    flags["evidence_review_history"] = history[-20:]
+    document.quality_flags = flags
+    await write_audit_event(
+        session,
+        business_id=document.business_id,
+        actor=claims.user_id,
+        action="evidence_review.resolve",
+        target=f"document:{document.id}",
+        before={"status": before.get("status"), "scoring_eligible": before.get("scoring_eligible")},
+        after={"status": body.decision, "scoring_eligible": review["scoring_eligible"], "note": body.note},
+    )
+    await session.commit()
+    from app.workers.tasks import recompute
+
+    recompute.delay(str(document.business_id))
+    await session.refresh(document)
+    return _review_out(document)
 
 
 @router.post("/v1/businesses/{business_id}/documents", response_model=DocumentUploadTarget, status_code=201)

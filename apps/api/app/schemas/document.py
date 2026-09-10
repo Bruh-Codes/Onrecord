@@ -77,3 +77,29 @@ class DocumentDetail(DocumentSummary):
     quality_flags: dict
     page_count: int | None
     financial_statements: list[FinancialStatement] = Field(default_factory=list)
+
+
+class EvidenceReviewFinding(BaseModel):
+    code: str
+    severity: str
+    reason: str
+    evidence_ref: str
+
+
+class EvidenceReviewOut(BaseModel):
+    document_id: uuid.UUID
+    business_id: uuid.UUID
+    status: str
+    risk_level: str
+    scoring_eligible: bool
+    summary: str
+    findings: list[EvidenceReviewFinding]
+    model: str | None
+    input_hash: str
+    reviewed_by: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+
+
+class EvidenceReviewDecision(BaseModel):
+    decision: Literal["approved", "rejected"]
+    note: str = Field(min_length=1, max_length=1000)

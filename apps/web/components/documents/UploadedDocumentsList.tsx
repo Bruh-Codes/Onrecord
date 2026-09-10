@@ -29,13 +29,25 @@ const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> =
 	};
 
 function needsReview(document: Document) {
+	const evidenceReview = document.quality_flags?.evidence_review as
+		| { status?: string }
+		| undefined;
 	return Boolean(
+		["pending", "warning", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
 		document.quality_flags?.extraction_error ||
 		document.quality_flags?.processing_error ||
 		Number(document.quality_flags?.financial_statement_validation_issues ?? 0) > 0 ||
 		Number(document.quality_flags?.financial_statement_mapping_review_values ?? 0) > 0 ||
 		Number(document.quality_flags?.financial_statement_structure_review_values ?? 0) > 0,
 	);
+}
+
+function evidenceReviewMessage(document: Document): string | null {
+	const review = document.quality_flags?.evidence_review as
+		| { status?: string; summary?: string }
+		| undefined;
+	if (!review || !["pending", "warning", "error", "rejected"].includes(review.status ?? "")) return null;
+	return review.summary || "This document will be reviewed before it contributes to readiness scoring.";
 }
 
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -106,6 +118,11 @@ export function UploadedDocumentsList({
 						<div className="text-xs opacity-60">
 							{documentDateFormatter.format(new Date(doc.created_at))}
 						</div>
+						{evidenceReviewMessage(doc) && (
+							<div className="text-[11px] text-negative/80 mt-1">
+								{evidenceReviewMessage(doc)} Human review required before scoring.
+							</div>
+						)}
 					</div>
 					<div className="shrink-0 flex items-center gap-2">
 						{doc.doc_type === "financial_statement" && doc.status === "extracted" && (
