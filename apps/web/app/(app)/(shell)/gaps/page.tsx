@@ -11,6 +11,7 @@ import { GapRowSkeleton, Skeleton } from "@/components/ui/Skeleton";
 export default function GapsPage() {
 	const { businessId } = useMe();
 	const { data: gaps, isLoading } = useGaps(businessId);
+	const loading = businessId == null || isLoading;
 	const { startChat } = useAppActions();
 	const router = useRouter();
 	const openGaps = (gaps ?? []).filter((g) => g.status === "open");
@@ -24,13 +25,13 @@ export default function GapsPage() {
 	return (
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
 			<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Gaps</h1>
-			{isLoading ? <div aria-busy="true" aria-label="Loading gaps" className="mb-6"><Skeleton className="h-4 w-3/4 mb-5" /><GapRowSkeleton /><GapRowSkeleton /><GapRowSkeleton /></div> : <p className="text-sm opacity-70 m-0 mb-6">
-				{isLoading
+{loading ? <div aria-busy="true" aria-label="Loading gaps" className="mb-6"><Skeleton className="h-4 w-3/4 mb-5" /><GapRowSkeleton /><GapRowSkeleton /><GapRowSkeleton /></div> : <p className="text-sm opacity-70 m-0 mb-6">
+				{loading
 					? "Loading…"
 					: `${openGaps.length} open-resolve them here, in Documents, in Counterparties, or by talking to the assistant.`}
 			</p>}
 
-			{!isLoading && openGaps.map((gap) => (
+			{!loading && openGaps.map((gap) => (
 				<div key={gap.id} className="py-4 border-b border-border">
 					<div className="flex justify-between items-start gap-2.5 mb-1">
 						<div className="text-sm font-semibold">{gap.title}</div>
@@ -52,7 +53,7 @@ export default function GapsPage() {
 					</div>
 				</div>
 			))}
-			{!isLoading && openGaps.length === 0 && (
+			{!loading && openGaps.length === 0 && (
 				<div className="text-sm py-4 opacity-70">
 					No open gaps-everything looks captured.
 				</div>
