@@ -44,7 +44,7 @@ export default function HomePage() {
 				<Link href="/documents" className="font-semibold text-white">enter figures manually</Link>.
 			</p>
 
-			{isNewUser && <GetStartedCard />}
+			<GetStartedCard hasData={!isNewUser} />
 
 			<TodayStats
 				coverage={coverage.data}

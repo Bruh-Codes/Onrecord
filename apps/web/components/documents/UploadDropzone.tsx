@@ -119,6 +119,9 @@ export function UploadDropzone({
 						: "Preparing your secure upload"}
 				</span>
 			</label>
+			<div className="mt-2 px-1 text-[12px] text-ink/55">
+				Supported formats: PDF, JPG/JPEG, PNG, HEIC, CSV, XLSX
+			</div>
 			{businessError && (
 				<button
 					type="button"

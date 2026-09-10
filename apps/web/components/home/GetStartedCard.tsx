@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { ChevronRightIcon, UploadIcon } from "@/components/icons";
 
-export function GetStartedCard() {
+export function GetStartedCard({ hasData = false }: { hasData?: boolean }) {
 	return (
 		<div className="bg-panel rounded-3xl p-5 sm:p-8 mb-7.5">
-			<h2 className="text-2xl m-0 mb-1.5">Get started with Onrecord</h2>
+			<h2 className="text-2xl m-0 mb-1.5">
+				{hasData ? "Keep building your financial record" : "Get started with Onrecord"}
+			</h2>
 			<p className="text-[13.5px] opacity-70 m-0 mb-6">
-				Upload one real document to start building your record.
+				{hasData
+					? "Upload more financial data to keep your insights current and complete."
+					: "Upload one real document to start building your record."}
 			</p>
 			<div className="flex gap-5 flex-wrap">
 				<Link
@@ -18,7 +22,9 @@ export function GetStartedCard() {
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="text-[14.5px] font-semibold mb-0.5">
-							Upload your first statement or ledger
+							{hasData
+								? "Upload more financial data"
+								: "Upload your first statement or ledger"}
 						</div>
 						<div className="text-xs opacity-60">
 							Bank, MoMo, sales export, receipt, or ledger photo

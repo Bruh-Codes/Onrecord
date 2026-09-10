@@ -135,4 +135,8 @@ export const APP_INTEGRATIONS: AppIntegration[] = [
 		name: "Bank feeds (GCB, Fidelity, Absa)",
 		desc: "Direct read-only bank connections via open banking, when available in Ghana.",
 	},
+	{
+		name: "Gmail",
+		desc: "Find invoices, receipts, and financial documents from your business inbox.",
+	},
 ];
