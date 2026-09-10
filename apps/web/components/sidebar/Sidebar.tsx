@@ -25,7 +25,7 @@ const NAV_ITEMS = [
 	{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },
 	{ href: "/counterparties", icon: <CounterpartiesIcon />, label: "Counterparties" },
 	{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
-	{ href: "/apps", icon: <AppsIcon />, label: "Apps" },
+	{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
 ];
 
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
@@ -94,7 +94,7 @@ export function Sidebar() {
 		setCollapsed((c: boolean) => !c);
 	}
 
-	const liveCollapsed = dragging ? drag.current.liveWidth < COLLAPSE_THRESHOLD : collapsed;
+	const liveCollapsed = dragging ? width < COLLAPSE_THRESHOLD : collapsed;
 
 	return (
 		<div
@@ -109,10 +109,10 @@ export function Sidebar() {
 				} ${liveCollapsed ? "overflow-visible px-2.5" : "overflow-y-auto px-3.5"}`}
 			>
 				<Link
-					href="/dashboard"
+					href="/"
 					aria-label={liveCollapsed ? "Onrecord home" : undefined}
-					className={`group/logo relative flex items-center pb-5 ${
-						liveCollapsed ? "justify-center pt-1" : "gap-2 px-2"
+					className={`group/logo relative flex items-center py-5 opacity-100 hover:opacity-100 ${
+						liveCollapsed ? "justify-center" : "gap-2 px-2"
 					}`}
 				>
 					<Image src={icon} alt="" width={26} height={26} />
