@@ -99,13 +99,24 @@ def _split_label(line: str) -> tuple[str | None, str]:
     match = re.match(r"^([^:|]{2,45})\s*[:|]\s*(.+)$", line)
     if match:
         return match.group(1).strip(), match.group(2).strip()
+    # Docling may flatten a visually separate label/value pair into one line
+    # without punctuation, e.g. ``Total (USD) 118.00`` or ``Invoice # Z-9``.
+    normalized = line.lower()
+    aliases = sorted((alias for values in _LABELS.values() for alias in values), key=len, reverse=True)
+    for alias in aliases:
+        if normalized == alias or not normalized.startswith(alias):
+            continue
+        remainder = line[len(alias):].strip(" :#-|()[]")
+        if remainder:
+            return alias, remainder
     return None, ""
 
 
 def _canonical_label(label: str) -> str | None:
     normalized = re.sub(r"[^a-z0-9 ]", "", label.lower()).strip()
     for key, aliases in _LABELS.items():
-        if normalized in aliases or any(normalized.startswith(alias + " ") for alias in aliases):
+        normalized_aliases = [re.sub(r"[^a-z0-9 ]", "", alias.lower()).strip() for alias in aliases]
+        if normalized in normalized_aliases or any(normalized.startswith(alias + " ") for alias in normalized_aliases):
             return key
     return None
 

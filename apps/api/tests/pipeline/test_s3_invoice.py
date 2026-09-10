@@ -46,3 +46,13 @@ def test_invoice_parser_reads_totals_from_docling_table_cells() -> None:
     parsed = parse_invoice("Supplier: Example Ltd", (table,))
     assert parsed.get("total").value["amount_pesewas"] == 11800
     assert parsed.validation_issues == []
+
+
+def test_invoice_parser_reads_flattened_label_value_lines() -> None:
+    parsed = parse_invoice("""
+        Example Supplier
+        Invoice # Z-9
+        Total (USD) 118.00
+    """)
+    assert parsed.get("invoice_number").value == "Z-9"
+    assert parsed.get("total").value["amount_pesewas"] == 11800
