@@ -56,3 +56,9 @@ def test_invoice_parser_reads_flattened_label_value_lines() -> None:
     """)
     assert parsed.get("invoice_number").value == "Z-9"
     assert parsed.get("total").value["amount_pesewas"] == 11800
+
+
+def test_invoice_parser_reads_label_on_line_before_value() -> None:
+    parsed = parse_invoice("Supplier\nExample Supplier\nTotal\nUSD 118.00")
+    assert parsed.get("supplier").value == "Example Supplier"
+    assert parsed.get("total").value["amount_pesewas"] == 11800

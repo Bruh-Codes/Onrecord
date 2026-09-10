@@ -65,6 +65,10 @@ def parse_invoice(text: str, tables: tuple[DocumentTable, ...] = ()) -> ParsedIn
     lines = [re.sub(r"\s+", " ", line).strip(" |") for line in text.splitlines() if line.strip()]
     for index, line in enumerate(lines):
         label, raw = _split_label(line)
+        if label is None and index + 1 < len(lines):
+            standalone_key = _canonical_label(line)
+            if standalone_key is not None:
+                label, raw = line, lines[index + 1]
         if label is None or not raw:
             continue
         key = _canonical_label(label)
