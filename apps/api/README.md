@@ -40,6 +40,15 @@ Docling/parser output remains authoritative for amounts, periods, and
 provenance. If the key is absent or the model call fails, extraction continues
 with deterministic/local structure and marks uncertain values for review.
 
+Transaction categorization follows the same boundary. The parser first applies
+small deterministic rules (for example, utility bills and bank charges), then
+the optional Luna pass classifies only unresolved, non-internal labels in
+batches. The model returns a strict category plus confidence; low-confidence
+responses are left unclassified. It never receives transaction amounts,
+balances, dates, or account identifiers, and it cannot alter extracted facts.
+Re-running recompute after enabling `OPENAI_API_KEY` applies the model to
+existing unresolved transactions as well as newly ingested documents.
+
 ## Auth
 
 `apps/api` holds no credentials and issues nothing. Better Auth (`apps/web`)

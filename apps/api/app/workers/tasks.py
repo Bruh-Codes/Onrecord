@@ -193,7 +193,7 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 category_l2=row.category_l2,
                 category_confidence=row.category_confidence,
                 category_source=row.category_source,
-                flags={},
+                flags={"internal_transfer": True} if row.internal_transfer else {},
                 provenance={"extraction_ids": [str(extraction.id)]},
             )
         )
