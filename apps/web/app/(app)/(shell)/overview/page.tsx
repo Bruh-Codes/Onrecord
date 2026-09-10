@@ -26,7 +26,7 @@ type OverviewMode =
 	| "cashflow"
 	| "coverage";
 
-type SourceScope = "all" | "statements" | "invoices" | "other";
+type SourceScope = "statements" | "invoices" | "other";
 
 const MODES: { value: OverviewMode; label: string }[] = [
 	{ value: "executive", label: "Executive overview" },
@@ -44,7 +44,6 @@ const PERIODS = [
 ];
 
 const SOURCE_SCOPES: { value: SourceScope; label: string }[] = [
-	{ value: "all", label: "All sources" },
 	{ value: "statements", label: "Statements" },
 	{ value: "invoices", label: "Invoices" },
 	{ value: "other", label: "Other documents" },
@@ -59,7 +58,7 @@ function indicatorValue(
 
 export default function OverviewPage() {
 	const [mode, setMode] = useState<OverviewMode>("executive");
-	const [sourceScope, setSourceScope] = useState<SourceScope>("all");
+	const [sourceScope, setSourceScope] = useState<SourceScope>("statements");
 	const [periodMonths, setPeriodMonths] = useState(12);
 	const { businessId } = useMe();
 	const coverage = useCoverage(businessId);
@@ -153,8 +152,8 @@ export default function OverviewPage() {
 	const selectedRevenuePoints = seriesToPoints(selectedRevenueSeries);
 	const selectedCashflowPoints = seriesToPoints(selectedCashflowSeries);
 	const selectedNetCashflowPoints = seriesToPoints(selectedNetCashflow);
-	const showCash = sourceScope === "all" || sourceScope === "statements";
-	const showInvoices = sourceScope === "all" || sourceScope === "invoices";
+	const showCash = sourceScope === "statements";
+	const showInvoices = sourceScope === "invoices";
 
 	const viewSelect = (
 		<label className="flex items-center gap-2 text-[13px] text-ink/65">
