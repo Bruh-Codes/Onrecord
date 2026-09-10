@@ -10,6 +10,7 @@ import {
 	GapsIcon,
 	HomeIcon,
 	OverviewIcon,
+	ReadinessIcon,
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
@@ -18,14 +19,24 @@ const MAX_WIDTH = 230;
 const COLLAPSED_WIDTH = 60;
 const COLLAPSE_THRESHOLD = 150;
 
-const NAV_ITEMS = [
-	{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
-	{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
-	{ href: "/readiness", icon: <GapsIcon />, label: "Readiness" },
-	{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },
-	{ href: "/counterparties", icon: <CounterpartiesIcon />, label: "Counterparties" },
-	{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
-	{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
+const NAV_GROUPS = [
+	{
+		label: "Workspace",
+		items: [
+			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
+			{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
+			{ href: "/readiness", icon: <ReadinessIcon />, label: "Readiness" },
+			{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },
+		],
+	},
+	{
+		label: "Manage",
+		items: [
+			{ href: "/counterparties", icon: <CounterpartiesIcon />, label: "Counterparties" },
+			{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
+			{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
+		],
+	},
 ];
 
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
@@ -120,11 +131,22 @@ export function Sidebar() {
 					{liveCollapsed && <Tooltip label="Onrecord home" showClass="group-hover/logo:visible" />}
 				</Link>
 
-				<div className="flex flex-col gap-0.5">
-					{NAV_ITEMS.map((item) => (
-						<NavLink key={item.href} href={item.href} icon={item.icon} collapsed={liveCollapsed}>
-							{item.label}
-						</NavLink>
+				<div className="flex flex-col">
+					{NAV_GROUPS.map((group, groupIndex) => (
+						<div key={group.label} className={groupIndex > 0 ? "mt-3 border-t border-border pt-3" : undefined}>
+							{!liveCollapsed && (
+								<div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+									{group.label}
+								</div>
+							)}
+							<div className="flex flex-col gap-0.5">
+								{group.items.map((item) => (
+									<NavLink key={item.href} href={item.href} icon={item.icon} collapsed={liveCollapsed}>
+										{item.label}
+									</NavLink>
+								))}
+							</div>
+						</div>
 					))}
 				</div>
 			</aside>

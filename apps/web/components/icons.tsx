@@ -50,6 +50,16 @@ export function GapsIcon({ className }: IconProps) {
   );
 }
 
+export function ReadinessIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className={className}>
+      <path d="M4.5 17a7.5 7.5 0 0 1 15 0" />
+      <path d="m12 13 3.5-3.5" />
+      <path d="M7 17h10" />
+    </svg>
+  );
+}
+
 export function AppsIcon({ className }: IconProps) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>
