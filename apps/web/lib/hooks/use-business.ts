@@ -190,3 +190,11 @@ export function useIndicatorsMap(businessId: string | null) {
   }, [q.data]);
   return { ...q, map };
 }
+
+export function useInvoiceInsights(businessId: string | null) {
+  return useQuery({
+    queryKey: ["invoice-insights", businessId],
+    queryFn: () => api.getInvoiceInsights(businessId!),
+    enabled: !!businessId,
+  });
+}

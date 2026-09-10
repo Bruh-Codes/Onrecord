@@ -9,11 +9,13 @@ import {
 	useIndicatorsMap,
 	useMe,
 	useCounterparties,
+	useInvoiceInsights,
 } from "@/lib/hooks/use-business";
 import { formatGhs, seriesToPoints, seriesTotal } from "@/lib/format";
 import { OverviewPageSkeleton } from "@/components/ui/Skeleton";
 import { MetricStat } from "@/components/overview/MetricStat";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { InvoiceInsightsPanel } from "@/components/overview/InvoiceInsightsPanel";
 import { useState } from "react";
 
 type OverviewMode =
@@ -23,6 +25,8 @@ type OverviewMode =
 	| "profitability"
 	| "cashflow"
 	| "coverage";
+
+type SourceScope = "all" | "statements" | "invoices" | "other";
 
 const MODES: { value: OverviewMode; label: string }[] = [
 	{ value: "executive", label: "Executive overview" },
@@ -39,6 +43,13 @@ const PERIODS = [
 	{ value: 12, label: "Trailing 12 months" },
 ];
 
+const SOURCE_SCOPES: { value: SourceScope; label: string }[] = [
+	{ value: "all", label: "All sources" },
+	{ value: "statements", label: "Statements" },
+	{ value: "invoices", label: "Invoices" },
+	{ value: "other", label: "Other documents" },
+];
+
 function indicatorValue(
 	indicator: { value_json: Record<string, unknown> } | undefined,
 ): number | null {
@@ -48,18 +59,22 @@ function indicatorValue(
 
 export default function OverviewPage() {
 	const [mode, setMode] = useState<OverviewMode>("executive");
+	const [sourceScope, setSourceScope] = useState<SourceScope>("all");
 	const [periodMonths, setPeriodMonths] = useState(12);
 	const { businessId } = useMe();
 	const coverage = useCoverage(businessId);
 	const indicators = useIndicatorsMap(businessId);
 	const gaps = useGaps(businessId);
 	const counterparties = useCounterparties(businessId);
+	const invoiceInsights = useInvoiceInsights(businessId);
 
 	if (
+		!businessId ||
 		coverage.isLoading ||
 		indicators.isLoading ||
 		gaps.isLoading ||
-		counterparties.isLoading
+		counterparties.isLoading ||
+		invoiceInsights.isLoading
 	) {
 		return <OverviewPageSkeleton />;
 	}
@@ -138,6 +153,8 @@ export default function OverviewPage() {
 	const selectedRevenuePoints = seriesToPoints(selectedRevenueSeries);
 	const selectedCashflowPoints = seriesToPoints(selectedCashflowSeries);
 	const selectedNetCashflowPoints = seriesToPoints(selectedNetCashflow);
+	const showCash = sourceScope === "all" || sourceScope === "statements";
+	const showInvoices = sourceScope === "all" || sourceScope === "invoices";
 
 	const viewSelect = (
 		<label className="flex items-center gap-2 text-[13px] text-ink/65">
@@ -159,22 +176,42 @@ export default function OverviewPage() {
 			/>
 		</label>
 	);
+	const sourceSelect = (
+		<label className="flex items-center gap-2 text-[13px] text-ink/65">
+			<span>Source</span>
+			<Dropdown
+				value={sourceScope}
+				options={SOURCE_SCOPES}
+				onChange={(value) => {
+					setSourceScope(value);
+					if (value === "invoices" || value === "other") setMode("executive");
+				}}
+			/>
+		</label>
+	);
 
 	return (
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
-			<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">
-				Your readiness overview
-			</h1>
-			<p className="text-sm opacity-65 m-0 mb-10">
-				Rolling 12-month window, updated whenever new documents come in.
-			</p>
+			<div className="flex flex-wrap items-start justify-between gap-5 mb-10">
+				<div>
+					<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">Your readiness overview</h1>
+					<p className="text-sm opacity-65 m-0">Rolling 12-month window, updated whenever new documents come in.</p>
+				</div>
+				{sourceSelect}
+			</div>
 
-			<div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">
+			{sourceScope === "other" && (
+				<div className="rounded-xl border border-border/70 p-5 mb-10 text-sm text-ink/65">
+					Other documents contribute supporting evidence and readiness coverage. They do not represent cashflow or invoice totals.
+				</div>
+			)}
+
+			{showCash && <div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">
 				{mode === "executive"
 					? "Transactions & trends"
 					: `${modeLabel} insights`}
-			</div>
-			{mode === "executive" && (
+			</div>}
+			{showCash && mode === "executive" && (
 				<div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
 					<div>
 						<div className="mb-4">{viewSelect}</div>
@@ -215,14 +252,14 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode !== "executive" && (
+			{showCash && mode !== "executive" && (
 				<div className="flex flex-wrap items-center gap-24 mb-5">
 					{viewSelect}
 					{periodSelect}
 				</div>
 			)}
 
-			{mode === "transactions" && (
+			{showCash && mode === "transactions" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Transaction value"
@@ -253,7 +290,7 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode === "revenue" && (
+			{showCash && mode === "revenue" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Revenue"
@@ -274,7 +311,7 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode === "profitability" && (
+			{showCash && mode === "profitability" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Revenue"
@@ -303,7 +340,7 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode === "cashflow" && (
+			{showCash && mode === "cashflow" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Operating cashflow"
@@ -324,7 +361,7 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode === "coverage" && (
+			{showCash && mode === "coverage" && (
 				<div className="mb-12">
 					<GapsAndCoverage
 						gaps={(gaps.data ?? []).filter((g) => g.status === "open")}
@@ -342,7 +379,7 @@ export default function OverviewPage() {
 				</div>
 			)}
 
-			{mode !== "coverage" && (
+			{showCash && mode !== "coverage" && (
 				<>
 					<div className="h-px bg-border mb-10" />
 					<div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">
@@ -361,6 +398,13 @@ export default function OverviewPage() {
 								: (unclassified?.v ?? null)
 						}
 					/>
+				</>
+			)}
+
+			{showInvoices && (
+				<>
+					<div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">Invoices &amp; billing</div>
+					<InvoiceInsightsPanel data={invoiceInsights.data} />
 				</>
 			)}
 		</div>

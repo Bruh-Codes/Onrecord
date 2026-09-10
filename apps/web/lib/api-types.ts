@@ -134,6 +134,31 @@ export type Document = {
 	financial_statements?: FinancialStatement[];
 };
 
+export type InvoiceInsightItem = {
+	 document_id: string;
+	 filename: string;
+	 kind: "issued" | "received";
+	 supplier: string | null;
+	 invoice_number: string | null;
+	 invoice_date: string | null;
+	 due_date: string | null;
+	 currency: string | null;
+	 subtotal_pesewas: number | null;
+	 tax_pesewas: number | null;
+	 total_pesewas: number | null;
+	 payment_status: string | null;
+	 line_item_count: number;
+	 validation_issues: string[];
+};
+
+export type InvoiceInsights = {
+	total_documents: number;
+	issued_count: number;
+	received_count: number;
+	totals_by_currency: Record<string, { issued_pesewas: number; received_pesewas: number; issued_count: number; received_count: number }>;
+	items: InvoiceInsightItem[];
+};
+
 export type FinancialStatementValue = {
 	extraction_id: string;
 	line_index: number;

@@ -10,6 +10,8 @@ from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import not_found
 from app.models.enums import GapStatus
+from app.models.document import Document
+from app.models.enums import DocType
 from app.models.scoring import ChecklistItem, Gap, Indicator, ReadinessScore
 from app.schemas.analytics import (
     ChecklistItemOut,
@@ -17,6 +19,8 @@ from app.schemas.analytics import (
     GapOut,
     GapWaive,
     IndicatorOut,
+    InvoiceInsights,
+    InvoiceInsightItem,
     ReadinessScoreOut,
 )
 from app.services.audit import write_audit_event
@@ -50,6 +54,77 @@ async def list_indicators(
         )
     ).all()
     return [IndicatorOut.model_validate(r) for r in rows]
+
+
+@router.get("/v1/businesses/{business_id}/invoice-insights", response_model=InvoiceInsights)
+async def get_invoice_insights(
+    business_id: uuid.UUID,
+    claims: Claims = Depends(require_business_access),
+    session: AsyncSession = Depends(get_session),
+) -> InvoiceInsights:
+    documents = (await session.scalars(
+        select(Document).where(
+            Document.business_id == business_id,
+            Document.deleted_at.is_(None),
+            Document.doc_type.in_([DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED]),
+        ).order_by(Document.created_at.desc())
+    )).all()
+    items: list[InvoiceInsightItem] = []
+    totals: dict[str, dict[str, int]] = {}
+    for document in documents:
+        summary = (document.quality_flags or {}).get("invoice", {})
+        fields = summary.get("canonical_fields", {})
+        if not isinstance(fields, dict):
+            fields = {}
+        kind = "issued" if document.doc_type == DocType.INVOICE_ISSUED else "received"
+        currency = _invoice_text(fields.get("currency"))
+        total = _invoice_amount(fields.get("total"))
+        subtotal = _invoice_amount(fields.get("subtotal"))
+        tax = _invoice_amount(fields.get("tax"))
+        bucket = totals.setdefault(currency or "UNKNOWN", {"issued_pesewas": 0, "received_pesewas": 0, "issued_count": 0, "received_count": 0})
+        bucket[f"{kind}_count"] += 1
+        if total is not None:
+            bucket[f"{kind}_pesewas"] += total
+        items.append(InvoiceInsightItem(
+            document_id=document.id,
+            filename=document.filename,
+            kind=kind,
+            supplier=_invoice_text(fields.get("supplier")),
+            invoice_number=_invoice_text(fields.get("invoice_number")),
+            invoice_date=_invoice_date(fields.get("invoice_date")),
+            due_date=_invoice_date(fields.get("due_date")),
+            currency=currency,
+            subtotal_pesewas=subtotal,
+            tax_pesewas=tax,
+            total_pesewas=total,
+            payment_status=_invoice_text(fields.get("payment_status")),
+            line_item_count=int(summary.get("line_item_count", 0) or 0),
+            validation_issues=list(summary.get("validation_issues", [])),
+        ))
+    return InvoiceInsights(
+        total_documents=len(documents),
+        issued_count=sum(item.kind == "issued" for item in items),
+        received_count=sum(item.kind == "received" for item in items),
+        totals_by_currency=totals,
+        items=items,
+    )
+
+
+def _invoice_text(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _invoice_amount(value: object) -> int | None:
+    return value.get("amount_pesewas") if isinstance(value, dict) and isinstance(value.get("amount_pesewas"), int) else None
+
+
+def _invoice_date(value: object):
+    from datetime import date
+
+    try:
+        return date.fromisoformat(value) if isinstance(value, str) else None
+    except ValueError:
+        return None
 
 
 @router.get("/v1/businesses/{business_id}/score", response_model=ReadinessScoreOut)

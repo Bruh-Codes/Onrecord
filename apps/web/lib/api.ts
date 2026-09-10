@@ -14,6 +14,7 @@ import type {
   Document,
   Gap,
   Indicator,
+  InvoiceInsights,
   Me,
   ReadinessScore,
   Transaction,
@@ -130,6 +131,7 @@ export const api = {
   // ---- analytics ----
   getCoverage: (businessId: string) => request<Coverage>(`/v1/businesses/${businessId}/coverage`),
   listIndicators: (businessId: string) => request<Indicator[]>(`/v1/businesses/${businessId}/indicators`),
+  getInvoiceInsights: (businessId: string) => request<InvoiceInsights>(`/v1/businesses/${businessId}/invoice-insights`),
   getScore: (businessId: string) => request<ReadinessScore>(`/v1/businesses/${businessId}/score`),
   getChecklist: (businessId: string, rulePack = "gh_mfi_working_capital_v1") =>
     request<ChecklistItem[]>(`/v1/businesses/${businessId}/checklist?rule_pack=${encodeURIComponent(rulePack)}`),
