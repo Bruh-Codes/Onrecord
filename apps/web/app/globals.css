@@ -19,7 +19,12 @@
   --font-body: "Figtree", system-ui, sans-serif;
 }
 
+:root {
+  color-scheme: light;
+}
+
 html.dark {
+  color-scheme: dark;
   --color-ink: #f2f2f0;
   --color-paper: #131312;
   --color-panel: #1e1e1c;
@@ -73,9 +78,6 @@ button {
 }
 button:not(:disabled):hover {
   filter: brightness(0.93);
-}
-button:not(:disabled):active {
-  transform: scale(0.97);
 }
 
 @keyframes fade-in {
