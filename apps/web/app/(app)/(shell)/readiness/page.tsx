@@ -61,7 +61,7 @@ export default function ReadinessPage() {
 				evidence behind your file. It is not a lending decision.
 			</p>
 
-			<div className="grid gap-5 md:grid-cols-[1fr_2fr] mb-10">
+			<div className="grid gap-5 md:grid-cols-[2fr_2fr] mb-10 lg:grid-cols-[1fr_2fr]">
 				<div className="rounded-xl border border-border/70 p-5 bg-panel">
 					<div className="text-xs uppercase tracking-wider text-ink/50">
 						Current readiness
@@ -86,7 +86,7 @@ export default function ReadinessPage() {
 						{PILLARS.map((pillar) => {
 							const value = score.data?.pillars[pillar.key];
 							return (
-								<div key={pillar.key} className="basis-10">
+								<div key={pillar.key} className="flex-1 min-w-[200px]">
 									<div className="flex justify-between text-[13px] font-semibold">
 										<div className="flex items-center gap-1.5">
 											<span>{pillar.label}</span>

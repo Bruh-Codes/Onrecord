@@ -71,12 +71,18 @@ export function UploadDropzone({
 			const existingDocumentId =
 				err instanceof ApiError && err.code === "DUPLICATE_DOCUMENT"
 					? (err.detail as { existing_document_id?: string } | undefined)
-						?.existing_document_id
+							?.existing_document_id
 					: undefined;
 			setUploads((prev) =>
 				prev.map((u) =>
 					u.id === id
-						? { ...u, status: "error", error: message, existingDocumentId, file }
+						? {
+								...u,
+								status: "error",
+								error: message,
+								existingDocumentId,
+								file,
+							}
 						: u,
 				),
 			);
@@ -98,14 +104,21 @@ export function UploadDropzone({
 				replaceDocumentId: uploadState.existingDocumentId,
 			});
 			setUploads((prev) =>
-				prev.map((u) => (u.id === uploadState.id ? { ...u, status: "done" } : u)),
+				prev.map((u) =>
+					u.id === uploadState.id ? { ...u, status: "done" } : u,
+				),
 			);
 			onUploaded();
 		} catch (err) {
-			const message = err instanceof ApiError ? err.message : "Could not replace the file. Please try again.";
+			const message =
+				err instanceof ApiError
+					? err.message
+					: "Could not replace the file. Please try again.";
 			setUploads((prev) =>
 				prev.map((u) =>
-					u.id === uploadState.id ? { ...u, status: "error", error: message } : u,
+					u.id === uploadState.id
+						? { ...u, status: "error", error: message }
+						: u,
 				),
 			);
 		}
@@ -114,7 +127,7 @@ export function UploadDropzone({
 	return (
 		<div>
 			<label
-				className={`relative flex items-center justify-center gap-2 border-[1.5px] border-dashed border-ink/30 rounded-2xl p-5.5 text-ink transition-colors ${uploadReady ? "cursor-pointer hover:border-ink/50" : "cursor-not-allowed opacity-75"}`}
+				className={`relative flex group bg-panel/60 items-center justify-center gap-2 border-[1.5px] border-dashed border-ink/30 rounded-2xl p-5.5 text-ink transition-colors ${uploadReady ? "cursor-pointer hover:border-ink/50" : "cursor-not-allowed opacity-75"}`}
 			>
 				<input
 					id="upload-input"
@@ -122,7 +135,7 @@ export function UploadDropzone({
 					multiple
 					accept="application/pdf,image/jpeg,image/png,image/heic,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.jpg,.jpeg,.png,.heic,.csv,.xlsx"
 					disabled={!uploadReady}
-					className="absolute inset-0 h-full w-full cursor-inherit opacity-0 disabled:pointer-events-none"
+					className="absolute  inset-0 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {
 						const files = e.target.files;
 						if (files) {
@@ -141,13 +154,13 @@ export function UploadDropzone({
 						e.target.value = "";
 					}}
 				/>
-				<UploadIcon />
-				<span className="text-[13.5px] font-semibold">
+				<UploadIcon className="text-ink/60 group-hover:text-ink transition-all" />
+				<span className="text-[13.5px] font-semibold text-ink/60 group-hover:text-ink transition-all">
 					{businessError
 						? "Upload unavailable-your business profile could not be loaded"
 						: uploadReady
-						? "Upload any file-statement, receipt, or a photo of a ledger page"
-						: "Preparing your secure upload"}
+							? "Upload any file-statement, receipt, or a photo of a ledger page"
+							: "Preparing your secure upload"}
 				</span>
 			</label>
 			<div className="mt-2 px-1 text-[12px] text-ink/55">
