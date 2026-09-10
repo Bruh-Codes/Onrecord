@@ -155,8 +155,9 @@ createdb -h localhost -p 5433 -U sme sme
 ```
 
 The worker also exposes a `ping` task for connectivity checks. Its production
-document task is `ingest_document.s1`; it runs Docling and persists the current
-statement/financial-statement extraction stages described above.
+document task is `ingest_document.s1`; it runs Docling and persists dynamic
+statement, financial-statement, and invoice extraction. Invoice results expose
+canonical fields plus provider-specific extra fields and line-item provenance.
 
 ## Tests
 

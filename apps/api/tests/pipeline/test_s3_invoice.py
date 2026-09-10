@@ -1,0 +1,28 @@
+from app.pipeline.s3_invoice import parse_invoice
+
+
+def test_invoice_parser_keeps_canonical_and_dynamic_fields() -> None:
+    parsed = parse_invoice("""
+        Cloudflare, Inc.
+        Invoice Number: CF-1007
+        Invoice Date: 01 Sep 2026
+        Due Date: 15 Sep 2026
+        Currency: USD
+        Subtotal: $100.00
+        Tax: $18.00
+        Total: $118.00
+        Payment Status: Unpaid
+        Purchase Order: PO-9
+    """)
+    assert parsed.get("supplier").value == "Cloudflare, Inc."
+    assert parsed.get("invoice_number").value == "CF-1007"
+    assert parsed.get("total").value["amount_pesewas"] == 11800
+    assert parsed.get("payment_status").value == "unpaid"
+    assert parsed.extra_fields["purchase_order"] == "PO-9"
+    assert parsed.validation_issues == []
+
+
+def test_invoice_parser_does_not_invent_missing_total() -> None:
+    parsed = parse_invoice("Supplier: Example Ltd\nSubtotal: GHS 20.00")
+    assert parsed.get("total") is None
+    assert "total_missing" in parsed.validation_issues

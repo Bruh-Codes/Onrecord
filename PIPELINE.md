@@ -19,6 +19,16 @@ Upload → S1 ingest → S2 classify → S3 extract → S4 normalise → S5 reco
        → S9 checklist and gaps → human review / S10 export
 ```
 
+## Supported document families
+
+| Family | Deterministic output | Insight treatment |
+| --- | --- | --- |
+| Bank / MoMo statements | Transactions, balances, direction, fees, account provenance | Feeds transaction trends after reconciliation; internal transfers are excluded from operating metrics |
+| Financial statements | Every printed line item, period, section, canonical mapping, and validation issue | Shows the original structure; only eligible evidence contributes to readiness |
+| Invoices (issued/received) | Canonical invoice envelope, line items, dynamic extra fields, raw labels, and page provenance | Visible as business evidence; not treated as cash movement until matched/confirmed |
+| Receipts and informal ledgers | Classified and evidence-reviewed; structured extraction is added only when their layout has a reliable parser | Visible with uncertainty; never silently added to scoring |
+| Registration, tax, projection, and identity documents | Classified document evidence and review state | Satisfy checklist requirements only when the required document type is actually present |
+
 ## Stage-by-stage
 
 ### 0. Upload
@@ -53,6 +63,19 @@ are preserved instead of dropped.
 
 Amounts are stored as integer pesewas. The parser owns facts; AI does not invent
 or rewrite them.
+
+#### Invoice envelope
+
+Invoices use the same provider-neutral strategy. The parser maps synonymous
+labels (for example `Bill no`, `Invoice #`, `Amount due`, and `VAT`) into a
+small canonical envelope: supplier, invoice number, invoice date, due date,
+currency, subtotal, tax, total, payment status, and line items. Monetary values
+retain their raw label, raw text, page, and extraction id. Any vendor-specific
+labels are kept in `extra_fields`, so a Cloudflare, Zoho, or future supplier
+layout does not require a new template. Deterministic checks flag missing totals,
+date inconsistencies, and subtotal/tax/total mismatches. An invoice total is
+never inferred. Invoice evidence is available to insights; it is not converted
+into operating transactions until a later matching/confirmation stage.
 
 ### S4 — Normalise
 

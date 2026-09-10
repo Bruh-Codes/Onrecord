@@ -20,6 +20,8 @@ from app.schemas.document import (
     DocumentDetail,
     FinancialStatement,
     FinancialStatementValue,
+    Invoice,
+    InvoiceLineItem,
     DocumentSummary,
     DocumentUploadTarget,
     EvidenceReviewDecision,
@@ -257,7 +259,12 @@ async def get_document(
             Extraction.field_path.like("financial_statements[%"),
         ).order_by(Extraction.field_path)
     )
-    return detail.model_copy(update={"financial_statements": _financial_statements(document, list(extractions))})
+    invoice_rows = await session.scalars(select(Extraction).where(
+        Extraction.document_id == document.id,
+        Extraction.superseded_by.is_(None),
+        Extraction.field_path.like("invoice.%"),
+    ).order_by(Extraction.field_path))
+    return detail.model_copy(update={"financial_statements": _financial_statements(document, list(extractions)), "invoice": _invoice(document, list(invoice_rows))})
 
 
 @router.post("/v1/documents/{document_id}/confirm", response_model=DocumentDetail)
@@ -366,3 +373,23 @@ def _financial_statements(document: Document, rows: list[Extraction]) -> list[Fi
             values=values,
         ))
     return output
+
+
+def _invoice(document: Document, rows: list[Extraction]) -> Invoice | None:
+    if not rows and "invoice" not in (document.quality_flags or {}):
+        return None
+    fields: dict[str, object] = {}
+    line_items: list[InvoiceLineItem] = []
+    for row in rows:
+        if row.field_path.startswith("invoice.line_items["):
+            value = row.value_json
+            line_items.append(InvoiceLineItem(extraction_id=row.id, page=row.page, **value))
+        elif row.field_path.startswith("invoice."):
+            fields[row.field_path.removeprefix("invoice.")] = row.value_json.get("value")
+    summary = (document.quality_flags or {}).get("invoice", {})
+    return Invoice(
+        fields=fields or summary.get("canonical_fields", {}),
+        extra_fields=summary.get("extra_fields", {}),
+        validation_issues=summary.get("validation_issues", []),
+        line_items=line_items,
+    )
