@@ -43,7 +43,7 @@ export default function SetupPage() {
 	}
 
 	return (
-		<div className="min-h-dvh flex flex-col animate-fade-in">
+		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 py-5 sm:px-10">
 				<span className="font-[family-name:var(--font-display)] text-[19px]">Onrecord</span>
 			</div>

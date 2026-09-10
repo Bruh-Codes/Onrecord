@@ -32,7 +32,11 @@ const NAV_GROUPS = [
 	{
 		label: "Manage",
 		items: [
-			{ href: "/counterparties", icon: <CounterpartiesIcon />, label: "Counterparties" },
+			{
+				href: "/counterparties",
+				icon: <CounterpartiesIcon />,
+				label: "Counterparties",
+			},
 			{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
 			{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
 		],
@@ -41,7 +45,9 @@ const NAV_GROUPS = [
 
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 	return (
-		<span className={`pointer-events-none invisible absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[12.5px] text-paper shadow-lg z-[200] ${showClass}`}>
+		<span
+			className={`pointer-events-none invisible absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[12.5px] text-paper shadow-lg z-[200] ${showClass}`}
+		>
 			{label}
 			<span className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-4 border-transparent border-r-ink" />
 		</span>
@@ -58,7 +64,11 @@ export function Sidebar() {
 	});
 	const [width, setWidth] = useState(MAX_WIDTH);
 	const [dragging, setDragging] = useState(false);
-	const drag = useRef({ startX: 0, startWidth: MAX_WIDTH, liveWidth: MAX_WIDTH });
+	const drag = useRef({
+		startX: 0,
+		startWidth: MAX_WIDTH,
+		liveWidth: MAX_WIDTH,
+	});
 
 	const effective = collapsed ? COLLAPSED_WIDTH : width;
 
@@ -128,20 +138,35 @@ export function Sidebar() {
 				>
 					<Image src={icon} alt="" width={26} height={26} />
 					{!liveCollapsed && <span className="font-display">Onrecord</span>}
-					{liveCollapsed && <Tooltip label="Onrecord home" showClass="group-hover/logo:visible" />}
+					{liveCollapsed && (
+						<Tooltip
+							label="Onrecord home"
+							showClass="group-hover/logo:visible"
+						/>
+					)}
 				</Link>
 
 				<div className="flex flex-col">
 					{NAV_GROUPS.map((group, groupIndex) => (
-						<div key={group.label} className={groupIndex > 0 ? "mt-3 border-t border-border pt-3" : undefined}>
+						<div
+							key={group.label}
+							className={
+								groupIndex > 0 ? "mt-3 border-t border-border pt-3" : undefined
+							}
+						>
 							{!liveCollapsed && (
-								<div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/40">
+								<div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase text-ink/40">
 									{group.label}
 								</div>
 							)}
 							<div className="flex flex-col gap-0.5">
 								{group.items.map((item) => (
-									<NavLink key={item.href} href={item.href} icon={item.icon} collapsed={liveCollapsed}>
+									<NavLink
+										key={item.href}
+										href={item.href}
+										icon={item.icon}
+										collapsed={liveCollapsed}
+									>
 										{item.label}
 									</NavLink>
 								))}
@@ -160,7 +185,9 @@ export function Sidebar() {
 			>
 				<span
 					className={`h-9 w-[3px] rounded-full transition-colors ${
-						dragging ? "bg-[#60a5fa]" : "bg-ink/25 group-hover/resize:bg-[#60a5fa]"
+						dragging
+							? "bg-[#60a5fa]"
+							: "bg-ink/25 group-hover/resize:bg-[#60a5fa]"
 					}`}
 				/>
 			</div>

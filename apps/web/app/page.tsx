@@ -55,7 +55,7 @@ export default async function LandingPage() {
 			</header>
 
 			<main className="flex-1">
-				<section className="max-w-[720px] mx-auto text-center px-6 pt-12 sm:pt-20 pb-14 sm:pb-20 animate-fade-in">
+				<section className="max-w-[720px] mx-auto text-center px-6 pt-12 sm:pt-20 pb-14 sm:pb-20">
 					<h1 className="font-[family-name:var(--font-display)] text-left sm:text-center text-4xl sm:text-[52px] leading-[1.05] m-0 mb-5">
 						When your records are messy, credit is out of reach
 					</h1>

@@ -36,7 +36,7 @@ export default function NearlyReadyPage() {
   ];
 
   return (
-    <div className="min-h-screen animate-fade-in">
+    <div className="min-h-screen">
       <div className="flex items-center px-4 sm:px-10 py-4 sm:py-5">
         <Link href="/dashboard" className="font-[family-name:var(--font-display)] text-lg">
           Onrecord
