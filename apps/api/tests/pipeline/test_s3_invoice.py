@@ -1,4 +1,5 @@
 from app.pipeline.s3_invoice import parse_invoice
+from app.services.document_processing.docling import DocumentCell, DocumentTable
 
 
 def test_invoice_parser_keeps_canonical_and_dynamic_fields() -> None:
@@ -26,3 +27,22 @@ def test_invoice_parser_does_not_invent_missing_total() -> None:
     parsed = parse_invoice("Supplier: Example Ltd\nSubtotal: GHS 20.00")
     assert parsed.get("total") is None
     assert "total_missing" in parsed.validation_issues
+
+
+def test_invoice_parser_reads_totals_from_docling_table_cells() -> None:
+    table = DocumentTable(
+        page=1,
+        row_count=3,
+        column_count=2,
+        cells=(
+            DocumentCell(0, 0, "Subtotal", 1, None),
+            DocumentCell(0, 1, "USD 100.00", 1, None),
+            DocumentCell(1, 0, "Tax", 1, None),
+            DocumentCell(1, 1, "USD 18.00", 1, None),
+            DocumentCell(2, 0, "Total", 1, None),
+            DocumentCell(2, 1, "USD 118.00", 1, None),
+        ),
+    )
+    parsed = parse_invoice("Supplier: Example Ltd", (table,))
+    assert parsed.get("total").value["amount_pesewas"] == 11800
+    assert parsed.validation_issues == []
