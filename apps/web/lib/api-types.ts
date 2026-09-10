@@ -134,6 +134,18 @@ export type Document = {
 	financial_statements?: FinancialStatement[];
 };
 
+export type AppNotification = {
+	id: string;
+	kind: string;
+	severity: "info" | "attention" | "warning";
+	title: string;
+	body: string;
+	href: string | null;
+	data: Record<string, unknown>;
+	read_at: string | null;
+	created_at: string;
+};
+
 export type InvoiceInsightItem = {
 	 document_id: string;
 	 filename: string;
@@ -232,5 +244,21 @@ export type Transaction = {
 	category_l1: string | null;
 	category_l2: string | null;
 	category_source: string | null;
+	category_confidence?: number | null;
 	flags: Record<string, unknown>;
+};
+
+export type TransactionReviewItem = Transaction & {
+	account_id: string;
+	document_id: string;
+	document_filename: string;
+	document_type: string | null;
+	provider_reference: string | null;
+	provenance: Record<string, unknown>;
+	ai_suggestion: {
+		category_l1: string;
+		category_l2: string | null;
+		confidence: number;
+		basis?: string;
+	} | null;
 };

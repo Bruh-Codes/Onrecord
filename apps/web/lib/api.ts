@@ -18,7 +18,9 @@ import type {
   Me,
   ReadinessScore,
   Transaction,
+  TransactionReviewItem,
   UploadTarget,
+  AppNotification,
 } from "./api-types";
 
 const API_BASE_URL =
@@ -119,6 +121,10 @@ export const api = {
     ).toString();
     return request<{ items: Transaction[]; total: number }>(`/v1/businesses/${businessId}/transactions${qs ? `?${qs}` : ""}`);
   },
+  listTransactionReviewQueue: (businessId: string, limit = 100) =>
+    request<TransactionReviewItem[]>(`/v1/businesses/${businessId}/transaction-review-queue?limit=${limit}`),
+  patchTransaction: (transactionId: string, body: { category_l1?: string; category_l2?: string | null; flags?: Record<string, unknown> }) =>
+    request<Transaction>(`/v1/transactions/${transactionId}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   // ---- counterparties ----
   listCounterparties: (businessId: string, params?: Record<string, string | number>) => {
@@ -143,6 +149,12 @@ export const api = {
     request<Gap>(`/v1/gaps/${gapId}/waive`, { method: "POST", body: JSON.stringify({ reason }) }),
   recompute: (businessId: string) => request<{ task_id: string; state: string }>(`/v1/businesses/${businessId}/recompute`, { method: "POST" }),
   getTask: (taskId: string) => request<{ task_id: string; state: string; progress: number; result: unknown }>(`/v1/tasks/${taskId}`),
+  listNotifications: (businessId: string, limit = 50) =>
+    request<{ items: AppNotification[]; unread_count: number }>(`/v1/businesses/${businessId}/notifications?limit=${limit}`),
+  markNotificationRead: (notificationId: string) =>
+    request<AppNotification>(`/v1/notifications/${notificationId}/read`, { method: "POST" }),
+  markAllNotificationsRead: (businessId: string) =>
+    request<{ updated: number }>(`/v1/businesses/${businessId}/notifications/read-all`, { method: "POST" }),
 };
 
 /** PUT file bytes to a presigned upload URL. A relative URL means the

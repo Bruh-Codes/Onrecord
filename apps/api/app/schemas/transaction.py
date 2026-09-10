@@ -20,7 +20,20 @@ class TransactionSummary(BaseModel):
     category_l1: str | None
     category_l2: str | None
     category_source: CategorySource | None
+    category_confidence: float | None = None
     flags: dict
+
+
+class TransactionReviewItem(TransactionSummary):
+    """A transaction with the provenance needed to make a classification decision."""
+
+    account_id: uuid.UUID
+    document_id: uuid.UUID
+    document_filename: str
+    document_type: str | None
+    provider_reference: str | None
+    provenance: dict
+    ai_suggestion: dict | None = None
 
 
 class TransactionPatch(BaseModel):

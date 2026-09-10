@@ -19,6 +19,7 @@ from app.models.enums import (
     ValueKind,
 )
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
+from app.models.notification import Notification
 from app.models.transaction import Counterparty, Transaction
 from app.models.user import User
 
@@ -50,6 +51,7 @@ __all__ = [
     "Gap",
     "Indicator",
     "ReadinessScore",
+    "Notification",
     "Counterparty",
     "Transaction",
     "User",

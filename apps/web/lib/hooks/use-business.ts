@@ -22,6 +22,8 @@ import type {
   ReadinessScore,
   Counterparty,
   Transaction,
+  TransactionReviewItem,
+  AppNotification,
 } from "@/lib/api-types";
 
 function useSessionToken(): string | null {
@@ -126,6 +128,7 @@ export function useDeleteDocument(businessId: string | null) {
         qc.invalidateQueries({ queryKey: ["coverage", businessId] }),
         qc.invalidateQueries({ queryKey: ["checklist", businessId] }),
         qc.invalidateQueries({ queryKey: ["gaps", businessId] }),
+        qc.invalidateQueries({ queryKey: ["notifications", businessId] }),
       ]);
     },
   });
@@ -159,6 +162,7 @@ export function useRecompute() {
       qc.invalidateQueries({ queryKey: ["indicators"] });
       qc.invalidateQueries({ queryKey: ["checklist"] });
       qc.invalidateQueries({ queryKey: ["gaps"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -191,10 +195,69 @@ export function useIndicatorsMap(businessId: string | null) {
   return { ...q, map };
 }
 
+export function useTransactionReviewQueue(businessId: string | null) {
+	return useQuery<TransactionReviewItem[]>({
+		queryKey: ["transaction-review-queue", businessId],
+		queryFn: () => api.listTransactionReviewQueue(businessId!),
+		enabled: !!businessId,
+	});
+}
+
+export function useClassifyTransaction(businessId: string | null) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			transactionId,
+			category_l1,
+			category_l2,
+		}: {
+			transactionId: string;
+			category_l1: string;
+			category_l2?: string | null;
+		}) => api.patchTransaction(transactionId, { category_l1, category_l2 }),
+		onSuccess: async () => {
+			await Promise.all([
+				qc.invalidateQueries({ queryKey: ["transaction-review-queue", businessId] }),
+				qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
+				qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
+				qc.invalidateQueries({ queryKey: ["score", businessId] }),
+				qc.invalidateQueries({ queryKey: ["coverage", businessId] }),
+				qc.invalidateQueries({ queryKey: ["gaps", businessId] }),
+				qc.invalidateQueries({ queryKey: ["notifications", businessId] }),
+			]);
+		},
+	});
+}
+
 export function useInvoiceInsights(businessId: string | null) {
   return useQuery({
     queryKey: ["invoice-insights", businessId],
     queryFn: () => api.getInvoiceInsights(businessId!),
     enabled: !!businessId,
   });
+}
+
+export function useNotifications(businessId: string | null) {
+	return useQuery<{ items: AppNotification[]; unread_count: number }>({
+		queryKey: ["notifications", businessId],
+		queryFn: () => api.listNotifications(businessId!),
+		enabled: !!businessId,
+		refetchInterval: 30_000,
+	});
+}
+
+export function useMarkNotificationRead(businessId: string | null) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (notificationId: string) => api.markNotificationRead(notificationId),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", businessId] }),
+	});
+}
+
+export function useMarkAllNotificationsRead(businessId: string | null) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: () => api.markAllNotificationsRead(businessId!),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", businessId] }),
+	});
 }
