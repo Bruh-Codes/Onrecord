@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { PillButton } from "@/components/ui/PillButton";
 import { Badge } from "@/components/ui/Badge";
-import { DocumentsIcon } from "@/components/icons";
+import { DocumentsIcon, TrashIcon, XIcon } from "@/components/icons";
 import { DocumentRowSkeleton } from "@/components/ui/Skeleton";
 import { FinancialStatementView } from "@/components/documents/FinancialStatementView";
 import type { Document, DocumentStatus } from "@/lib/api-types";
@@ -50,6 +50,12 @@ function evidenceReviewMessage(document: Document): string | null {
 	return review.summary || "This document will be reviewed before it contributes to readiness scoring.";
 }
 
+function canDelete(document: Document) {
+	// Keep the action available for incomplete/problematic uploads, but avoid
+	// presenting a destructive action for clean extracted evidence.
+	return document.status !== "extracted" || needsReview(document);
+}
+
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
 	dateStyle: "short",
 	timeStyle: "medium",
@@ -72,6 +78,7 @@ export function UploadedDocumentsList({
 	removingId: string | null;
 }) {
 	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
 	if (loading) {
 		return (
 			<div
@@ -137,18 +144,65 @@ export function UploadedDocumentsList({
 								? "Not financial data"
 								: STATUS_LABEL[doc.status]}
 						</Badge>
-						<PillButton
-							variant="danger"
-							onClick={() => onRemove(doc.id)}
-							disabled={removingId === doc.id}
-						>
-							{removingId === doc.id ? "Removing..." : "Remove"}
-						</PillButton>
+						{canDelete(doc) && (
+							<button
+								type="button"
+								aria-label={`Delete ${doc.filename}`}
+								title="Delete document"
+								onClick={() => setPendingDelete(doc)}
+								disabled={removingId === doc.id}
+								className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-negative/35 text-negative transition-colors hover:bg-negative-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative/40 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								<TrashIcon />
+							</button>
+						)}
 					</div>
 				</div>
 				{expandedId === doc.id && <FinancialStatementView documentId={doc.id} />}
 				</div>
 			))}
+			{pendingDelete && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 px-4"
+					role="presentation"
+					onMouseDown={(event) => {
+						if (event.target === event.currentTarget) setPendingDelete(null);
+					}}
+				>
+					<div
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby="delete-document-title"
+						className="relative w-full max-w-[420px] rounded-2xl border border-border bg-surface p-5 shadow-card animate-slide-in"
+					>
+						<button
+							type="button"
+							aria-label="Close confirmation"
+							onClick={() => setPendingDelete(null)}
+							className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/55 hover:bg-panel hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
+						>
+							<XIcon />
+						</button>
+						<h2 id="delete-document-title" className="m-0 pr-8 text-lg font-semibold">Delete document?</h2>
+						<p className="mt-2 mb-5 text-sm leading-relaxed text-ink/65">
+							This will remove <span className="font-semibold text-ink">{pendingDelete.filename}</span> from your active documents and update your insights. The original record is retained securely for audit purposes.
+						</p>
+						<div className="flex justify-end gap-2">
+							<PillButton variant="secondary" onClick={() => setPendingDelete(null)}>Cancel</PillButton>
+							<PillButton
+								variant="danger"
+								disabled={removingId === pendingDelete.id}
+								onClick={() => {
+									onRemove(pendingDelete.id);
+									setPendingDelete(null);
+								}}
+							>
+								{removingId === pendingDelete.id ? "Deleting..." : "Delete document"}
+							</PillButton>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

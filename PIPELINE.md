@@ -66,16 +66,17 @@ or rewrite them.
 
 #### Invoice envelope
 
-Invoices use the same provider-neutral strategy. The parser maps synonymous
-labels (for example `Bill no`, `Invoice #`, `Amount due`, and `VAT`) into a
-small canonical envelope: supplier, invoice number, invoice date, due date,
-currency, subtotal, tax, total, payment status, and line items. Monetary values
-retain their raw label, raw text, page, and extraction id. Any vendor-specific
-labels are kept in `extra_fields`, so a Cloudflare, Zoho, or future supplier
-layout does not require a new template. Deterministic checks flag missing totals,
-date inconsistencies, and subtotal/tax/total mismatches. An invoice total is
-never inferred. Invoice evidence is available to insights; it is not converted
-into operating transactions until a later matching/confirmation stage.
+Invoices use the same provider-neutral strategy. Docling supplies text, layout,
+and table cells; the configured OpenAI model semantically maps that evidence to
+a small canonical envelope: supplier, invoice number, invoice date, due date,
+currency, subtotal, tax, total, payment status, and line items. Every returned
+field must retain its raw value and source reference. Any vendor-specific labels
+are kept in `extra_fields`, so a Cloudflare, Zoho, or future supplier layout does
+not require a template or a growing regex list. Deterministic checks only flag
+missing totals, date inconsistencies, and subtotal/tax/total mismatches. An
+invoice total is never inferred. Invoice evidence is available to insights; it
+is not converted into operating transactions until a later matching/confirmation
+stage.
 
 ### S4 — Normalise
 

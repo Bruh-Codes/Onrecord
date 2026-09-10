@@ -158,6 +158,14 @@ export function XIcon({ className }: IconProps) {
   );
 }
 
+export function TrashIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7l1-3h4l1 3" />
+    </svg>
+  );
+}
+
 export function GoogleLogo({ className }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" className={className}>
