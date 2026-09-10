@@ -88,6 +88,7 @@ def parse_invoice(text: str, tables: tuple[DocumentTable, ...] = ()) -> ParsedIn
             result.extra_fields[_clean_key(label)] = raw
 
     _infer_supplier_from_header(result, lines)
+    _extract_table_fields(result, tables)
     _infer_currency(result, lines)
     result.line_items.extend(_table_items(tables))
     _validate(result)
@@ -202,6 +203,37 @@ def _table_items(tables: tuple[DocumentTable, ...]) -> list[InvoiceLineItem]:
             amounts = [value for value in amounts if value]
             items.append(InvoiceLineItem(description, None, None, amounts[-1]["amount_pesewas"] if amounts else None, raw, table.page))
     return items
+
+
+def _extract_table_fields(result: ParsedInvoice, tables: tuple[DocumentTable, ...]) -> None:
+    """Read label/value rows that Docling keeps in table cells rather than markdown."""
+    for table in tables:
+        rows: dict[int, list[str]] = {}
+        for cell in table.cells:
+            rows.setdefault(cell.row, []).append(cell.text.strip())
+        for values in rows.values():
+            cells = [value for value in values if value]
+            if len(cells) < 2:
+                continue
+            label_index = next((index for index, value in enumerate(cells) if _canonical_label(value)), None)
+            if label_index is None:
+                continue
+            label = cells[label_index]
+            key = _canonical_label(label)
+            raw = " ".join(cells[label_index + 1:])
+            if not key or not raw:
+                continue
+            if key in {"subtotal", "tax", "total"}:
+                money = _parse_money(raw)
+                if money:
+                    _add(result, key, money, raw, label, table.page)
+            elif key in {"invoice_date", "due_date"}:
+                parsed = _parse_date(raw)
+                if parsed:
+                    _add(result, key, parsed.isoformat(), raw, label, table.page)
+            elif key in {"supplier", "invoice_number", "payment_status", "currency"}:
+                value = _status(raw) if key == "payment_status" else raw
+                _add(result, key, value.upper() if key == "currency" else value, raw, label, table.page)
 
 
 def _validate(result: ParsedInvoice) -> None:
