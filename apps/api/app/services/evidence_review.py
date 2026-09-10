@@ -56,6 +56,7 @@ def review_extracted_document(
     extracted_text: str,
     extraction_error: str | None = None,
     row_count: int | None = None,
+    review_context: dict[str, Any] | None = None,
 ) -> EvidenceReview:
     """Return a review case for the current extraction attempt.
 
@@ -94,6 +95,7 @@ def review_extracted_document(
             doc_type=doc_type,
             page_count=page_count,
             row_count=row_count,
+            review_context=review_context,
             text=sanitized,
         )
         return _validated_review(payload, input_hash=input_hash, model=settings.financial_mapping_model)
@@ -110,7 +112,7 @@ def review_extracted_document(
         )
 
 
-def _call_model(*, api_key: str, model: str, doc_type: str | None, page_count: int | None, row_count: int | None, text: str) -> dict:
+def _call_model(*, api_key: str, model: str, doc_type: str | None, page_count: int | None, row_count: int | None, review_context: dict[str, Any] | None, text: str) -> dict:
     response = httpx.post(
         "https://api.openai.com/v1/responses",
         headers={"authorization": f"Bearer {api_key}", "content-type": "application/json"},
@@ -120,7 +122,7 @@ def _call_model(*, api_key: str, model: str, doc_type: str | None, page_count: i
             "reasoning": {"effort": "low"},
             "input": [
                 {"role": "developer", "content": _INSTRUCTIONS},
-                {"role": "user", "content": json.dumps({"doc_type": doc_type, "page_count": page_count, "row_count": row_count, "extracted_structure": text})},
+                {"role": "user", "content": json.dumps({"doc_type": doc_type, "page_count": page_count, "row_count": row_count, "review_context": review_context or {}, "extracted_structure": text})},
             ],
             "text": {"format": {"type": "json_schema", "name": "evidence_review", "strict": True, "schema": _schema()}},
             "max_output_tokens": 2500,
@@ -190,4 +192,8 @@ in this limited text-only review. The tokens <amount>, <date>, and <id> are
 intentional privacy redactions added by the application; they are not malformed
 document content, missing invoice fields, or evidence of tampering. Never flag
 those tokens or the fact that numeric values were redacted. Never claim that a
-document is forged; state the signal and why it needs review."""
+document is forged; state the signal and why it needs review. When review_context
+contains a structured extraction summary, use it as the primary evidence for
+field completeness; do not call a field incomplete merely because its label is
+not visible in the redacted text. Only flag explicit validation issues or a
+missing source-backed field."""
