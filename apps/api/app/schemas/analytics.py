@@ -26,6 +26,31 @@ class Coverage(BaseModel):
     continuous_months: int
 
 
+class InvoiceInsightItem(BaseModel):
+    document_id: uuid.UUID
+    filename: str
+    kind: str
+    supplier: str | None = None
+    invoice_number: str | None = None
+    invoice_date: date | None = None
+    due_date: date | None = None
+    currency: str | None = None
+    subtotal_pesewas: int | None = None
+    tax_pesewas: int | None = None
+    total_pesewas: int | None = None
+    payment_status: str | None = None
+    line_item_count: int = 0
+    validation_issues: list[str] = Field(default_factory=list)
+
+
+class InvoiceInsights(BaseModel):
+    total_documents: int
+    issued_count: int
+    received_count: int
+    totals_by_currency: dict[str, dict[str, int]]
+    items: list[InvoiceInsightItem]
+
+
 class IndicatorOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
