@@ -5,36 +5,109 @@ import Link from "next/link";
 import { BackArrowIcon } from "@/components/icons";
 import { ReviewDetailPanel } from "@/components/reviewer/ReviewDetailPanel";
 import { ReviewTable } from "@/components/reviewer/ReviewTable";
-import { useAppActions, useAppState } from "@/lib/app-state";
-import { getReviewItems } from "@/lib/derived";
+import {
+	useClassifyTransaction,
+	useMe,
+	useTransactionReviewQueue,
+} from "@/lib/hooks/use-business";
 
 export default function ReviewerQueuePage() {
-  const state = useAppState();
-  const { setReviewStatus } = useAppActions();
-  const items = getReviewItems(state);
-  const [selectedId, setSelectedId] = useState(items[0].id);
+	const { businessId } = useMe();
+	const queue = useTransactionReviewQueue(businessId);
+	const classify = useClassifyTransaction(businessId);
+	const items = queue.data ?? [];
+	const [selectedIdState, setSelectedId] = useState<string | null>(null);
+	const [saved, setSaved] = useState(false);
+	const selectedId = items.some((item) => item.id === selectedIdState)
+		? selectedIdState
+		: (items[0]?.id ?? null);
+	const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+	const openCount = items.length;
+	const handleSave = (category: string) => {
+		if (!selectedItem) return;
+		setSaved(false);
+		classify.mutate(
+			{ transactionId: selectedItem.id, category_l1: category },
+			{ onSuccess: () => setSaved(true) },
+		);
+	};
 
-  const selectedItem = items.find((i) => i.id === selectedId) ?? items[0];
-  const openCount = items.filter((i) => i.status === "Open").length;
+	return (
+		<div className="px-10 py-8 pb-16 max-w-[1200px] mx-auto animate-fade-in">
+			<Link
+				href="/overview"
+				className="text-[13px] inline-flex items-center gap-1 mb-3.5"
+			>
+				<BackArrowIcon />
+				Back to overview
+			</Link>
+			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-ink/55">
+				Classification queue
+			</div>
 
-  return (
-    <div className="px-10 py-8 pb-16 max-w-[1200px] mx-auto animate-fade-in">
-      <Link href="/dashboard" className="text-[13px] inline-flex items-center gap-1 mb-3.5">
-        <BackArrowIcon />
-        Back to owner view
-      </Link>
-      <div className="mb-1.5 text-[11px] tracking-wider uppercase text-ink/55">Review queue</div>
-      <h1 className="text-[30px] m-0 mb-1.5">Low-confidence extractions</h1>
-      <p className="text-sm opacity-75 m-0 mb-6.5">{openCount} items need a human look before they enter a ledger.</p>
+			<h1 className="text-[30px] m-0 mb-1.5">
+				Resolve unclassified transactions
+			</h1>
+			<p className="text-sm opacity-75 m-0 mb-6.5">
+				{openCount} unresolved transactions in the current analysis window need
+				a category before they can improve revenue, expense, or cashflow
+				insights. Internal transfers, duplicates, FX, and reversals are
+				excluded.
+			</p>
 
-      <div className="grid gap-6 items-start" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
-        <ReviewTable items={items} selectedId={selectedId} onSelect={setSelectedId} />
-        <ReviewDetailPanel
-          item={selectedItem}
-          onApprove={() => setReviewStatus(selectedItem.id, "Approved")}
-          onFlag={() => setReviewStatus(selectedItem.id, "Flagged")}
-        />
-      </div>
-    </div>
-  );
+			{queue.isLoading ? (
+				<div className="rounded-[20px] bg-panel p-6 text-sm text-ink/65">
+					Loading transactions that need review…
+				</div>
+			) : null}
+			{queue.isError ? (
+				<div className="rounded-[20px] border border-negative/30 bg-negative-bg p-6 text-sm text-negative">
+					We could not load the classification queue. Try refreshing the page.
+				</div>
+			) : null}
+			{!queue.isLoading && !queue.isError && items.length === 0 ? (
+				<div className="rounded-[20px] bg-panel p-8 text-center">
+					<div className="text-lg font-semibold mb-1">
+						No pending classification decisions
+					</div>
+					<div className="text-sm text-ink/60 mb-4">
+						New statement uploads will appear here when the model cannot make a
+						confident decision. Transactions deliberately left unclassified
+						remain visible in your insights.
+					</div>
+					<Link
+						href="/overview"
+						className="inline-flex rounded-full bg-ink px-4 py-2 text-sm text-paper"
+					>
+						Return to overview
+					</Link>
+				</div>
+			) : null}
+			{selectedItem ? (
+				<div
+					className="grid gap-6 items-start"
+					style={{ gridTemplateColumns: "1.3fr 1fr" }}
+				>
+					<div>
+						<ReviewTable
+							items={items}
+							selectedId={selectedId}
+							onSelect={setSelectedId}
+						/>
+						{saved && (
+							<div className="mt-3 text-xs text-positive">
+								Saved. The queue and overview are refreshing.
+							</div>
+						)}
+					</div>
+					<ReviewDetailPanel
+						key={selectedItem.id}
+						item={selectedItem}
+						onSave={handleSave}
+						busy={classify.isPending}
+					/>
+				</div>
+			) : null}
+		</div>
+	);
 }

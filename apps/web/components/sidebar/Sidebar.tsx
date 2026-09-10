@@ -10,7 +10,6 @@ import {
 	GapsIcon,
 	HomeIcon,
 	OverviewIcon,
-	ReviewerIcon,
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
@@ -31,19 +30,30 @@ const NAV_ITEMS = [
 
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 	return (
-		<span className={`pointer-events-none invisible absolute left-full top-1/2 ml-2.5 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[12.5px] text-paper shadow-lg z-50 ${showClass}`}>
+		<span className={`pointer-events-none invisible absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[12.5px] text-paper shadow-lg z-[200] ${showClass}`}>
 			{label}
+			<span className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-4 border-transparent border-r-ink" />
 		</span>
 	);
 }
 
 export function Sidebar() {
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("sidebar-collapsed");
+			if (saved !== null) return JSON.parse(saved);
+		}
+		return true;
+	});
 	const [width, setWidth] = useState(MAX_WIDTH);
 	const [dragging, setDragging] = useState(false);
 	const drag = useRef({ startX: 0, startWidth: MAX_WIDTH, liveWidth: MAX_WIDTH });
 
 	const effective = collapsed ? COLLAPSED_WIDTH : width;
+
+	useEffect(() => {
+		localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
+	}, [collapsed]);
 
 	useEffect(() => {
 		if (!dragging) return;
@@ -72,13 +82,19 @@ export function Sidebar() {
 	}, [dragging]);
 
 	function startDrag(e: React.PointerEvent) {
+		if (collapsed) return;
 		e.preventDefault();
 		drag.current.startX = e.clientX;
 		drag.current.startWidth = effective;
 		drag.current.liveWidth = effective;
-		setCollapsed(false);
 		setDragging(true);
 	}
+
+	function toggleCollapsed() {
+		setCollapsed((c: boolean) => !c);
+	}
+
+	const liveCollapsed = dragging ? drag.current.liveWidth < COLLAPSE_THRESHOLD : collapsed;
 
 	return (
 		<div
@@ -89,53 +105,40 @@ export function Sidebar() {
 		>
 			<aside
 				className={`flex h-full w-full shrink-0 flex-col bg-panel border-r ${
-					dragging ? "border-[#60a5fa]" : "border-border group-hover:border-[#60a5fa]"
-				} ${collapsed ? "overflow-visible px-2.5" : "overflow-y-auto px-3.5"}`}
+					dragging ? "border-[#60a5fa]" : "border-border"
+				} ${liveCollapsed ? "overflow-visible px-2.5" : "overflow-y-auto px-3.5"}`}
 			>
 				<Link
 					href="/dashboard"
-					aria-label={collapsed ? "Onrecord home" : undefined}
+					aria-label={liveCollapsed ? "Onrecord home" : undefined}
 					className={`group/logo relative flex items-center pb-5 ${
-						collapsed ? "justify-center pt-1" : "gap-2 px-2"
+						liveCollapsed ? "justify-center pt-1" : "gap-2 px-2"
 					}`}
 				>
 					<Image src={icon} alt="" width={26} height={26} />
-					{!collapsed && <span className="font-display">Onrecord</span>}
-					{collapsed && <Tooltip label="Onrecord home" showClass="group-hover/logo:visible" />}
+					{!liveCollapsed && <span className="font-display">Onrecord</span>}
+					{liveCollapsed && <Tooltip label="Onrecord home" showClass="group-hover/logo:visible" />}
 				</Link>
 
 				<div className="flex flex-col gap-0.5">
 					{NAV_ITEMS.map((item) => (
-						<NavLink key={item.href} href={item.href} icon={item.icon} collapsed={collapsed}>
+						<NavLink key={item.href} href={item.href} icon={item.icon} collapsed={liveCollapsed}>
 							{item.label}
 						</NavLink>
 					))}
 				</div>
-
-				<Link
-					href="/reviewer"
-					aria-label={collapsed ? "Reviewer queue" : undefined}
-					className={`group/reviewer relative mt-auto flex items-center border-t border-border text-[13px] opacity-75 hover:opacity-100 ${
-						collapsed
-							? "justify-center py-3"
-							: "gap-2.5 px-2.5 py-2.5"
-					}`}
-				>
-					<ReviewerIcon />
-					{!collapsed && "Reviewer queue"}
-					{collapsed && <Tooltip label="Reviewer queue" showClass="group-hover/reviewer:visible" />}
-				</Link>
 			</aside>
 
 			<div
 				role="separator"
 				aria-orientation="vertical"
 				onPointerDown={startDrag}
-				className="absolute inset-y-0 -right-[7px] z-20 flex w-[14px] cursor-col-resize items-center justify-center"
+				onDoubleClick={toggleCollapsed}
+				className="group/resize absolute inset-y-0 -right-[7px] z-20 flex w-[14px] cursor-col-resize items-center justify-center"
 			>
 				<span
 					className={`h-9 w-[3px] rounded-full transition-colors ${
-						dragging ? "bg-[#60a5fa]" : "bg-ink/25 group-hover:bg-[#60a5fa]"
+						dragging ? "bg-[#60a5fa]" : "bg-ink/25 group-hover/resize:bg-[#60a5fa]"
 					}`}
 				/>
 			</div>

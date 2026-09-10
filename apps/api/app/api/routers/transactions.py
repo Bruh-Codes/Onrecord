@@ -14,6 +14,7 @@ from app.models.transaction import Transaction
 from app.schemas.common import Page
 from app.schemas.transaction import TransactionDetail, TransactionPatch, TransactionReviewItem, TransactionSummary
 from app.services.audit import write_audit_event
+from app.services.coverage import build_coverage
 
 router = APIRouter(tags=["transactions"])
 
@@ -31,20 +32,35 @@ async def transaction_review_queue(
     claims: Claims = Depends(require_business_access),
     session: AsyncSession = Depends(get_session),
 ) -> list[TransactionReviewItem]:
-    """Return active transactions which still need a category decision.
+    """Return active unclassified transactions represented by Overview.
 
     The queue is deliberately transaction-level, but sorted by amount so a
-    reviewer resolves the largest impact first. The document join keeps the
-    source visible without ever exposing soft-deleted statement rows.
+    reviewer resolves the largest impact first. It uses the same analysis
+    window and transaction exclusions as Overview so the queue is reconcilable
+    with its unclassified value. The document join keeps the source visible
+    without ever exposing soft-deleted statement rows.
     """
+    coverage = await build_coverage(session, business_id)
+    analysis_window = coverage.get("analysis_window") or {}
+    window_start = analysis_window.get("from")
+    window_end = analysis_window.get("to")
+    if not window_start or not window_end:
+        return []
+
+    exclusions = [
+        func.coalesce(Transaction.flags[flag].as_boolean(), False).is_(False)
+        for flag in ("duplicate", "internal_transfer", "fx", "reversal")
+    ]
     rows = (await session.execute(
         select(Transaction, Document)
         .join(Document, Transaction.document_id == Document.id)
         .where(
             Transaction.business_id == business_id,
             Document.deleted_at.is_(None),
+            Transaction.occurred_on >= date.fromisoformat(window_start),
+            Transaction.occurred_on <= date.fromisoformat(window_end),
+            *exclusions,
             or_(Transaction.category_l1.is_(None), Transaction.category_l1 == "unknown"),
-            func.coalesce(Transaction.flags["classification_reviewed"].as_boolean(), False).is_(False),
         )
         .order_by(Transaction.amount_pesewas.desc(), Transaction.occurred_on.desc())
         .limit(limit)

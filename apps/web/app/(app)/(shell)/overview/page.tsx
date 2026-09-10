@@ -17,6 +17,7 @@ import { MetricStat } from "@/components/overview/MetricStat";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { InvoiceInsightsPanel } from "@/components/overview/InvoiceInsightsPanel";
 import { useState } from "react";
+import Link from "next/link";
 
 type OverviewMode =
 	| "executive"
@@ -151,9 +152,9 @@ export default function OverviewPage() {
 	);
 	const selectedRevenuePoints = seriesToPoints(selectedRevenueSeries);
 	const selectedCashflowPoints = seriesToPoints(selectedCashflowSeries);
-	const selectedNetCashflowPoints = seriesToPoints(selectedNetCashflow);
 	const showCash = sourceScope === "statements";
 	const showInvoices = sourceScope === "invoices";
+	const hasUnclassified = unclassified?.status !== "insufficient_data" && (unclassified?.v ?? 0) > 0;
 
 	const viewSelect = (
 		<label className="flex items-center gap-2 text-[13px] text-ink/65">
@@ -230,6 +231,11 @@ export default function OverviewPage() {
 							breakdown={transactionBreakdown}
 							months={periodMonths}
 						/>
+						{hasUnclassified && (
+							<Link href="/reviewer" className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+								Review unclassified transactions <span aria-hidden="true">→</span>
+							</Link>
+						)}
 					</div>
 					<div>
 						<div className="mb-4">{periodSelect}</div>
