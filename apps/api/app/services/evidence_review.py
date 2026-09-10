@@ -196,7 +196,5 @@ document is forged; state the signal and why it needs review. When review_contex
 contains a structured extraction summary, use it as the primary evidence for
 field completeness; do not call a field incomplete merely because its label is
 not visible in the redacted text or because OCR put a label and value on
-different lines. For an invoice with required_fields_complete=true and an empty
-validation_issues list, return clear unless there is an explicit contradiction
-or an unsupported source reference. Only flag explicit validation issues or a
-missing source-backed field."""
+different lines. Only flag explicit validation issues or a missing source-backed
+field; absent optional invoice fields are not an extraction failure."""
