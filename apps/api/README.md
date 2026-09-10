@@ -49,6 +49,30 @@ balances, dates, or account identifiers, and it cannot alter extracted facts.
 Re-running recompute after enabling `OPENAI_API_KEY` applies the model to
 existing unresolved transactions as well as newly ingested documents.
 
+### Evidence review and scoring eligibility
+
+Document processing is staged as `upload → Docling extraction → classification →
+deterministic facts → AI evidence review → recompute → insights and readiness
+score → human review`. The evidence-review stage sends only a sanitized,
+structure-focused representation to OpenAI. It returns a strict status,
+risk level, summary, and bounded findings with reasons and evidence references;
+it never writes amounts, balances, dates, transactions, indicators, or scores.
+
+`clear` evidence is eligible for readiness scoring. `pending`, `warning`, and
+`error` evidence remains visible in business insights but is excluded from the
+readiness score until an authenticated reviewer or admin resolves it through:
+
+```text
+GET  /v1/businesses/{business_id}/evidence-reviews
+GET  /v1/documents/{document_id}/evidence-review
+POST /v1/documents/{document_id}/evidence-review/resolve
+```
+
+The resolve endpoint accepts `{"decision":"approved"|"rejected","note":"..."}`
+and queues a recompute. Review decisions are audit logged. Soft-deleted
+documents are excluded from review queries and scoring. A review signal is not
+a claim that a document is forged; it explains why human review is required.
+
 ## Auth
 
 `apps/api` holds no credentials and issues nothing. Better Auth (`apps/web`)
@@ -131,8 +155,9 @@ createdb -h localhost -p 5433 -U sme sme
 ```
 
 The worker also exposes a `ping` task for connectivity checks. Its production
-document task is `ingest_document.s1`; it runs Docling and persists the current
-statement/financial-statement extraction stages described above.
+document task is `ingest_document.s1`; it runs Docling and persists dynamic
+statement, financial-statement, and invoice extraction. Invoice results expose
+canonical fields plus provider-specific extra fields and line-item provenance.
 
 ## Tests
 

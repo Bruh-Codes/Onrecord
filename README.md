@@ -47,6 +47,9 @@ equity, and similar fields). The parser never invents totals or transactions
 when a value is not printed. Unsupported or ambiguous files remain flagged for
 review.
 
+For a plain-language explanation of each stage, the AI evidence gate, scoring
+eligibility, and human review flow, see [`PIPELINE.md`](./PIPELINE.md).
+
 In Railway production, the API and worker must share the same S3-compatible
 bucket settings (`STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY`,
 `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`, `STORAGE_REGION`). The worker runs with

@@ -96,17 +96,22 @@ async def build_coverage(session: AsyncSession, business_id: uuid.UUID) -> dict:
     return _assemble(accounts, docs, link_rows)
 
 
-def build_coverage_sync(session: Session, business_id: uuid.UUID) -> dict:
+def build_coverage_sync(
+    session: Session,
+    business_id: uuid.UUID,
+    document_ids: set[uuid.UUID] | None = None,
+) -> dict:
     """Sync coverage computation, used by the Celery worker."""
     accounts = session.scalars(select(Account).where(Account.business_id == business_id)).all()
-    docs = session.scalars(
-        select(Document).where(
-            Document.business_id == business_id,
-            Document.period_start.is_not(None),
-            Document.period_end.is_not(None),
-            Document.deleted_at.is_(None),
-        )
-    ).all()
+    conditions = [
+        Document.business_id == business_id,
+        Document.period_start.is_not(None),
+        Document.period_end.is_not(None),
+        Document.deleted_at.is_(None),
+    ]
+    if document_ids is not None:
+        conditions.append(Document.id.in_(document_ids))
+    docs = session.scalars(select(Document).where(*conditions)).all()
     link_rows = []
     if docs:
         doc_ids = [d.id for d in docs]

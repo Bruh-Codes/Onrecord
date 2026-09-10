@@ -1,4 +1,5 @@
 import { formatGhs, formatRatio } from "@/lib/format";
+import { InfoHint } from "./InfoHint";
 
 type BreakdownItem = {
   key: string;
@@ -45,7 +46,10 @@ export function TransactionValueBreakdown({
 
   return (
     <div>
-      <div className="text-sm font-semibold mb-3.5">Transaction value</div>
+      <div className="flex items-center gap-1.5 text-sm font-semibold mb-3.5">
+        Transaction value
+        <InfoHint text="The total value of non-internal transactions in the selected period, split by category. Unclassified values need review before they can be used as revenue or expense." />
+      </div>
       <div className="flex h-6 rounded-lg overflow-hidden mb-4 bg-border/50">
         {hasData ? (
           <>

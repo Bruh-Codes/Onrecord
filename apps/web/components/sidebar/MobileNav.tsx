@@ -12,6 +12,7 @@ import {
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
 	{ href: "/overview", label: "Overview", icon: OverviewIcon },
+	{ href: "/readiness", label: "Readiness", icon: GapsIcon },
 	{ href: "/documents", label: "Documents", icon: DocumentsIcon },
 	{ href: "/gaps", label: "Gaps", icon: GapsIcon },
 ];

@@ -73,7 +73,51 @@ class FinancialStatement(BaseModel):
     values: list[FinancialStatementValue]
 
 
+class InvoiceLineItem(BaseModel):
+    extraction_id: uuid.UUID
+    description: str
+    quantity: str | None = None
+    unit_price_pesewas: int | None = None
+    line_total_pesewas: int | None = None
+    raw: dict[str, str]
+    page: int | None = None
+
+
+class Invoice(BaseModel):
+    fields: dict[str, Any]
+    extra_fields: dict[str, str] = Field(default_factory=dict)
+    validation_issues: list[str] = Field(default_factory=list)
+    line_items: list[InvoiceLineItem] = Field(default_factory=list)
+
+
 class DocumentDetail(DocumentSummary):
     quality_flags: dict
     page_count: int | None
     financial_statements: list[FinancialStatement] = Field(default_factory=list)
+    invoice: Invoice | None = None
+
+
+class EvidenceReviewFinding(BaseModel):
+    code: str
+    severity: str
+    reason: str
+    evidence_ref: str
+
+
+class EvidenceReviewOut(BaseModel):
+    document_id: uuid.UUID
+    business_id: uuid.UUID
+    status: str
+    risk_level: str
+    scoring_eligible: bool
+    summary: str
+    findings: list[EvidenceReviewFinding]
+    model: str | None
+    input_hash: str
+    reviewed_by: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+
+
+class EvidenceReviewDecision(BaseModel):
+    decision: Literal["approved", "rejected"]
+    note: str = Field(min_length=1, max_length=1000)

@@ -29,7 +29,10 @@ export function GapsAndCoverage({
 	return (
 		<div className="grid gap-[52px] grid-cols-1 lg:grid-cols-[1.3fr_1fr_1fr]">
 			<div>
-				<div className="text-sm font-semibold mb-3">Open gaps</div>
+				<div className="text-sm font-semibold mb-1">Credit readiness gaps</div>
+				<div className="text-xs opacity-60 mb-2.5">
+					Evidence needed for a lender-ready application; these do not remove your business insights.
+				</div>
 				{gaps.slice(0, 4).map((gap) => (
 					<div key={gap.id} className="py-3 border-b border-ink/8">
 						<div className="flex justify-between items-start gap-2.5">

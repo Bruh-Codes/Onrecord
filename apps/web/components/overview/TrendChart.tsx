@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import type { SeriesPoint } from "@/lib/types";
+import { InfoHint } from "./InfoHint";
 
 const VIEW_WIDTH = 320;
 const VIEW_HEIGHT = 90;
+
+const CHART_INFO: Record<string, string> = {
+	"Operating cashflow": "Monthly revenue inflows minus operating expenses. A negative value means operating outflows exceeded operating inflows.",
+	"Net cashflow": "Monthly total cash inflows minus total cash outflows after excluded activity is removed.",
+};
 
 export function TrendChart({
 	title,
@@ -12,16 +18,19 @@ export function TrendChart({
 	series,
 	color,
 	idleCaption,
+	info,
 }: {
 	title: string;
 	totalLabel: string;
 	series: SeriesPoint[];
 	color: string;
 	idleCaption: string;
+	info?: string;
 }) {
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const hovered = hoverIndex != null ? series[hoverIndex] : null;
 	const hasData = series.length > 0;
+	const isNegative = totalLabel.includes("-");
 	const linePoints = hasData
 		? series.map((p) => `${p.x},${p.y}`).join(" ")
 		: `0,${VIEW_HEIGHT / 2} ${VIEW_WIDTH},${VIEW_HEIGHT / 2}`;
@@ -30,14 +39,22 @@ export function TrendChart({
 		<div>
 			<div className="flex items-center gap-1.5 text-[13px] text-ink/65 mb-1.5">
 				{title}
+				{(info ?? CHART_INFO[title.split(",")[0]]) && (
+					<InfoHint text={info ?? CHART_INFO[title.split(",")[0]]} />
+				)}
 			</div>
-			<div className="font-[family-name:var(--font-display)] text-[26px] mb-0.5">
+			<div
+				className="font-[family-name:var(--font-display)] text-[26px] mb-0.5"
+				style={isNegative ? { color: "var(--color-negative)" } : undefined}
+			>
 				{totalLabel}
 			</div>
 			<div className="text-[12px] text-ink/55 mb-3.5">
 				{hovered
 					? `${hovered.month}-GH¢${hovered.value.toLocaleString()}`
-					: idleCaption}
+					: hasData
+						? "Hover to inspect monthly values"
+						: idleCaption}
 			</div>
 			<div className="relative overflow-visible">
 				<svg

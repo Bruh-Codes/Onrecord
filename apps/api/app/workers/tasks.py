@@ -17,6 +17,7 @@ from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
 from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement, summarize_financial_fields
+from app.pipeline.s3_invoice import ParsedInvoice, parse_invoice
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ def s1_ingest(document_id: str) -> dict:
     from app.db import engine_sync
     from app.pipeline.s2_classify import classify_document
     from app.services.document_processing import DoclingProcessor
+    from app.services.evidence_review import review_extracted_document
     from app.services.financial_mapping import get_structure_mapper
     from app.services.storage import get_storage_backend
 
@@ -93,10 +95,22 @@ def s1_ingest(document_id: str) -> dict:
             if extraction_error:
                 doc.status = DocStatus.CLASSIFIED
                 doc.quality_flags["extraction_error"] = extraction_error
+                _record_evidence_review(doc, review_extracted_document(
+                    doc_type=doc.doc_type.value if doc.doc_type else None,
+                    page_count=doc.page_count,
+                    extracted_text=processed.text,
+                    extraction_error=extraction_error,
+                ))
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
+            _record_evidence_review(doc, review_extracted_document(
+                doc_type=doc.doc_type.value if doc.doc_type else None,
+                page_count=doc.page_count,
+                extracted_text=processed.text,
+                row_count=len(parsed_rows),
+            ))
         elif result.supported and doc.doc_type == DocType.FINANCIAL_STATEMENT:
             fields, extraction_error = parse_financial_statement(
                 processed.text,
@@ -106,6 +120,12 @@ def s1_ingest(document_id: str) -> dict:
             if extraction_error:
                 doc.status = DocStatus.CLASSIFIED
                 doc.quality_flags["extraction_error"] = extraction_error
+                _record_evidence_review(doc, review_extracted_document(
+                    doc_type=doc.doc_type.value if doc.doc_type else None,
+                    page_count=doc.page_count,
+                    extracted_text=processed.text,
+                    extraction_error=extraction_error,
+                ))
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             _persist_financial_fields(session, doc, fields)
@@ -127,12 +147,60 @@ def s1_ingest(document_id: str) -> dict:
                 field.canonical_concept is None for field in fields
             )
             doc.status = DocStatus.EXTRACTED
+            _record_evidence_review(doc, review_extracted_document(
+                doc_type=doc.doc_type.value if doc.doc_type else None,
+                page_count=doc.page_count,
+                extracted_text=processed.text,
+                row_count=len(fields),
+            ))
+        elif result.supported and doc.doc_type in {DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED}:
+            invoice = parse_invoice(processed.text, processed.tables)
+            if not invoice.get("total"):
+                doc.status = DocStatus.CLASSIFIED
+                doc.quality_flags["extraction_error"] = "Invoice total could not be identified without inference."
+                _record_evidence_review(doc, review_extracted_document(
+                    doc_type=doc.doc_type.value,
+                    page_count=doc.page_count,
+                    extracted_text=processed.text,
+                    extraction_error=doc.quality_flags["extraction_error"],
+                ))
+                session.commit()
+                return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
+            _persist_invoice(session, doc, invoice)
+            doc.quality_flags["invoice"] = {
+                "canonical_fields": {field.key: field.value for field in invoice.fields},
+                "extra_fields": invoice.extra_fields,
+                "line_item_count": len(invoice.line_items),
+                "validation_issues": invoice.validation_issues,
+            }
+            doc.status = DocStatus.EXTRACTED
+            _record_evidence_review(doc, review_extracted_document(
+                doc_type=doc.doc_type.value,
+                page_count=doc.page_count,
+                extracted_text=processed.text,
+                row_count=len(invoice.line_items) + len(invoice.fields),
+            ))
         else:
             doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
+            _record_evidence_review(doc, review_extracted_document(
+                doc_type=doc.doc_type.value if doc.doc_type else None,
+                page_count=doc.page_count,
+                extracted_text=processed.text,
+                extraction_error="Document type is not supported for evidence scoring.",
+            ))
         session.commit()
         if doc.status == DocStatus.EXTRACTED:
             recompute.delay(str(doc.business_id))
         return {"status": doc.status.value, "document_id": str(doc.id), "supported": result.supported}
+
+def _record_evidence_review(doc: Document, review) -> None:
+    flags = {**(doc.quality_flags or {})}
+    history = list(flags.get("evidence_review_history", []))
+    review_dict = review.as_dict()
+    history.append(review_dict)
+    flags["evidence_review"] = review_dict
+    flags["evidence_review_history"] = history[-20:]
+    doc.quality_flags = flags
 
 
 def _persist_transactions(session: Session, doc: Document, text: str, rows: list[ParsedRow]) -> None:
@@ -236,6 +304,33 @@ def _persist_financial_fields(session: Session, doc: Document, fields: list[Fina
                 confidence=0.85,
             )
         )
+
+
+def _persist_invoice(session: Session, doc: Document, invoice: ParsedInvoice) -> None:
+    for field in invoice.fields:
+        session.add(Extraction(
+            document_id=doc.id,
+            page=field.page,
+            field_path=f"invoice.{field.key}",
+            value_json={"value": field.value, "raw_value": field.raw_value, "source_label": field.source_label},
+            extractor="parser:docling_invoice_dynamic_v1",
+            confidence=field.confidence,
+        ))
+    for index, item in enumerate(invoice.line_items):
+        session.add(Extraction(
+            document_id=doc.id,
+            page=item.page,
+            field_path=f"invoice.line_items[{index}]",
+            value_json={
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_price_pesewas": item.unit_price_pesewas,
+                "line_total_pesewas": item.line_total_pesewas,
+                "raw": item.raw,
+            },
+            extractor="parser:docling_invoice_dynamic_v1",
+            confidence=0.80,
+        ))
 
 
 def _account_identifier(text: str, doc: Document) -> str:
