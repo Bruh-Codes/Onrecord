@@ -97,7 +97,7 @@ export default function SignupPage() {
 	}
 
 	return (
-		<div className="min-h-dvh flex flex-col animate-fade-in">
+		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
 				<span className="font-[family-name:var(--font-display)] text-[19px]">
 					Onrecord

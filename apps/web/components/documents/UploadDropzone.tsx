@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckIcon, UploadIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import { useUploadDocument } from "@/lib/hooks/use-documents";
@@ -13,6 +14,9 @@ type UploadState = {
 	existingDocumentId?: string;
 	file?: File;
 };
+
+const REDIRECT_DELAY_MS = 3_000;
+const UPLOAD_COMPLETE_REDIRECT_PATH = "/overview";
 
 export function UploadDropzone({
 	businessId,
@@ -27,17 +31,32 @@ export function UploadDropzone({
 	onRetryBusiness: () => void;
 	onUploaded: () => void;
 }) {
+	const router = useRouter();
 	const upload = useUploadDocument(businessId ?? "");
 	const [uploads, setUploads] = useState<UploadState[]>([]);
+	const [batchIds, setBatchIds] = useState<string[]>([]);
 	const uploadReady = Boolean(businessId) && !businessLoading && !businessError;
+	const batchUploads = useMemo(
+		() => uploads.filter((uploadState) => batchIds.includes(uploadState.id)),
+		[batchIds, uploads],
+	);
+	const batchComplete =
+		batchIds.length > 0 &&
+		batchUploads.length === batchIds.length &&
+		batchUploads.every((uploadState) => uploadState.status === "done");
 
-	async function uploadOne(file: File) {
+	useEffect(() => {
+		if (!batchComplete) return;
+
+		const timer = window.setTimeout(() => {
+			router.push(UPLOAD_COMPLETE_REDIRECT_PATH);
+		}, REDIRECT_DELAY_MS);
+
+		return () => window.clearTimeout(timer);
+	}, [batchComplete, router]);
+
+	async function uploadOne(file: File, id: string) {
 		if (!businessId) return;
-		const id = crypto.randomUUID();
-		setUploads((prev) => [
-			{ id, name: file.name, status: "uploading" },
-			...prev,
-		]);
 		try {
 			await upload.mutateAsync(file);
 			setUploads((prev) =>
@@ -52,12 +71,18 @@ export function UploadDropzone({
 			const existingDocumentId =
 				err instanceof ApiError && err.code === "DUPLICATE_DOCUMENT"
 					? (err.detail as { existing_document_id?: string } | undefined)
-						?.existing_document_id
+							?.existing_document_id
 					: undefined;
 			setUploads((prev) =>
 				prev.map((u) =>
 					u.id === id
-						? { ...u, status: "error", error: message, existingDocumentId, file }
+						? {
+								...u,
+								status: "error",
+								error: message,
+								existingDocumentId,
+								file,
+							}
 						: u,
 				),
 			);
@@ -79,14 +104,21 @@ export function UploadDropzone({
 				replaceDocumentId: uploadState.existingDocumentId,
 			});
 			setUploads((prev) =>
-				prev.map((u) => (u.id === uploadState.id ? { ...u, status: "done" } : u)),
+				prev.map((u) =>
+					u.id === uploadState.id ? { ...u, status: "done" } : u,
+				),
 			);
 			onUploaded();
 		} catch (err) {
-			const message = err instanceof ApiError ? err.message : "Could not replace the file. Please try again.";
+			const message =
+				err instanceof ApiError
+					? err.message
+					: "Could not replace the file. Please try again.";
 			setUploads((prev) =>
 				prev.map((u) =>
-					u.id === uploadState.id ? { ...u, status: "error", error: message } : u,
+					u.id === uploadState.id
+						? { ...u, status: "error", error: message }
+						: u,
 				),
 			);
 		}
@@ -95,7 +127,7 @@ export function UploadDropzone({
 	return (
 		<div>
 			<label
-				className={`relative flex items-center justify-center gap-2 border-[1.5px] border-dashed border-ink/30 rounded-2xl p-5.5 text-ink transition-colors ${uploadReady ? "cursor-pointer hover:border-ink/50" : "cursor-not-allowed opacity-75"}`}
+				className={`relative flex group bg-panel/60 items-center justify-center gap-2 border-[1.5px] border-dashed border-ink/30 rounded-2xl p-5.5 text-ink transition-colors ${uploadReady ? "cursor-pointer hover:border-ink/50" : "cursor-not-allowed opacity-75"}`}
 			>
 				<input
 					id="upload-input"
@@ -103,20 +135,32 @@ export function UploadDropzone({
 					multiple
 					accept="application/pdf,image/jpeg,image/png,image/heic,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.jpg,.jpeg,.png,.heic,.csv,.xlsx"
 					disabled={!uploadReady}
-					className="absolute inset-0 h-full w-full cursor-inherit opacity-0 disabled:pointer-events-none"
+					className="absolute  inset-0 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {
 						const files = e.target.files;
-						if (files) Array.from(files).forEach(uploadOne);
+						if (files) {
+							const nextUploads = Array.from(files).map((file) => ({
+								id: crypto.randomUUID(),
+								name: file.name,
+								status: "uploading" as const,
+								file,
+							}));
+							setBatchIds(nextUploads.map((uploadState) => uploadState.id));
+							setUploads((prev) => [...nextUploads, ...prev]);
+							nextUploads.forEach(({ file, id }) => {
+								void uploadOne(file, id);
+							});
+						}
 						e.target.value = "";
 					}}
 				/>
-				<UploadIcon />
-				<span className="text-[13.5px] font-semibold">
+				<UploadIcon className="text-ink/60 group-hover:text-ink transition-all" />
+				<span className="text-[13.5px] font-semibold text-ink/60 group-hover:text-ink transition-all">
 					{businessError
 						? "Upload unavailable-your business profile could not be loaded"
 						: uploadReady
-						? "Upload any file-statement, receipt, or a photo of a ledger page"
-						: "Preparing your secure upload"}
+							? "Upload any file-statement, receipt, or a photo of a ledger page"
+							: "Preparing your secure upload"}
 				</span>
 			</label>
 			<div className="mt-2 px-1 text-[12px] text-ink/55">
@@ -175,6 +219,11 @@ export function UploadDropzone({
 							)}
 						</div>
 					))}
+				</div>
+			)}
+			{batchComplete && (
+				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
+					All files uploaded. Taking you to the overview in 3 seconds…
 				</div>
 			)}
 			{upload.isPending && (

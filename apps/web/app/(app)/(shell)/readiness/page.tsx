@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { InfoHint } from "@/components/overview/InfoHint";
 import { useChecklist, useMe, useScore } from "@/lib/hooks/use-business";
 
 const PILLARS = [
@@ -60,8 +61,8 @@ export default function ReadinessPage() {
 				evidence behind your file. It is not a lending decision.
 			</p>
 
-			<div className="grid gap-5 md:grid-cols-[1fr_2fr] mb-10">
-				<div className="rounded-xl border border-border/70 p-5">
+			<div className="grid gap-5 md:grid-cols-[2fr_2fr] mb-10 lg:grid-cols-[1fr_2fr]">
+				<div className="rounded-xl border border-border/70 p-5 bg-panel">
 					<div className="text-xs uppercase tracking-wider text-ink/50">
 						Current readiness
 					</div>
@@ -79,15 +80,18 @@ export default function ReadinessPage() {
 						Scores are out of 100 and update after recompute.
 					</p>
 				</div>
-				<div className="rounded-xl border border-border/70 p-5">
+				<div className="rounded-xl border border-border/70 p-5 bg-panel">
 					<div className="text-sm font-semibold mb-4">Score pillars</div>
-					<div className="grid gap-4 sm:grid-cols-2">
+					<div className="flex flex-wrap gap-4">
 						{PILLARS.map((pillar) => {
 							const value = score.data?.pillars[pillar.key];
 							return (
-								<div key={pillar.key}>
+								<div key={pillar.key} className="flex-1 min-w-[200px]">
 									<div className="flex justify-between text-[13px] font-semibold">
-										<span>{pillar.label}</span>
+										<div className="flex items-center gap-1.5">
+											<span>{pillar.label}</span>
+											<InfoHint text={pillar.description} />
+										</div>
 										<span>
 											{value
 												? `${value.earned.toFixed(1)} / ${pillar.weight}`
@@ -102,45 +106,9 @@ export default function ReadinessPage() {
 											}}
 										/>
 									</div>
-									<p className="text-xs opacity-60 mt-1.5">
-										{pillar.description}
-									</p>
 								</div>
 							);
 						})}
-					</div>
-				</div>
-			</div>
-
-			<div className="rounded-xl border border-border/70 p-5 mb-8">
-				<div className="text-sm font-semibold mb-1">
-					What counts as evidence?
-				</div>
-				<p className="text-[13px] opacity-70 max-w-[760px]">
-					Uploaded documents can still appear in Business Insights while they
-					are being checked. Only active, successfully extracted records
-					contribute to the credit-readiness checklist and score. Missing
-					documents lower the Documentation pillar; they do not erase your
-					transaction insights.
-				</p>
-				<div className="grid gap-3 sm:grid-cols-3 mt-5 text-[13px]">
-					<div>
-						<div className="font-semibold">Insights</div>
-						<div className="opacity-60 mt-1">
-							What the records say, with uncertainty shown.
-						</div>
-					</div>
-					<div>
-						<div className="font-semibold">Evidence</div>
-						<div className="opacity-60 mt-1">
-							Documents that are active and successfully extracted.
-						</div>
-					</div>
-					<div>
-						<div className="font-semibold">Score</div>
-						<div className="opacity-60 mt-1">
-							A transparent completeness and verifiability measure.
-						</div>
 					</div>
 				</div>
 			</div>

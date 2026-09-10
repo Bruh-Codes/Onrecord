@@ -40,7 +40,7 @@ export function Dropdown<T extends string | number>({
 				onClick={() => setOpen((o) => !o)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				className="flex items-center gap-3 rounded-full border border-border bg-transparent px-3 py-2 text-[13px] text-ink cursor-pointer active:scale-100"
+				className="flex items-center gap-3 rounded-full border border-border bg-panel px-3 py-2 text-[13px] text-ink cursor-pointer active:scale-100"
 			>
 				{options.find((o) => o.value === value)?.label ?? String(value)}
 				<ChevronDownIcon

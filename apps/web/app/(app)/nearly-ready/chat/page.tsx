@@ -20,7 +20,7 @@ export default function AssistantChatPage() {
 	const chatDone = !hasOpenQuestion && chatLog.length > 0;
 
 	return (
-		<div className="min-h-dvh flex flex-col items-center px-4 sm:px-6 pt-9 pb-15 animate-fade-in">
+		<div className="min-h-dvh flex flex-col items-center px-4 sm:px-6 pt-9 pb-15">
 			<div className="w-full max-w-[560px]">
 				<Link
 					href="/nearly-ready"

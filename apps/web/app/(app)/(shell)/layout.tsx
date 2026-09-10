@@ -4,7 +4,7 @@ import { TopBar } from "@/components/sidebar/TopBar";
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-dvh animate-fade-in">
+    <div className="flex h-dvh">
       <div className="sticky top-0 h-dvh shrink-0">
         <Sidebar />
       </div>
