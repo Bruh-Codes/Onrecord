@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckIcon, UploadIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import { useUploadDocument } from "@/lib/hooks/use-documents";
@@ -13,6 +14,9 @@ type UploadState = {
 	existingDocumentId?: string;
 	file?: File;
 };
+
+const REDIRECT_DELAY_MS = 3_000;
+const UPLOAD_COMPLETE_REDIRECT_PATH = "/overview";
 
 export function UploadDropzone({
 	businessId,
@@ -27,17 +31,32 @@ export function UploadDropzone({
 	onRetryBusiness: () => void;
 	onUploaded: () => void;
 }) {
+	const router = useRouter();
 	const upload = useUploadDocument(businessId ?? "");
 	const [uploads, setUploads] = useState<UploadState[]>([]);
+	const [batchIds, setBatchIds] = useState<string[]>([]);
 	const uploadReady = Boolean(businessId) && !businessLoading && !businessError;
+	const batchUploads = useMemo(
+		() => uploads.filter((uploadState) => batchIds.includes(uploadState.id)),
+		[batchIds, uploads],
+	);
+	const batchComplete =
+		batchIds.length > 0 &&
+		batchUploads.length === batchIds.length &&
+		batchUploads.every((uploadState) => uploadState.status === "done");
 
-	async function uploadOne(file: File) {
+	useEffect(() => {
+		if (!batchComplete) return;
+
+		const timer = window.setTimeout(() => {
+			router.push(UPLOAD_COMPLETE_REDIRECT_PATH);
+		}, REDIRECT_DELAY_MS);
+
+		return () => window.clearTimeout(timer);
+	}, [batchComplete, router]);
+
+	async function uploadOne(file: File, id: string) {
 		if (!businessId) return;
-		const id = crypto.randomUUID();
-		setUploads((prev) => [
-			{ id, name: file.name, status: "uploading" },
-			...prev,
-		]);
 		try {
 			await upload.mutateAsync(file);
 			setUploads((prev) =>
@@ -106,7 +125,19 @@ export function UploadDropzone({
 					className="absolute inset-0 h-full w-full cursor-inherit opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {
 						const files = e.target.files;
-						if (files) Array.from(files).forEach(uploadOne);
+						if (files) {
+							const nextUploads = Array.from(files).map((file) => ({
+								id: crypto.randomUUID(),
+								name: file.name,
+								status: "uploading" as const,
+								file,
+							}));
+							setBatchIds(nextUploads.map((uploadState) => uploadState.id));
+							setUploads((prev) => [...nextUploads, ...prev]);
+							nextUploads.forEach(({ file, id }) => {
+								void uploadOne(file, id);
+							});
+						}
 						e.target.value = "";
 					}}
 				/>
@@ -175,6 +206,11 @@ export function UploadDropzone({
 							)}
 						</div>
 					))}
+				</div>
+			)}
+			{batchComplete && (
+				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
+					All files uploaded. Taking you to the overview in 3 seconds…
 				</div>
 			)}
 			{upload.isPending && (
