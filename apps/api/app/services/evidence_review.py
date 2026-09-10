@@ -195,5 +195,6 @@ those tokens or the fact that numeric values were redacted. Never claim that a
 document is forged; state the signal and why it needs review. When review_context
 contains a structured extraction summary, use it as the primary evidence for
 field completeness; do not call a field incomplete merely because its label is
-not visible in the redacted text. Only flag explicit validation issues or a
-missing source-backed field."""
+not visible in the redacted text or because OCR put a label and value on
+different lines. Only flag explicit validation issues or a missing source-backed
+field; absent optional invoice fields are not an extraction failure."""

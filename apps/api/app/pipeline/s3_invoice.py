@@ -152,11 +152,7 @@ def _parse_date(value: str) -> date | None:
 
 
 def _validate(result: ParsedInvoice) -> None:
-    if not result.get("supplier"):
-        result.validation_issues.append("supplier_missing")
     total = result.get("total")
-    if not total or total.value.get("amount_pesewas") is None:
-        result.validation_issues.append("total_missing")
     subtotal, tax = result.get("subtotal"), result.get("tax")
     if subtotal and tax and total and all(field.value.get("amount_pesewas") is not None for field in (subtotal, tax, total)) and subtotal.value["amount_pesewas"] + tax.value["amount_pesewas"] != total.value["amount_pesewas"]:
         result.validation_issues.append("subtotal_tax_total_mismatch")

@@ -166,17 +166,6 @@ def s1_ingest(document_id: str) -> dict:
                 ))
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
-            if not invoice.get("total"):
-                doc.status = DocStatus.CLASSIFIED
-                doc.quality_flags["extraction_error"] = "Invoice total could not be identified without inference."
-                _record_evidence_review(doc, review_extracted_document(
-                    doc_type=doc.doc_type.value,
-                    page_count=doc.page_count,
-                    extracted_text=processed.text,
-                    extraction_error=doc.quality_flags["extraction_error"],
-                ))
-                session.commit()
-                return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             _persist_invoice(session, doc, invoice)
             doc.quality_flags["invoice"] = {
                 "canonical_fields": {field.key: field.value for field in invoice.fields},

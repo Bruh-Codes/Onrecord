@@ -28,7 +28,8 @@ def test_model_invoice_payload_maps_canonical_fields_and_extra_fields() -> None:
     assert parsed.validation_issues == []
 
 
-def test_model_invoice_payload_requires_explicit_total() -> None:
+def test_model_invoice_payload_allows_missing_optional_fields() -> None:
     payload = {"fields": {"supplier": _field("Example Ltd")}, "line_items": [], "extra_fields": {}}
     parsed = _validated_invoice(payload)
-    assert "total_missing" in parsed.validation_issues
+    assert parsed.get("total") is None
+    assert parsed.validation_issues == []
