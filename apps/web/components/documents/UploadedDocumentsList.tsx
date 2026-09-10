@@ -51,9 +51,9 @@ function evidenceReviewMessage(document: Document): string | null {
 }
 
 function canDelete(document: Document) {
-	// Keep the action available for incomplete/problematic uploads, but avoid
-	// presenting a destructive action for clean extracted evidence.
-	return document.status !== "extracted" || needsReview(document);
+	// Any active document can be removed, including clean extracted evidence.
+	// Superseded records are historical and are not actionable in this list.
+	return document.status !== "superseded";
 }
 
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
