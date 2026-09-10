@@ -65,6 +65,7 @@ _specs: `01-ingest-classify.md`, `02-extract.md`_
 - [ ] S3 Extract-Tier 1: top-4 Ghanaian bank PDF parsers
 - [ ] S3 Extract-Tier 2: vision extraction (receipts, invoices, handwritten ledgers)
 - [ ] S3 Extract-Tier 3: reviewer queue for low-confidence fields
+- [x] Dynamic invoice envelope: model-assisted field mapping with optional canonical fields, source references, and provider-specific extras
 - [ ] Reconciliation gate (INV-6) enforced before ledger entry
 
 ## Phase 4-Normalisation & categorisation (S4–S6)
@@ -124,6 +125,19 @@ _specs: `11-testing.md`_
 - [ ] Encryption at rest (SSE-KMS) and in transit
 - [ ] MSISDN/account number hashing + display-suffix only
 - [ ] Fraud defences (§12.4): SHA-256 reuse, EXIF/render-artefact checks, `suspect` flag
+- [ ] Document authenticity signals: extract PDF/XMP metadata, producer/creator history,
+      timestamps, embedded assets, incremental revisions, and file hashes; compare
+      metadata with extracted content and retain the signals as auditable provenance
+- [ ] Cryptographic document verification: detect and validate PDF digital signatures
+      and trusted electronic seals where present; treat a valid signature as an
+      integrity/authenticity signal, not a guarantee that the signer is truthful
+- [ ] AI-assisted authenticity review: provide sanitized metadata plus Docling
+      structure to OpenAI for bounded `clear`/`review`/`unknown` findings. The model
+      must never declare forgery or alter extracted facts; unresolved signals stay
+      out of readiness scoring until human review.
+
+  Reference: [NIST Digital Signature Standard](https://www.nist.gov/publications/digital-signature-standard-dss-3)
+  and [NIST guidance on authenticating metadata](https://airc.nist.gov/docs/NIST.AI.100-4.SyntheticContent.ipd.pdf).
 
 ## Phase 10-Pilot
 
