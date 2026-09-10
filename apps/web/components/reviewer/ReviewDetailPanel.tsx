@@ -29,7 +29,7 @@ export function ReviewDetailPanel({
 	const suggestionLabel = suggestion?.category_l1?.replaceAll("_", " ");
 	const [category, setCategory] = useState(suggestion?.category_l1 ?? "unknown");
 	return (
-		<div className="bg-white rounded-[20px] p-5 shadow-[0_3px_10px_rgba(20,20,20,0.1)]">
+		<div className="bg-surface rounded-[20px] p-5 shadow-card">
 			<div className="text-[11px] tracking-wider uppercase text-ink/55 mb-2.5">
 				Classify transaction
 			</div>

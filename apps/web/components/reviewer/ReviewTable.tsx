@@ -30,7 +30,7 @@ export function ReviewTable({
 			{items.map((item) => {
 				const suggestion = item.ai_suggestion;
 				return (
-					<tr key={item.id} onClick={() => onSelect(item.id)} className={`cursor-pointer ${selectedId === item.id ? "bg-[#f2f2f0]" : ""}`}>
+					<tr key={item.id} onClick={() => onSelect(item.id)} className={`cursor-pointer ${selectedId === item.id ? "bg-panel-strong" : ""}`}>
 						<td className="px-4 py-3 border-b border-ink/8">
 							<div className="font-medium">{item.counterparty_raw || "Unidentified transaction"}</div>
 							<div className="text-xs text-ink/55">{item.occurred_on} · {item.direction === "in" ? "Inflow" : "Outflow"}</div>
