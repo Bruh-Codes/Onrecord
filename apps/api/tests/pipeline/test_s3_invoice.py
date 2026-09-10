@@ -19,7 +19,7 @@ def test_model_invoice_payload_maps_canonical_fields_and_extra_fields() -> None:
             "payment_status": _field("unpaid"),
         },
         "line_items": [],
-        "extra_fields": {"purchase_order": "PO-9"},
+        "extra_fields": [{"label": "purchase_order", "value": "PO-9", "source_ref": "text:2", "page": 1}],
     }
     parsed = _validated_invoice(payload)
     assert parsed.get("supplier").value == "Cloudflare, Inc."

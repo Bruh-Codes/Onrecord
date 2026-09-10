@@ -51,9 +51,9 @@ function evidenceReviewMessage(document: Document): string | null {
 }
 
 function canDelete(document: Document) {
-	// Keep the action available for incomplete/problematic uploads, but avoid
-	// presenting a destructive action for clean extracted evidence.
-	return document.status !== "extracted" || needsReview(document);
+	// Do not expose deletion while the worker is still processing the upload.
+	// Once processing finishes, extracted or failed documents remain removable.
+	return ["extracted", "failed", "reconciliation_failed"].includes(document.status);
 }
 
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
