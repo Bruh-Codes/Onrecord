@@ -17,7 +17,7 @@ from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
 from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement, summarize_financial_fields
-from app.pipeline.s3_invoice import ParsedInvoice, parse_invoice
+from app.pipeline.s3_invoice import ParsedInvoice, extract_invoice
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -154,7 +154,18 @@ def s1_ingest(document_id: str) -> dict:
                 row_count=len(fields),
             ))
         elif result.supported and doc.doc_type in {DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED}:
-            invoice = parse_invoice(processed.text, processed.tables)
+            invoice = extract_invoice(processed)
+            if invoice is None:
+                doc.status = DocStatus.CLASSIFIED
+                doc.quality_flags["extraction_error"] = "Invoice model extraction was unavailable or invalid."
+                _record_evidence_review(doc, review_extracted_document(
+                    doc_type=doc.doc_type.value,
+                    page_count=doc.page_count,
+                    extracted_text=processed.text,
+                    extraction_error=doc.quality_flags["extraction_error"],
+                ))
+                session.commit()
+                return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
             if not invoice.get("total"):
                 doc.status = DocStatus.CLASSIFIED
                 doc.quality_flags["extraction_error"] = "Invoice total could not be identified without inference."
