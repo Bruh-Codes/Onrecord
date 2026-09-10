@@ -37,7 +37,9 @@ export function TrendChart({
 			<div className="text-[12px] text-ink/55 mb-3.5">
 				{hovered
 					? `${hovered.month}-GH¢${hovered.value.toLocaleString()}`
-					: idleCaption}
+					: hasData
+						? "Hover to inspect monthly values"
+						: idleCaption}
 			</div>
 			<div className="relative overflow-visible">
 				<svg
