@@ -293,7 +293,26 @@ def _checklist_as_dict(item: ChecklistItem) -> dict:
 
 def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem]) -> None:
     missing = [c for c in checklist if c.status == "missing"]
-    for gap in s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing]):
+    missing_gaps = s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing])
+    missing_codes = {gap["code"] for gap in missing_gaps}
+
+    # A gap is a derived view of the current checklist. Resolve stale missing
+    # document gaps after a later upload satisfies the requirement; otherwise a
+    # previously missing bank statement remains visible forever.
+    active_missing = db.scalars(
+        select(Gap).where(
+            Gap.business_id == business_id,
+            Gap.kind == "missing_document",
+            Gap.code.like("MISSING_DOC_%"),
+            Gap.status.in_(_ACTIVE_GAP_STATUSES),
+        )
+    ).all()
+    for existing in active_missing:
+        if existing.code not in missing_codes:
+            existing.status = GapStatus.RESOLVED
+            existing.resolved_at = _now()
+
+    for gap in missing_gaps:
         exists = db.scalar(
             select(Gap).where(
                 Gap.business_id == business_id,
