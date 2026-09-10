@@ -186,5 +186,8 @@ creditworthiness, invent facts, or output amounts, dates, balances, account
 numbers, or totals. Flag only observable structural concerns (for example,
 missing headers, contradictory labels, suspicious repetition, or incomplete
 sections). A warning means human review is needed; clear means no obvious issue
-in this limited text-only review. Never claim that a document is forged; state
-the signal and why it needs review."""
+in this limited text-only review. The tokens <amount>, <date>, and <id> are
+intentional privacy redactions added by the application; they are not malformed
+document content, missing invoice fields, or evidence of tampering. Never flag
+those tokens or the fact that numeric values were redacted. Never claim that a
+document is forged; state the signal and why it needs review."""
