@@ -43,7 +43,10 @@ export function TrendChart({
 					<InfoHint text={info ?? CHART_INFO[title.split(",")[0]]} />
 				)}
 			</div>
-			<div className={`font-[family-name:var(--font-display)] text-[26px] mb-0.5 ${isNegative ? "text-negative" : ""}`}>
+			<div
+				className="font-[family-name:var(--font-display)] text-[26px] mb-0.5"
+				style={isNegative ? { color: "var(--color-negative)" } : undefined}
+			>
 				{totalLabel}
 			</div>
 			<div className="text-[12px] text-ink/55 mb-3.5">

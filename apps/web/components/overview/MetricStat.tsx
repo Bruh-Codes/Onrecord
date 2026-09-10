@@ -53,7 +53,10 @@ export function MetricStat({
 					<InfoHint text={info ?? METRIC_INFO[label]} />
 				)}
 			</div>
-			<div className={`text-[24px] mt-2 ${value != null && value < 0 ? "text-negative" : ""}`}>
+			<div
+				className="text-[24px] mt-2"
+				style={value != null && value < 0 ? { color: "var(--color-negative)" } : undefined}
+			>
 				{formatted}
 			</div>
 			{detail && <div className="text-sm text-ink/55 mt-1">{detail}</div>}
