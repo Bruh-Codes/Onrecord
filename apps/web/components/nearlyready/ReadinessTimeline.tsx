@@ -12,11 +12,11 @@ function TimelineRow({
   return (
     <div className="flex gap-3 mb-1">
       <div className="flex flex-col items-center">
-        <span className={`w-[9px] h-[9px] rounded-full shrink-0 ${done ? "bg-ink" : "bg-ink/25"}`} />
-        {!isLast && <span className="w-[1.4px] flex-1 bg-ink/25 min-h-8" />}
+        <span className={`w-[9px] h-[9px] rounded-full shrink-0 ${done ? "bg-foreground" : "bg-foreground/25"}`} />
+        {!isLast && <span className="w-[1.4px] flex-1 bg-foreground/25 min-h-8" />}
       </div>
       <div>
-        <div className={`text-[13.5px] font-semibold ${done ? "" : "text-ink/50"}`}>{title}</div>
+        <div className={`text-[13.5px] font-semibold ${done ? "" : "text-foreground/50"}`}>{title}</div>
         {detail && <div className="text-xs opacity-60">{detail}</div>}
       </div>
     </div>
@@ -47,7 +47,7 @@ export function ReadinessTimeline({
         detail={chatInProgress ? "In progress" : chatDone ? "Complete" : "Not started"}
       />
       <TimelineRow done={profileReady} isLast title="Profile ready to export" />
-      <div className="h-px bg-ink/12 my-4.5" />
+      <div className="h-px bg-foreground/12 my-4.5" />
       <div className="text-[13.5px] font-semibold mb-1">Questions?</div>
       <div className="text-[12.5px] opacity-70">
         Our team can help: <a href="mailto:help@onrecord.app">help@onrecord.app</a>

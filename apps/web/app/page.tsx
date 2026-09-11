@@ -38,17 +38,17 @@ const PILLARS = [
 
 export default async function LandingPage() {
 	return (
-		<div className="min-h-dvh flex flex-col bg-paper text-ink">
+		<div className="min-h-dvh flex flex-col bg-background text-foreground">
 			<header className="flex items-center px-6 sm:px-10 py-5">
 				<Link href="/" className="inline-flex items-center gap-2 hover:opacity-100">
 					<Image src={icon} alt="Onrecord" width={28} height={28} />
-					<span className="font-[family-name:var(--font-display)] text-[19px]">
+					<span className="font-display text-[19px]">
 						Onrecord
 					</span>
 				</Link>
 				<Link
 					href="/signup"
-					className="ml-auto inline-flex items-center bg-panel border border-ink/16 rounded-full px-4 py-2 text-[13.5px] hover:opacity-100"
+					className="ml-auto inline-flex items-center bg-muted border border-foreground/16 rounded-full px-4 py-2 text-[13.5px] hover:opacity-100"
 				>
 					Log in
 				</Link>
@@ -56,7 +56,7 @@ export default async function LandingPage() {
 
 			<main className="flex-1">
 				<section className="max-w-[720px] mx-auto text-center px-6 pt-12 sm:pt-20 pb-14 sm:pb-20">
-					<h1 className="font-[family-name:var(--font-display)] text-left sm:text-center text-4xl sm:text-[52px] leading-[1.05] m-0 mb-5">
+					<h1 className="font-display text-left sm:text-center text-4xl sm:text-[52px] leading-[1.05] m-0 mb-5">
 						When your records are messy, credit is out of reach
 					</h1>
 					<p className="text-left sm:text-center text-[15.5px] sm:text-base leading-relaxed opacity-75 m-0 mb-8 max-w-[560px] mx-auto">
@@ -69,14 +69,14 @@ export default async function LandingPage() {
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
 						<Link
 							href="/signup"
-							className="inline-flex items-center justify-center bg-ink text-paper rounded-full px-7 py-3.5 text-[14.5px] font-[family-name:var(--font-display)]"
-							style={{ color: "var(--color-paper)" }}
+							className="inline-flex items-center justify-center bg-foreground text-background rounded-full px-7 py-3.5 text-[14.5px] font-display"
+							style={{ color: "var(--background)" }}
 						>
 							Get started free
 						</Link>
 						<Link
 							href="#how-it-works"
-							className="inline-flex items-center justify-center bg-surface border border-ink/16 rounded-full px-7 py-3.5 text-[14.5px]"
+							className="inline-flex items-center justify-center bg-card border border-foreground/16 rounded-full px-7 py-3.5 text-[14.5px]"
 						>
 							See how it works
 						</Link>
@@ -95,12 +95,12 @@ export default async function LandingPage() {
 						{STEPS.map((s) => (
 							<div
 								key={s.n}
-								className="bg-surface rounded-3xl shadow-[var(--shadow-card)] p-6 sm:p-7"
+								className="bg-card rounded-3xl shadow-card p-6 sm:p-7"
 							>
-								<div className="w-8 h-8 rounded-full bg-ink text-paper flex items-center justify-center text-[13px] font-bold mb-5">
+								<div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-[13px] font-bold mb-5">
 									{s.n}
 								</div>
-								<h3 className="font-[family-name:var(--font-display)] text-[17px] m-0 mb-2">
+								<h3 className="font-display text-[17px] m-0 mb-2">
 									{s.title}
 								</h3>
 								<p className="text-[13.5px] leading-relaxed opacity-70 m-0">
@@ -111,19 +111,19 @@ export default async function LandingPage() {
 					</div>
 				</section>
 
-				<section className="bg-panel border-y border-border py-14 sm:py-20">
+				<section className="bg-muted border-y border-border py-14 sm:py-20">
 					<div className="max-w-[560px] mx-auto text-center px-6 mb-10 sm:mb-12">
 						<div className="text-[11px] tracking-wider uppercase opacity-55 mb-3">
 							Built on a trust model
 						</div>
-						<h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-[32px] leading-tight m-0">
+						<h2 className="font-display text-[26px] sm:text-[32px] leading-tight m-0">
 							Lenders can&apos;t trust what they can&apos;t trace
 						</h2>
 					</div>
 					<div className="max-w-[1080px] grid gap-5 sm:grid-cols-3 mx-auto px-6">
 						{PILLARS.map((p) => (
-							<div key={p.title} className="bg-surface rounded-3xl p-6 sm:p-7">
-								<h3 className="font-[family-name:var(--font-display)] text-[16px] m-0 mb-2">
+							<div key={p.title} className="bg-card rounded-3xl p-6 sm:p-7">
+								<h3 className="font-display text-[16px] m-0 mb-2">
 									{p.title}
 								</h3>
 								<p className="text-[13.5px] leading-relaxed opacity-70 m-0">
@@ -135,7 +135,7 @@ export default async function LandingPage() {
 				</section>
 
 				<section className="max-w-[640px] mx-auto text-center px-6 py-16 sm:py-20">
-					<h2 className="font-[family-name:var(--font-display)] text-[26px] sm:text-[32px] leading-tight m-0 mb-3">
+					<h2 className="font-display text-[26px] sm:text-[32px] leading-tight m-0 mb-3">
 						Your money deserves a file that tells the truth
 					</h2>
 					<p className="text-[15px] opacity-75 m-0 mb-7">
@@ -144,8 +144,8 @@ export default async function LandingPage() {
 					</p>
 					<Link
 						href="/signup"
-						className="inline-flex items-center justify-center bg-ink text-paper rounded-full px-8 py-3.5 text-[14.5px] font-[family-name:var(--font-display)]"
-						style={{ color: "var(--color-paper)" }}
+						className="inline-flex items-center justify-center bg-foreground text-background rounded-full px-8 py-3.5 text-[14.5px] font-display"
+						style={{ color: "var(--background)" }}
 					>
 						Get started
 					</Link>

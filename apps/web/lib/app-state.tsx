@@ -126,6 +126,17 @@ function advanceChat(
 	agentResponse: string,
 ): AppState {
 	const step = CHAT_SCRIPT[s.chatIndex];
+	if (!step) {
+		return {
+			...s,
+			chatLog: [
+				...s.chatLog,
+				{ fromAgent: false, text: ownerText },
+				{ fromAgent: true, text: agentResponse },
+			],
+		};
+	}
+
 	const log = [
 		...s.chatLog,
 		{ fromAgent: false, text: ownerText },

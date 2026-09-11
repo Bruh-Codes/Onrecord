@@ -20,7 +20,7 @@ export function DocumentChecklistRow({
   return (
     <div className="py-4 border-b border-border">
       <div className="flex items-center gap-3.5">
-        <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-panel flex items-center justify-center">
+        <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-muted flex items-center justify-center">
           <DocumentsIcon />
         </div>
         <div className="flex-1 min-w-0">
@@ -36,7 +36,7 @@ export function DocumentChecklistRow({
         )}
       </div>
       {expanded && (
-        <div className="mt-2.5 ml-[52px] h-[90px] rounded-xl bg-[repeating-linear-gradient(135deg,#ececea,#ececea_10px,#e2e2e0_10px,#e2e2e0_20px)] flex items-center justify-center text-[11px] font-mono text-ink/50">
+        <div className="mt-2.5 ml-[52px] h-[90px] rounded-xl bg-[repeating-linear-gradient(135deg,#ececea,#ececea_10px,#e2e2e0_10px,#e2e2e0_20px)] flex items-center justify-center text-[11px] font-mono text-foreground/50">
           document preview placeholder
         </div>
       )}

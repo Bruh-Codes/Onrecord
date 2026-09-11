@@ -170,7 +170,7 @@ export function UploadDropzone({
 	return (
 		<div>
 			<label
-				className={`relative flex group bg-panel/60 items-center justify-center gap-2 border-[1.5px] border-dashed border-ink/30 rounded-2xl p-5.5 text-ink transition-colors ${uploadReady ? "cursor-pointer hover:border-ink/50" : "cursor-not-allowed opacity-75"}`}
+				className={`relative flex group bg-muted/60 items-center justify-center gap-2 border-[1.5px] border-dashed border-foreground/30 rounded-2xl p-5.5 text-foreground transition-colors ${uploadReady ? "cursor-pointer hover:border-foreground/50" : "cursor-not-allowed opacity-75"}`}
 			>
 				<input
 					id="upload-input"
@@ -197,8 +197,8 @@ export function UploadDropzone({
 						e.target.value = "";
 					}}
 				/>
-				<UploadIcon className="text-ink/60 group-hover:text-ink transition-all" />
-				<span className="text-[13.5px] font-semibold text-ink/60 group-hover:text-ink transition-all">
+				<UploadIcon className="text-foreground/60 group-hover:text-foreground transition-all" />
+				<span className="text-[13.5px] font-semibold text-foreground/60 group-hover:text-foreground transition-all">
 					{businessError
 						? "Upload unavailable-your business profile could not be loaded"
 						: uploadReady
@@ -206,7 +206,7 @@ export function UploadDropzone({
 							: "Preparing your secure upload"}
 				</span>
 			</label>
-			<div className="mt-2 px-1 text-[12px] text-ink/55">
+			<div className="mt-2 px-1 text-[12px] text-foreground/55">
 				Supported formats: PDF, JPG/JPEG, PNG, HEIC, CSV, XLSX
 			</div>
 			{businessError && (
@@ -226,7 +226,7 @@ export function UploadDropzone({
 							key={u.id}
 							className={`flex items-center gap-2 text-[12.5px] py-3 px-1 border-b border-border last:border-b-0 ${
 								u.status === "error"
-									? "text-negative"
+									? "text-destructive"
 									: u.status === "done"
 										? "text-positive"
 										: "opacity-70"
@@ -235,12 +235,12 @@ export function UploadDropzone({
 							{u.status === "done" ? (
 								<CheckIcon className="shrink-0" />
 							) : u.status === "error" ? (
-								<span className="w-3.5 h-3.5 shrink-0 text-negative font-bold">
+								<span className="w-3.5 h-3.5 shrink-0 text-destructive font-bold">
 									!
 								</span>
 							) : (
 								<span className="w-3.5 h-3.5 shrink-0">
-									<span className="inline-block w-3.5 h-3.5 border-2 border-ink/20 border-t-ink rounded-full animate-spin" />
+									<span className="inline-block w-3.5 h-3.5 border-2 border-foreground/20 border-t-ink rounded-full animate-spin" />
 								</span>
 							)}
 							<span className="truncate">{u.name}</span>
@@ -265,7 +265,7 @@ export function UploadDropzone({
 				</div>
 			)}
 			{batchUploadsComplete && !batchProcessingComplete && (
-				<div className="text-[12.5px] text-ink/60 pt-3 px-1" role="status">
+				<div className="text-[12.5px] text-foreground/60 pt-3 px-1" role="status">
 					{batchWaitingForProcessing
 						? "All files uploaded. Waiting for processing to finish…"
 						: "Some files need attention. Check the upload results above."}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -18,9 +19,11 @@ export default function RootLayout({
 	return (
 		<html lang="en" className="h-full antialiased" suppressHydrationWarning>
 			<head>
-				<script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+				<Script id="theme-init" strategy="beforeInteractive">
+					{THEME_INIT_SCRIPT}
+				</Script>
 			</head>
-			<body className="min-h-full font-[family-name:var(--font-body)]">
+			<body className="min-h-full font-sans">
 				<Providers>
 					<ThemeProvider>
 						<ToastProvider>{children}</ToastProvider>

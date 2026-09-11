@@ -47,7 +47,7 @@ export function MetricStat({
 
 	return (
 		<div className="rounded-xl border border-border/70 p-4">
-			<div className="flex items-center gap-1.5 text-[12px] uppercase text-ink/50">
+			<div className="flex items-center gap-1.5 text-[12px] uppercase text-foreground/50">
 				{label}
 				{(info ?? METRIC_INFO[label]) && (
 					<InfoHint text={info ?? METRIC_INFO[label]} />
@@ -55,11 +55,11 @@ export function MetricStat({
 			</div>
 			<div
 				className="text-[24px] mt-2"
-				style={value != null && value < 0 ? { color: "var(--color-negative)" } : undefined}
+				style={value != null && value < 0 ? { color: "var(--destructive)" } : undefined}
 			>
 				{formatted}
 			</div>
-			{detail && <div className="text-sm text-ink/55 mt-1">{detail}</div>}
+			{detail && <div className="text-sm text-foreground/55 mt-1">{detail}</div>}
 		</div>
 	);
 }

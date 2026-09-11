@@ -38,19 +38,19 @@ export function TrendChart({
 
 	return (
 		<div>
-			<div className="flex items-center gap-1.5 text-[13px] text-ink/65 mb-1.5">
+			<div className="flex items-center gap-1.5 text-[13px] text-foreground/65 mb-1.5">
 				{title}
 				{(info ?? CHART_INFO[title.split(",")[0]]) && (
 					<InfoHint text={info ?? CHART_INFO[title.split(",")[0]]} />
 				)}
 			</div>
 			<div
-				className="font-[family-name:var(--font-display)] text-[26px] mb-0.5"
-				style={isNegative ? { color: "var(--color-negative)" } : undefined}
+				className="font-display text-[26px] mb-0.5"
+				style={isNegative ? { color: "var(--destructive)" } : undefined}
 			>
 				{totalLabel}
 			</div>
-			<div className="text-[12px] text-ink/55 mb-3.5">
+			<div className="text-[12px] text-foreground/55 mb-3.5">
 				{hovered
 					? `${hovered.month} · ${formatGhs(hovered.value)}`
 					: hasData
@@ -68,7 +68,7 @@ export function TrendChart({
 					<polyline
 						points={linePoints}
 						fill="none"
-						stroke={hasData ? color : "var(--color-border)"}
+						stroke={hasData ? color : "var(--border)"}
 						strokeWidth="2.2"
 						strokeDasharray={hasData ? undefined : "1 6"}
 					/>
@@ -97,7 +97,7 @@ export function TrendChart({
 				</svg>
 				{hovered && (
 					<div
-						className="absolute -translate-x-1/2 -translate-y-[130%] whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] text-paper pointer-events-none"
+						className="absolute -translate-x-1/2 -translate-y-[130%] whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] text-background pointer-events-none"
 						style={{
 							left: `${(hovered.x / VIEW_WIDTH) * 100}%`,
 							top: `${(hovered.y / VIEW_HEIGHT) * 100}%`,
@@ -108,7 +108,7 @@ export function TrendChart({
 					</div>
 				)}
 			</div>
-			<div className="flex justify-between text-[11px] text-ink/50 mt-1">
+			<div className="flex justify-between text-[11px] text-foreground/50 mt-1">
 				{series.length > 0 && (
 					<>
 						<span>{series[0].month}</span>

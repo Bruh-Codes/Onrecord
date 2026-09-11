@@ -41,7 +41,7 @@ export default function ReviewerQueuePage() {
 				<BackArrowIcon />
 				Back to overview
 			</Link>
-			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-ink/55">
+			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">
 				Classification queue
 			</div>
 
@@ -56,28 +56,28 @@ export default function ReviewerQueuePage() {
 			</p>
 
 			{queue.isLoading ? (
-				<div className="rounded-[20px] bg-panel p-6 text-sm text-ink/65">
+				<div className="rounded-[20px] bg-muted p-6 text-sm text-foreground/65">
 					Loading transactions that need review…
 				</div>
 			) : null}
 			{queue.isError ? (
-				<div className="rounded-[20px] border border-negative/30 bg-negative-bg p-6 text-sm text-negative">
+				<div className="rounded-[20px] border border-destructive/30 bg-destructive-background p-6 text-sm text-destructive">
 					We could not load the classification queue. Try refreshing the page.
 				</div>
 			) : null}
 			{!queue.isLoading && !queue.isError && items.length === 0 ? (
-				<div className="rounded-[20px] bg-panel p-8 text-center">
+				<div className="rounded-[20px] bg-muted p-8 text-center">
 					<div className="text-lg font-semibold mb-1">
 						No pending classification decisions
 					</div>
-					<div className="text-sm text-ink/60 mb-4">
+					<div className="text-sm text-foreground/60 mb-4">
 						New statement uploads will appear here when the model cannot make a
 						confident decision. Transactions deliberately left unclassified
 						remain visible in your insights.
 					</div>
 					<Link
 						href="/overview"
-						className="inline-flex rounded-full bg-ink px-4 py-2 text-sm text-paper"
+						className="inline-flex rounded-full bg-foreground px-4 py-2 text-sm text-background"
 					>
 						Return to overview
 					</Link>

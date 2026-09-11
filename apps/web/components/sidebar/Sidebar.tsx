@@ -46,7 +46,7 @@ const NAV_GROUPS = [
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 	return (
 		<span
-			className={`pointer-events-none invisible absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-[12.5px] text-paper shadow-lg z-[200] ${showClass}`}
+			className={`pointer-events-none invisible absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-foreground px-2.5 py-1.5 text-[12.5px] text-background shadow-lg z-[200] ${showClass}`}
 		>
 			{label}
 			<span className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-0 h-0 border-4 border-transparent border-r-ink" />
@@ -112,7 +112,11 @@ export function Sidebar() {
 	}
 
 	function toggleCollapsed() {
-		setCollapsed((c: boolean) => !c);
+		setCollapsed((c: boolean) => {
+			const next = !c;
+			if (next === false) setWidth(MAX_WIDTH);
+			return next;
+		});
 	}
 
 	const liveCollapsed = dragging ? width < COLLAPSE_THRESHOLD : collapsed;
@@ -125,7 +129,7 @@ export function Sidebar() {
 			style={{ width: effective }}
 		>
 			<aside
-				className={`flex h-full w-full shrink-0 flex-col bg-panel border-r ${
+				className={`flex h-full w-full shrink-0 flex-col bg-muted border-r ${
 					dragging ? "border-[#60a5fa]" : "border-border"
 				} ${liveCollapsed ? "overflow-visible px-2.5" : "overflow-y-auto px-3.5"}`}
 			>
@@ -155,7 +159,7 @@ export function Sidebar() {
 							}
 						>
 							{!liveCollapsed && (
-								<div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase text-ink/40">
+								<div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase text-foreground/40">
 									{group.label}
 								</div>
 							)}
@@ -187,7 +191,7 @@ export function Sidebar() {
 					className={`h-9 w-[3px] rounded-full transition-colors ${
 						dragging
 							? "bg-[#60a5fa]"
-							: "bg-ink/25 group-hover/resize:bg-[#60a5fa]"
+							: "bg-foreground/25 group-hover/resize:bg-[#60a5fa]"
 					}`}
 				/>
 			</div>

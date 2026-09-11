@@ -38,7 +38,7 @@ export default function NearlyReadyPage() {
   return (
     <div className="min-h-screen">
       <div className="flex items-center px-4 sm:px-10 py-4 sm:py-5">
-        <Link href="/dashboard" className="font-[family-name:var(--font-display)] text-lg">
+        <Link href="/dashboard" className="font-display text-lg">
           Onrecord
         </Link>
         <div className="ml-auto flex items-center gap-2 text-[13.5px]">
@@ -49,7 +49,7 @@ export default function NearlyReadyPage() {
       </div>
 
       <div className="max-w-[1040px] mx-auto px-4 sm:px-10 pb-15 pt-5">
-        <div className="text-[11px] tracking-wider uppercase text-ink/50 mb-1.5">
+        <div className="text-[11px] tracking-wider uppercase text-foreground/50 mb-1.5">
           {businessName ?? "Your business"}
         </div>
         <h1 className="text-[24px] sm:text-[32px] m-0 mb-2">Almost lender-ready</h1>
@@ -60,7 +60,7 @@ export default function NearlyReadyPage() {
         <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1fr_300px]">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-[26px] h-[26px] rounded-full bg-ink text-paper flex items-center justify-center text-[13px] font-bold shrink-0">
+              <span className="w-[26px] h-[26px] rounded-full bg-foreground text-background flex items-center justify-center text-[13px] font-bold shrink-0">
                 1
               </span>
               <div className="text-[17px] font-semibold">
@@ -72,26 +72,26 @@ export default function NearlyReadyPage() {
               <div className="p-6">
                 <div className="flex items-center gap-2 text-[16.5px] font-semibold mb-3.5">
                   Answer questions that unlock points
-                  <span className="w-[15px] h-[15px] rounded-full border-[1.4px] border-ink/40 flex items-center justify-center text-[10px]">
+                  <span className="w-[15px] h-[15px] rounded-full border-[1.4px] border-foreground/40 flex items-center justify-center text-[10px]">
                     ?
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5 text-[13.5px] mb-2">
-                  <span className="text-ink">✓</span>Classifying a counterparty clears many transactions at
+                  <span className="text-foreground">✓</span>Classifying a counterparty clears many transactions at
                   once
                 </div>
                 <div className="flex items-center gap-2.5 text-[13.5px] mb-4.5">
-                  <span className="text-ink">✓</span>Unlocks the documentation and legibility pillars
+                  <span className="text-foreground">✓</span>Unlocks the documentation and legibility pillars
                 </div>
                 <button
                   type="button"
                   onClick={openAssistantChat}
-                  className="bg-ink text-paper font-[family-name:var(--font-display)] text-sm px-6.5 py-3 border-none rounded-full cursor-pointer"
+                  className="bg-foreground text-background font-display text-sm px-6.5 py-3 border-none rounded-full cursor-pointer"
                 >
                   Open assistant chat
                 </button>
               </div>
-              <div className="bg-panel px-6 py-4 text-[12.5px] opacity-75 leading-relaxed">
+              <div className="bg-muted px-6 py-4 text-[12.5px] opacity-75 leading-relaxed">
                 Missing a document instead? <Link href="/documents">Skip this step</Link> and upload it
                 whenever you have it.
               </div>

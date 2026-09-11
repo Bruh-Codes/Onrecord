@@ -22,7 +22,7 @@ export function FinancialStatementView({ documentId }: { documentId: string }) {
 		return <p className="m-0 py-4 text-xs opacity-60">Loading extracted statement…</p>;
 	}
 	if (document.isError) {
-		return <p className="m-0 py-4 text-xs text-negative">Couldn&apos;t load the extracted statement.</p>;
+		return <p className="m-0 py-4 text-xs text-destructive">Couldn&apos;t load the extracted statement.</p>;
 	}
 
 	const statements = document.data?.financial_statements ?? [];
@@ -51,7 +51,7 @@ function StatementTable({ statement }: { statement: FinancialStatement }) {
 					</p>
 				</div>
 				{statement.validation_issues.length > 0 && (
-					<span className="rounded-full bg-negative/10 px-2.5 py-1 text-[11px] font-semibold text-negative">
+					<span className="rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-semibold text-destructive">
 						Needs totals review
 					</span>
 				)}
@@ -59,7 +59,7 @@ function StatementTable({ statement }: { statement: FinancialStatement }) {
 			<div className="overflow-x-auto">
 				<table className="w-full min-w-[520px] border-collapse text-xs">
 					<thead>
-						<tr className="bg-panel text-left">
+						<tr className="bg-muted text-left">
 							<th className="px-4 py-2.5 font-semibold">Line item</th>
 							{statement.periods.map((period) => <th key={period} className="px-4 py-2.5 text-right font-semibold">{period}</th>)}
 							<th className="px-4 py-2.5 text-right font-semibold">Source</th>
@@ -69,7 +69,7 @@ function StatementTable({ statement }: { statement: FinancialStatement }) {
 						{rows.map((row, index) => (
 							<Fragment key={row.lineIndex}>
 							{row.section && row.section !== rows[index - 1]?.section && (
-								<tr className="border-t border-border bg-panel/60">
+								<tr className="border-t border-border bg-muted/60">
 									<td colSpan={statement.periods.length + 2} className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide opacity-60">
 										{row.section}
 									</td>

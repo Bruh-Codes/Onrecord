@@ -27,7 +27,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const DEFAULT_DURATION_MS = 5000;
 
 function ToneIcon({ tone }: { tone: ToastTone }) {
-  if (tone === "error") return <XIcon className="shrink-0 text-negative" />;
+  if (tone === "error") return <XIcon className="shrink-0 text-destructive" />;
   return <CheckIcon className="shrink-0 text-positive" />;
 }
 
@@ -62,7 +62,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={item.id}
             role="status"
-            className="pointer-events-auto flex w-full items-start gap-2.5 rounded-xl bg-panel-strong border border-ink/16 shadow-lg px-4 py-3 text-ink animate-fade-in"
+            className="pointer-events-auto flex w-full items-start gap-2.5 rounded-xl bg-accent border border-foreground/16 shadow-lg px-4 py-3 text-foreground animate-fade-in"
           >
             <ToneIcon tone={item.tone} />
             <div className="min-w-0 flex-1">

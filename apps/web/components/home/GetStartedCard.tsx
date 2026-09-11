@@ -3,7 +3,7 @@ import { ChevronRightIcon, UploadIcon } from "@/components/icons";
 
 export function GetStartedCard({ hasData = false }: { hasData?: boolean }) {
 	return (
-		<div className="bg-panel rounded-3xl p-5 sm:p-8 mb-7.5">
+		<div className="bg-muted rounded-3xl p-5 sm:p-8 mb-7.5">
 			<h2 className="text-2xl m-0 mb-1.5">
 				{hasData ? "Keep building your financial record" : "Get started with Onrecord"}
 			</h2>
@@ -15,9 +15,9 @@ export function GetStartedCard({ hasData = false }: { hasData?: boolean }) {
 			<div className="flex gap-5 flex-wrap">
 				<Link
 					href="/documents"
-					className="flex-1 min-w-[240px] bg-surface rounded-2xl p-5 flex items-center gap-3.5"
+					className="flex-1 min-w-[240px] bg-card rounded-2xl p-5 flex items-center gap-3.5"
 				>
-					<div className="w-[42px] h-[42px] shrink-0 rounded-xl bg-positive-bg flex items-center justify-center">
+					<div className="w-[42px] h-[42px] shrink-0 rounded-xl bg-positive-background flex items-center justify-center">
 						<UploadIcon className="text-positive" />
 					</div>
 					<div className="flex-1 min-w-0">

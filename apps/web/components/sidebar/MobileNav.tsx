@@ -26,7 +26,7 @@ export function MobileNav() {
 
 	return (
 		<nav
-			className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-surface border-t border-border flex items-stretch"
+			className="md:hidden fixed bottom-0 inset-x-0 z-10 bg-card border-t border-border flex items-stretch"
 			style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
 		>
 			{ITEMS.map(({ href, label, icon: Icon }) => {
@@ -37,7 +37,7 @@ export function MobileNav() {
 						href={href}
 						aria-current={active ? "page" : undefined}
 						className={`flex-1 min-h-[56px] flex flex-col items-center justify-center gap-1 text-[10.5px] ${
-							active ? "text-ink font-semibold" : "text-ink/55"
+							active ? "text-foreground font-semibold" : "text-foreground/55"
 						}`}
 					>
 						<Icon />

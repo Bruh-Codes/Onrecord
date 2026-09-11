@@ -62,11 +62,11 @@ export default function ReadinessPage() {
 			</p>
 
 			<div className="grid gap-5 md:grid-cols-[2fr_2fr] mb-10 lg:grid-cols-[1fr_2fr]">
-				<div className="rounded-xl border border-border/70 p-5 bg-panel">
-					<div className="text-xs uppercase tracking-wider text-ink/50">
+				<div className="rounded-xl border border-border/70 p-5 bg-muted">
+					<div className="text-xs uppercase tracking-wider text-foreground/50">
 						Current readiness
 					</div>
-					<div className="font-[family-name:var(--font-display)] text-[42px] mt-2">
+					<div className="font-display text-[42px] mt-2">
 						{score.data ? score.data.total.toFixed(2) : "—"}
 					</div>
 					{score.data && (
@@ -80,7 +80,7 @@ export default function ReadinessPage() {
 						Scores are out of 100 and update after recompute.
 					</p>
 				</div>
-				<div className="rounded-xl border border-border/70 p-5 bg-panel">
+				<div className="rounded-xl border border-border/70 p-5 bg-muted">
 					<div className="text-sm font-semibold mb-4">Score pillars</div>
 					<div className="flex flex-wrap gap-4">
 						{PILLARS.map((pillar) => {
@@ -100,7 +100,7 @@ export default function ReadinessPage() {
 									</div>
 									<div className="h-1.5 rounded-full bg-border/60 mt-2 overflow-hidden">
 										<div
-											className="h-full rounded-full bg-ink"
+											className="h-full rounded-full bg-foreground"
 											style={{
 												width: `${value ? (value.earned / pillar.weight) * 100 : 0}%`,
 											}}

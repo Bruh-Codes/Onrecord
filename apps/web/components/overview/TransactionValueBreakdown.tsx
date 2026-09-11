@@ -29,7 +29,7 @@ export function TransactionValueBreakdown({
 
   const total = transactionTotal || 1;
 
-  const colors = ["var(--color-positive)", "var(--color-amber)", "var(--color-muted)", "var(--color-negative)"];
+  const colors = ["var(--positive)", "var(--warning)", "var(--muted-foreground)", "var(--destructive)"];
   const dynamicRows = breakdown?.map((item, index) => {
     const values = months && item.series?.length
       ? item.series.slice(-months).reduce((sum, point) => sum + point.v, 0)
@@ -37,9 +37,9 @@ export function TransactionValueBreakdown({
     return { label: item.label, value: values, color: colors[index % colors.length], pct: (values / total) * 100 };
   });
   const rows = dynamicRows?.length ? dynamicRows : [
-    { label: "Revenue", value: revenueTotal, color: "var(--color-positive)", pct: (revenueTotal / total) * 100 },
-    { label: "COGS + opex", value: opexValue, color: "var(--color-amber)", pct: (opexValue / total) * 100 },
-    { label: "Other / financing", value: otherValue, color: "var(--color-muted)", pct: (otherValue / total) * 100 },
+    { label: "Revenue", value: revenueTotal, color: "var(--positive)", pct: (revenueTotal / total) * 100 },
+    { label: "COGS + opex", value: opexValue, color: "var(--warning)", pct: (opexValue / total) * 100 },
+    { label: "Other / financing", value: otherValue, color: "var(--muted-foreground)", pct: (otherValue / total) * 100 },
   ];
 
   const hasData = transactionTotal > 0;
@@ -56,7 +56,7 @@ export function TransactionValueBreakdown({
             {rows.map((r) => (
               <div key={r.label} style={{ width: `${r.pct}%`, background: r.color }} />
             ))}
-            {!dynamicRows?.length && unclassifiedValue > 0 && <div style={{ width: `${Math.max(1, (unclassifiedValue / total) * 100)}%`, background: "var(--color-negative)" }} />}
+            {!dynamicRows?.length && unclassifiedValue > 0 && <div style={{ width: `${Math.max(1, (unclassifiedValue / total) * 100)}%`, background: "var(--destructive)" }} />}
           </>
         ) : null}
       </div>
@@ -70,9 +70,9 @@ export function TransactionValueBreakdown({
         ))}
         {!dynamicRows?.some((row) => row.label === "Unclassified") && (
           <div className={`flex items-center gap-2 ${unclassifiedValue === 0 ? "opacity-40" : ""}`}>
-            <span className="w-[9px] h-[9px] rounded-full shrink-0 bg-negative" />
+            <span className="w-[9px] h-[9px] rounded-full shrink-0 bg-destructive" />
             Unclassified
-            <span className={`ml-auto font-semibold ${unclassifiedValue === 0 ? "" : "text-negative"}`}>
+            <span className={`ml-auto font-semibold ${unclassifiedValue === 0 ? "" : "text-destructive"}`}>
               {formatGhs(unclassifiedValue)}{unclassifiedValue > 0 ? ` (${formatRatio(unclassifiedRatio)})` : ""}
             </span>
           </div>

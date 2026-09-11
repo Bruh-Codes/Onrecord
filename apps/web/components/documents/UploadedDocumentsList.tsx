@@ -102,7 +102,7 @@ export function UploadedDocumentsList({
 	if (error) {
 		return (
 			<div className="py-6 flex flex-col items-center gap-2.5 text-center">
-				<p className="text-[13px] text-negative m-0">{error}</p>
+				<p className="text-[13px] text-destructive m-0">{error}</p>
 				<PillButton onClick={onRetry}>Try again</PillButton>
 			</div>
 		);
@@ -121,7 +121,7 @@ export function UploadedDocumentsList({
 			{documents.map((doc) => (
 				<div key={doc.id} className="border-b border-border">
 				<div className="py-3 flex items-center gap-3.5">
-					<div className="w-[34px] h-[34px] shrink-0 rounded-[10px] bg-panel flex items-center justify-center">
+					<div className="w-[34px] h-[34px] shrink-0 rounded-[10px] bg-muted flex items-center justify-center">
 						<DocumentsIcon />
 					</div>
 					<div className="flex-1 min-w-0">
@@ -132,7 +132,7 @@ export function UploadedDocumentsList({
 							{documentDateFormatter.format(new Date(doc.created_at))}
 						</div>
 						{evidenceReviewMessage(doc) && (
-							<div className="text-[11px] text-negative/80 mt-1">
+							<div className="text-[11px] text-destructive/80 mt-1">
 								{evidenceReviewMessage(doc)} Human review required before scoring.
 							</div>
 						)}
@@ -157,7 +157,7 @@ export function UploadedDocumentsList({
 								title="Delete document"
 								onClick={() => setPendingDelete(doc)}
 								disabled={removingId === doc.id}
-								className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-negative/35 text-negative transition-colors hover:bg-negative-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative/40 disabled:cursor-not-allowed disabled:opacity-50"
+								className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-destructive/35 text-destructive transition-colors hover:bg-destructive-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								<TrashIcon />
 							</button>
@@ -169,7 +169,7 @@ export function UploadedDocumentsList({
 			))}
 			{pendingDelete && (
 				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 px-4"
+					className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 px-4"
 					role="presentation"
 					onMouseDown={(event) => {
 						if (event.target === event.currentTarget) setPendingDelete(null);
@@ -179,19 +179,19 @@ export function UploadedDocumentsList({
 						role="dialog"
 						aria-modal="true"
 						aria-labelledby="delete-document-title"
-						className="relative w-full max-w-[420px] rounded-2xl border border-border bg-surface p-5 shadow-card animate-slide-in"
+						className="relative w-full max-w-[420px] rounded-2xl border border-border bg-card p-5 shadow-card animate-slide-in"
 					>
 						<button
 							type="button"
 							aria-label="Close confirmation"
 							onClick={() => setPendingDelete(null)}
-							className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/55 hover:bg-panel hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
+							className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full text-foreground/55 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
 						>
 							<XIcon />
 						</button>
 						<h2 id="delete-document-title" className="m-0 pr-8 text-lg font-semibold">Delete document?</h2>
-						<p className="mt-2 mb-5 text-sm leading-relaxed text-ink/65">
-							This will remove <span className="font-semibold text-ink">{pendingDelete.filename}</span> from your active documents and update your insights. The original record is retained securely for audit purposes.
+						<p className="mt-2 mb-5 text-sm leading-relaxed text-foreground/65">
+							This will remove <span className="font-semibold text-foreground">{pendingDelete.filename}</span> from your active documents and update your insights. The original record is retained securely for audit purposes.
 						</p>
 						<div className="flex justify-end gap-2">
 							<PillButton variant="secondary" onClick={() => setPendingDelete(null)}>Cancel</PillButton>
