@@ -28,7 +28,12 @@ const STATUS_TONE: Record<DocumentStatus, "positive" | "negative" | "neutral"> =
 		superseded: "neutral",
 	};
 
+function isUnsupportedDocument(document: Document) {
+	return document.status === "failed" && document.quality_flags?.supported === false;
+}
+
 function needsReview(document: Document) {
+	if (isUnsupportedDocument(document)) return false;
 	const evidenceReview = document.quality_flags?.evidence_review as
 		| { status?: string }
 		| undefined;
@@ -43,6 +48,7 @@ function needsReview(document: Document) {
 }
 
 function evidenceReviewMessage(document: Document): string | null {
+	if (isUnsupportedDocument(document)) return null;
 	const review = document.quality_flags?.evidence_review as
 		| { status?: string; summary?: string }
 		| undefined;
@@ -140,7 +146,7 @@ export function UploadedDocumentsList({
 						<Badge tone={needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
 							{needsReview(doc)
 								? "Needs review"
-								: doc.status === "failed" && doc.doc_type === "other"
+								: isUnsupportedDocument(doc)
 								? "Not financial data"
 								: STATUS_LABEL[doc.status]}
 						</Badge>

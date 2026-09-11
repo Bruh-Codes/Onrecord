@@ -195,13 +195,23 @@ def s1_ingest(document_id: str) -> dict:
                 },
             ))
         else:
-            doc.status = DocStatus.CLASSIFIED if result.supported else DocStatus.FAILED
-            _record_evidence_review(doc, review_extracted_document(
-                doc_type=doc.doc_type.value if doc.doc_type else None,
-                page_count=doc.page_count,
-                extracted_text=processed.text,
-                extraction_error="Document type is not supported for evidence scoring.",
-            ))
+            if result.supported:
+                doc.status = DocStatus.CLASSIFIED
+                _record_evidence_review(doc, review_extracted_document(
+                    doc_type=doc.doc_type.value if doc.doc_type else None,
+                    page_count=doc.page_count,
+                    extracted_text=processed.text,
+                    extraction_error="Document type is not supported for evidence scoring.",
+                ))
+            else:
+                # Unsupported files are not evidence-review cases. Keep the
+                # result clear so the UI can explain that the file was not
+                # financial data rather than asking for human review.
+                doc.status = DocStatus.FAILED
+                doc.quality_flags = {
+                    **(doc.quality_flags or {}),
+                    "unsupported_document": True,
+                }
         sync_business_notifications(session, doc.business_id)
         session.commit()
         if doc.status == DocStatus.EXTRACTED:
