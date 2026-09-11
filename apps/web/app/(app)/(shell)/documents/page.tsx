@@ -32,9 +32,10 @@ export default function DocumentsPage() {
         businessId={businessId}
         businessLoading={me.isLoading}
         businessError={me.isError}
-        onRetryBusiness={() => me.refetch()}
-        onUploaded={() => documents.refetch()}
-      />
+		onRetryBusiness={() => me.refetch()}
+		onUploaded={() => documents.refetch()}
+		processingDocuments={documents.data?.items ?? []}
+		/>
       <ManualEntryPanel />
 
       {(documents.data?.items?.length ?? 0) > 0 && (

@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, UploadIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
+import type { Document } from "@/lib/api-types";
 import { useUploadDocument } from "@/lib/hooks/use-documents";
 
 type UploadState = {
 	id: string;
 	name: string;
 	status: "uploading" | "done" | "error";
+	documentId?: string;
 	error?: string;
 	existingDocumentId?: string;
 	file?: File;
@@ -18,18 +20,34 @@ type UploadState = {
 const REDIRECT_DELAY_MS = 3_000;
 const UPLOAD_COMPLETE_REDIRECT_PATH = "/overview";
 
+function hasDocumentReviewIssue(document: Document) {
+	const evidenceReview = document.quality_flags?.evidence_review as
+		| { status?: string }
+		| undefined;
+	return Boolean(
+		["pending", "warning", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
+		document.quality_flags?.extraction_error ||
+		document.quality_flags?.processing_error ||
+		Number(document.quality_flags?.financial_statement_validation_issues ?? 0) > 0 ||
+		Number(document.quality_flags?.financial_statement_mapping_review_values ?? 0) > 0 ||
+		Number(document.quality_flags?.financial_statement_structure_review_values ?? 0) > 0,
+	);
+}
+
 export function UploadDropzone({
 	businessId,
 	businessLoading,
 	businessError,
 	onRetryBusiness,
 	onUploaded,
+	processingDocuments,
 }: {
 	businessId: string | null;
 	businessLoading: boolean;
 	businessError: boolean;
 	onRetryBusiness: () => void;
 	onUploaded: () => void;
+	processingDocuments: Document[];
 }) {
 	const router = useRouter();
 	const upload = useUploadDocument(businessId ?? "");
@@ -40,27 +58,50 @@ export function UploadDropzone({
 		() => uploads.filter((uploadState) => batchIds.includes(uploadState.id)),
 		[batchIds, uploads],
 	);
-	const batchComplete =
+	const documentsById = useMemo(
+		() => new Map(processingDocuments.map((document) => [document.id, document])),
+		[processingDocuments],
+	);
+	const batchUploadsComplete =
 		batchIds.length > 0 &&
 		batchUploads.length === batchIds.length &&
 		batchUploads.every((uploadState) => uploadState.status === "done");
+	const batchProcessingComplete =
+		batchUploadsComplete &&
+		batchUploads.every((uploadState) => {
+			const document = uploadState.documentId
+				? documentsById.get(uploadState.documentId)
+				: undefined;
+			if (!document || document.status !== "extracted") return false;
+			return !hasDocumentReviewIssue(document);
+		});
+	const batchWaitingForProcessing =
+		batchUploadsComplete &&
+		batchUploads.some((uploadState) => {
+			const document = uploadState.documentId
+				? documentsById.get(uploadState.documentId)
+				: undefined;
+			return document === undefined || document.status === "received";
+		});
 
 	useEffect(() => {
-		if (!batchComplete) return;
+		if (!batchProcessingComplete) return;
 
 		const timer = window.setTimeout(() => {
 			router.push(UPLOAD_COMPLETE_REDIRECT_PATH);
 		}, REDIRECT_DELAY_MS);
 
 		return () => window.clearTimeout(timer);
-	}, [batchComplete, router]);
+	}, [batchProcessingComplete, router]);
 
 	async function uploadOne(file: File, id: string) {
 		if (!businessId) return;
 		try {
-			await upload.mutateAsync(file);
+			const result = await upload.mutateAsync(file);
 			setUploads((prev) =>
-				prev.map((u) => (u.id === id ? { ...u, status: "done" } : u)),
+				prev.map((u) =>
+					u.id === id ? { ...u, status: "done", documentId: result.documentId } : u,
+				),
 			);
 			onUploaded();
 		} catch (err) {
@@ -99,13 +140,15 @@ export function UploadDropzone({
 			),
 		);
 		try {
-			await upload.mutateAsync({
+			const result = await upload.mutateAsync({
 				file: uploadState.file,
 				replaceDocumentId: uploadState.existingDocumentId,
 			});
 			setUploads((prev) =>
 				prev.map((u) =>
-					u.id === uploadState.id ? { ...u, status: "done" } : u,
+					u.id === uploadState.id
+						? { ...u, status: "done", documentId: result.documentId }
+						: u,
 				),
 			);
 			onUploaded();
@@ -221,9 +264,16 @@ export function UploadDropzone({
 					))}
 				</div>
 			)}
-			{batchComplete && (
+			{batchUploadsComplete && !batchProcessingComplete && (
+				<div className="text-[12.5px] text-ink/60 pt-3 px-1" role="status">
+					{batchWaitingForProcessing
+						? "All files uploaded. Waiting for processing to finish…"
+						: "Some files need attention. Check the upload results above."}
+				</div>
+			)}
+			{batchProcessingComplete && (
 				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
-					All files uploaded. Taking you to the overview in 3 seconds…
+					All files processed. Taking you to the overview in 3 seconds…
 				</div>
 			)}
 			{upload.isPending && (
