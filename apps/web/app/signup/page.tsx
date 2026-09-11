@@ -99,22 +99,22 @@ export default function SignupPage() {
 	return (
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
-				<span className="font-[family-name:var(--font-display)] text-[19px]">
+				<span className="font-display text-[19px]">
 					Onrecord
 				</span>
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-				<div className="w-full max-w-[460px] bg-surface rounded-3xl shadow-[var(--shadow-card)] p-6 sm:p-9">
-					<div className="flex gap-1 bg-panel rounded-full p-1 mb-6.5">
+				<div className="w-full max-w-[460px] bg-card rounded-3xl shadow-card p-6 sm:p-9">
+					<div className="flex gap-1 bg-muted rounded-full p-1 mb-6.5">
 						<button
 							type="button"
 							onClick={() => setAuthMode("signup")}
 							disabled={busy}
 							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
 								authMode === "signup"
-									? "bg-ink text-paper font-semibold"
-									: "text-ink"
+									? "bg-foreground text-background font-semibold"
+									: "text-foreground"
 							}`}
 						>
 							Sign up
@@ -125,8 +125,8 @@ export default function SignupPage() {
 							disabled={busy}
 							className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
 								authMode === "login"
-									? "bg-ink text-paper font-semibold"
-									: "text-ink"
+									? "bg-foreground text-background font-semibold"
+									: "text-foreground"
 							}`}
 						>
 							Log in
@@ -137,52 +137,52 @@ export default function SignupPage() {
 						type="button"
 						onClick={handleGoogleSignIn}
 						disabled={busy}
-						className="w-full flex items-center justify-center gap-2.5 bg-surface border border-ink/16 rounded-full text-sm p-3 hover:bg-panel disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+						className="w-full flex items-center justify-center gap-2.5 bg-card border border-foreground/16 rounded-full text-sm p-3 hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
 					>
 						<GoogleLogo />
 						{googleLoading ? "Redirecting…" : "Continue with Google"}
 					</button>
 
 					<div className="flex items-center gap-2.5 mb-4.5">
-						<div className="flex-1 h-px bg-ink/12" />
+						<div className="flex-1 h-px bg-foreground/12" />
 						<span className="text-[11.5px] opacity-50">or</span>
-						<div className="flex-1 h-px bg-ink/12" />
+						<div className="flex-1 h-px bg-foreground/12" />
 					</div>
 
 					<div className="mb-3.5">
-						<label className="block text-xs mb-1.5 text-ink/70">Email</label>
+						<label className="block text-xs mb-1.5 text-foreground/70">Email</label>
 						<input
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							disabled={busy}
 							placeholder="you@business.com"
-							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</div>
 					<div className="mb-2">
-						<label className="block text-xs mb-1.5 text-ink/70">Password</label>
+						<label className="block text-xs mb-1.5 text-foreground/70">Password</label>
 						<input
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							disabled={busy}
 							placeholder="••••••••"
-							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-ink bg-panel border border-ink/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</div>
 
-					{error && <p className="text-[12.5px] text-negative mt-3">{error}</p>}
+					{error && <p className="text-[12.5px] text-destructive mt-3">{error}</p>}
 
 					<button
 						type="button"
 						disabled={!ready || busy}
 						onClick={handleSubmit}
-						className="w-full mt-5 text-paper font-[family-name:var(--font-display)] text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed"
+						className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed"
 						style={{
 							background:
 								ready && !submitting
-									? "var(--color-ink)"
-									: "var(--color-muted)",
+									? "var(--foreground)"
+									: "var(--muted-foreground)",
 							cursor: ready && !submitting ? "pointer" : "not-allowed",
 						}}
 					>
@@ -202,8 +202,8 @@ export default function SignupPage() {
 						<span
 							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
 								consented
-									? "border-ink bg-ink text-paper"
-									: "border-ink/30 bg-transparent text-paper"
+									? "border-foreground bg-foreground text-background"
+									: "border-foreground/30 bg-transparent text-background"
 							}`}
 						>
 							{consented && <CheckIcon className="h-3 w-3" />}

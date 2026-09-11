@@ -3,11 +3,11 @@ import type { ButtonHTMLAttributes } from "react";
 type Variant = "primary" | "secondary" | "success" | "danger" | "dark-outline";
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-ink text-paper",
-  secondary: "bg-transparent border border-ink/16 text-ink",
+  primary: "bg-foreground text-background",
+  secondary: "bg-transparent border border-foreground/16 text-foreground",
   success: "bg-positive text-white",
-  danger: "bg-transparent border border-negative text-negative",
-  "dark-outline": "bg-transparent border border-white/30 text-paper",
+  danger: "bg-transparent border border-destructive text-destructive",
+  "dark-outline": "bg-transparent border border-white/30 text-background",
 };
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {

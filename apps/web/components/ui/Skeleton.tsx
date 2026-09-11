@@ -1,5 +1,5 @@
 export function Skeleton({ className = "" }: { className?: string }) {
-	return <div aria-hidden="true" className={`animate-pulse rounded-lg bg-panel ${className}`} />;
+	return <div aria-hidden="true" className={`animate-pulse rounded-lg bg-muted ${className}`} />;
 }
 
 export function DocumentRowSkeleton() {
@@ -8,7 +8,7 @@ export function DocumentRowSkeleton() {
 			aria-hidden="true"
 			className="py-3 border-b border-border flex items-center gap-3.5"
 		>
-			<div className="w-[34px] h-[34px] shrink-0 rounded-[10px] bg-panel flex items-center justify-center">
+			<div className="w-[34px] h-[34px] shrink-0 rounded-[10px] bg-muted flex items-center justify-center">
 				<Skeleton className="w-[14px] h-[14px] rounded" />
 			</div>
 			<div className="flex-1 min-w-0 space-y-1.5">

@@ -46,7 +46,7 @@ export default function GapsPage() {
 						) && <PillButton onClick={askAssistant}>Ask assistant</PillButton>}
 						<Link
 							href="/documents"
-							className="rounded-full text-[13px] px-4 py-2 bg-transparent border border-ink/16 text-ink"
+							className="rounded-full text-[13px] px-4 py-2 bg-transparent border border-foreground/16 text-foreground"
 						>
 							Go to documents
 						</Link>
@@ -67,7 +67,7 @@ export default function GapsPage() {
 					{resolvedGaps.map((gap) => (
 						<div
 							key={gap.id}
-							className="flex items-center gap-2.5 py-2.5 border-b border-ink/6"
+							className="flex items-center gap-2.5 py-2.5 border-b border-foreground/6"
 						>
 							<span className="w-2 h-2 rounded-full bg-positive shrink-0" />
 							<div className="text-[13px] opacity-60">{gap.title}</div>

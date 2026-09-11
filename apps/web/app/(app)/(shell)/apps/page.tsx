@@ -14,9 +14,9 @@ export default function IntegrationsPage() {
 				{APP_INTEGRATIONS.map((app) => (
 					<div
 						key={app.name}
-						className="flex items-center gap-4 p-5 border border-ink/12 rounded-2xl opacity-75 hover:opacity-100 transition-opacity"
+						className="flex items-center gap-4 p-5 border border-foreground/12 rounded-2xl opacity-75 hover:opacity-100 transition-opacity"
 					>
-						<div className="w-11 h-11 shrink-0 rounded-xl bg-panel flex items-center justify-center">
+						<div className="w-11 h-11 shrink-0 rounded-xl bg-muted flex items-center justify-center">
 							<AppsIcon />
 						</div>
 						<div className="flex-1 min-w-0">
@@ -27,7 +27,7 @@ export default function IntegrationsPage() {
 						<button
 							type="button"
 							disabled
-							className="shrink-0 bg-ink/5 opacity-20 text-[13px] px-4.5 py-2.5 border-none rounded-full cursor-not-allowed"
+							className="shrink-0 bg-foreground/5 opacity-20 text-[13px] px-4.5 py-2.5 border-none rounded-full cursor-not-allowed"
 						>
 							Connect
 						</button>

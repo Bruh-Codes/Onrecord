@@ -34,7 +34,7 @@ export function GapsAndCoverage({
 					Evidence needed for a lender-ready application; these do not remove your business insights.
 				</div>
 				{gaps.slice(0, 4).map((gap) => (
-					<div key={gap.id} className="py-3 border-b border-ink/8">
+					<div key={gap.id} className="py-3 border-b border-foreground/8">
 						<div className="flex justify-between items-start gap-2.5">
 							<div className="text-[13.5px] font-semibold">{gap.title}</div>
 							<Badge tone="negative">{gap.severity}</Badge>
@@ -60,7 +60,7 @@ export function GapsAndCoverage({
 			</div>
 			<div>
 				<div className="text-[13px] opacity-65 mb-1.5">Statement coverage</div>
-				<div className="font-[family-name:var(--font-display)] text-[22px] mb-0.5">
+				<div className="font-display text-[22px] mb-0.5">
 					{coverage ? coverage.continuous_months : "—"}{" "}
 					<span className="text-[13px] opacity-60">
 						of {coverage?.analysis_window_months ?? 12} months
@@ -75,8 +75,8 @@ export function GapsAndCoverage({
 					points="0,35 220,35"
 					color={
 						coverage && coverage.continuous_months > 0
-							? "var(--color-ink)"
-							: "var(--color-border)"
+							? "var(--foreground)"
+							: "var(--border)"
 					}
 					viewBoxWidth={220}
 					height={70}

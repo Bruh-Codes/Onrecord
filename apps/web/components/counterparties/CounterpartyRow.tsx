@@ -31,7 +31,7 @@ export function CounterpartyRow({ counterparty }: { counterparty: Counterparty }
           <button
             type="button"
             onClick={startChat}
-            className="rounded-full text-[12.5px] px-3 py-1.5 mt-1 bg-ink text-paper border-none cursor-pointer"
+            className="rounded-full text-[12.5px] px-3 py-1.5 mt-1 bg-foreground text-background border-none cursor-pointer"
           >
             Ask assistant
           </button>

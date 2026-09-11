@@ -40,7 +40,7 @@ export function Dropdown<T extends string | number>({
 				onClick={() => setOpen((o) => !o)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				className="flex items-center gap-3 rounded-full border border-border bg-panel px-3 py-2 text-[13px] text-ink cursor-pointer active:scale-100"
+				className="flex items-center gap-3 rounded-full border border-border bg-muted px-3 py-2 text-[13px] text-foreground cursor-pointer active:scale-100"
 			>
 				{options.find((o) => o.value === value)?.label ?? String(value)}
 				<ChevronDownIcon
@@ -51,7 +51,7 @@ export function Dropdown<T extends string | number>({
 			{open && (
 				<div
 					role="listbox"
-					className="absolute top-full left-0 mt-1.5 min-w-full whitespace-nowrap rounded-xl border border-border bg-surface shadow-lg p-1 z-50 animate-slide-in"
+					className="absolute top-full left-0 mt-1.5 min-w-full whitespace-nowrap rounded-xl border border-border bg-card shadow-lg p-1 z-50 animate-slide-in"
 				>
 					{options.map((option) => (
 						<button
@@ -71,8 +71,8 @@ export function Dropdown<T extends string | number>({
 									: "cursor-pointer"
 							} ${
 								option.value === value
-									? "bg-ink/8 font-semibold"
-									: "hover:bg-panel"
+									? "bg-foreground/8 font-semibold"
+									: "hover:bg-muted"
 							}`}
 						>
 							{option.label}

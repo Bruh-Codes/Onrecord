@@ -29,25 +29,25 @@ export function ReviewDetailPanel({
 	const suggestionLabel = suggestion?.category_l1?.replaceAll("_", " ");
 	const [category, setCategory] = useState(suggestion?.category_l1 ?? "unknown");
 	return (
-		<div className="bg-surface rounded-[20px] p-5 shadow-card">
-			<div className="text-[11px] tracking-wider uppercase text-ink/55 mb-2.5">
+		<div className="bg-card rounded-[20px] p-5 shadow-card">
+			<div className="text-[11px] tracking-wider uppercase text-foreground/55 mb-2.5">
 				Classify transaction
 			</div>
-			<div className="rounded-2xl bg-panel p-4 mb-4">
+			<div className="rounded-2xl bg-muted p-4 mb-4">
 				<div className="text-[13px] font-semibold mb-1">{item.counterparty_raw || "Unidentified transaction"}</div>
-				<div className="text-xs text-ink/60">{item.occurred_on} · {item.direction === "in" ? "Inflow" : "Outflow"} · {item.document_filename}</div>
-				{item.document_type && <div className="mt-1 text-[11px] text-ink/45">Source type: {item.document_type.replaceAll("_", " ")}</div>}
-				<div className="font-[family-name:var(--font-display)] text-2xl mt-3">{formatGhs(item.amount_pesewas)}</div>
+				<div className="text-xs text-foreground/60">{item.occurred_on} · {item.direction === "in" ? "Inflow" : "Outflow"} · {item.document_filename}</div>
+				{item.document_type && <div className="mt-1 text-[11px] text-foreground/45">Source type: {item.document_type.replaceAll("_", " ")}</div>}
+				<div className="font-display text-2xl mt-3">{formatGhs(item.amount_pesewas)}</div>
 			</div>
 			{suggestion ? (
-				<div className="mb-4 rounded-xl border border-positive/30 bg-positive-bg px-3 py-2 text-xs">
+				<div className="mb-4 rounded-xl border border-positive/30 bg-positive-background px-3 py-2 text-xs">
 					<div className="font-semibold">AI suggests {suggestionLabel}</div>
-					<div className="text-ink/60">{Math.round(suggestion.confidence * 100)}% confidence · {suggestion.basis ?? "Based on the extracted transaction description and direction."}</div>
+					<div className="text-foreground/60">{Math.round(suggestion.confidence * 100)}% confidence · {suggestion.basis ?? "Based on the extracted transaction description and direction."}</div>
 				</div>
 			) : (
-				<div className="mb-4 rounded-xl border border-border px-3 py-2 text-xs text-ink/60">The model could not make a confident suggestion. Choose a category only if the source supports it.</div>
+				<div className="mb-4 rounded-xl border border-border px-3 py-2 text-xs text-foreground/60">The model could not make a confident suggestion. Choose a category only if the source supports it.</div>
 			)}
-			<div className="text-[11px] text-ink/55 mb-1">Save category decision</div>
+			<div className="text-[11px] text-foreground/55 mb-1">Save category decision</div>
 			<div className="mb-4">
 				<Dropdown
 					value={category}
@@ -58,8 +58,8 @@ export function ReviewDetailPanel({
 			<PillButton variant="success" className="w-full" disabled={busy} onClick={() => onSave(category)}>
 				Save classification
 			</PillButton>
-			<p className="m-0 text-xs text-ink/55">Saving marks this decision as human-reviewed and refreshes the business insights.</p>
-			{busy && <div className="mt-3 text-xs text-ink/60">Saving and recalculating…</div>}
+			<p className="m-0 text-xs text-foreground/55">Saving marks this decision as human-reviewed and refreshes the business insights.</p>
+			{busy && <div className="mt-3 text-xs text-foreground/60">Saving and recalculating…</div>}
 		</div>
 	);
 }

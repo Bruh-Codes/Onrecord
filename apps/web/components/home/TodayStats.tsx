@@ -16,8 +16,8 @@ export function TodayStats({
 	const windowMonths = coverage?.analysis_window_months ?? 12;
 	const coveragePositive = coverage ? continuous >= windowMonths : false;
 	const coverageColor = coveragePositive
-		? "var(--color-positive)"
-		: "var(--color-negative)";
+		? "var(--positive)"
+		: "var(--destructive)";
 
 	const total = score?.total ?? 0;
 	const band = score?.band ?? "not_ready";
@@ -31,10 +31,10 @@ export function TodayStats({
 					: "Not ready";
 	const scoreColor =
 		total >= 65
-			? "var(--color-positive)"
+			? "var(--positive)"
 			: total >= 40
-				? "var(--color-muted)"
-				: "var(--color-negative)";
+				? "var(--muted-foreground)"
+				: "var(--destructive)";
 
 	const nextGap =
 		openGaps.find((g) => g.kind === "missing_period") ?? openGaps[0];
@@ -44,7 +44,7 @@ export function TodayStats({
 			<div className="flex-1 min-w-[260px]">
 				<div className="text-[13px] opacity-65 mb-2.5">Statement coverage</div>
 				<div
-					className="font-[family-name:var(--font-display)] text-[30px] mb-0.5"
+					className="font-display text-[30px] mb-0.5"
 					style={{ color: coverageColor }}
 				>
 					{isNewUser
@@ -64,13 +64,13 @@ export function TodayStats({
 				</div>
 				<Sparkline
 					points="0,44 220,44"
-					color={isNewUser ? "var(--color-border)" : coverageColor}
+					color={isNewUser ? "var(--border)" : coverageColor}
 				/>
 			</div>
 			<div className="flex-1 min-w-[260px]">
 				<div className="text-[13px] opacity-65 mb-2.5">Readiness score</div>
 				<div
-					className="font-[family-name:var(--font-display)] text-[30px] mb-0.5"
+					className="font-display text-[30px] mb-0.5"
 					style={{ color: scoreColor }}
 				>
 					{isNewUser ? "Not calculated" : score ? `${total}` : "—"}{" "}
@@ -83,7 +83,7 @@ export function TodayStats({
 				</div>
 				<Sparkline
 					points="0,30 220,30"
-					color={isNewUser ? "var(--color-border)" : scoreColor}
+					color={isNewUser ? "var(--border)" : scoreColor}
 				/>
 			</div>
 			<div className="w-[220px] shrink-0">

@@ -154,10 +154,11 @@ export default function OverviewPage() {
 	const selectedCashflowPoints = seriesToPoints(selectedCashflowSeries);
 	const showCash = sourceScope === "statements";
 	const showInvoices = sourceScope === "invoices";
-	const hasUnclassified = unclassified?.status !== "insufficient_data" && (unclassified?.v ?? 0) > 0;
+	const hasUnclassified =
+		unclassified?.status !== "insufficient_data" && (unclassified?.v ?? 0) > 0;
 
 	const viewSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-ink/65">
+		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
 			<span>View</span>
 			<Dropdown
 				value={mode}
@@ -167,7 +168,7 @@ export default function OverviewPage() {
 		</label>
 	);
 	const periodSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-ink/65">
+		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
 			<span>Period</span>
 			<Dropdown
 				value={periodMonths}
@@ -177,7 +178,7 @@ export default function OverviewPage() {
 		</label>
 	);
 	const sourceSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-ink/65">
+		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
 			<span>Source</span>
 			<Dropdown
 				value={sourceScope}
@@ -194,23 +195,30 @@ export default function OverviewPage() {
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
 			<div className="flex flex-wrap items-start justify-between gap-5 mb-10">
 				<div>
-					<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">Your readiness overview</h1>
-					<p className="text-sm opacity-65 m-0">Rolling 12-month window, updated whenever new documents come in.</p>
+					<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">
+						Your readiness overview
+					</h1>
+					<p className="text-sm opacity-65 m-0">
+						Updated whenever new documents come in.
+					</p>
 				</div>
 				{sourceSelect}
 			</div>
 
 			{sourceScope === "other" && (
-				<div className="rounded-xl border border-border/70 p-5 mb-10 text-sm text-ink/65">
-					Other documents contribute supporting evidence and readiness coverage. They do not represent cashflow or invoice totals.
+				<div className="rounded-xl border border-border/70 p-5 mb-10 text-sm text-foreground/65">
+					Other documents contribute supporting evidence and readiness coverage.
+					They do not represent cashflow or invoice totals.
 				</div>
 			)}
 
-			{showCash && <div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">
-				{mode === "executive"
-					? "Transactions & trends"
-					: `${modeLabel} insights`}
-			</div>}
+			{showCash && (
+				<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
+					{mode === "executive"
+						? "Transactions & trends"
+						: `${modeLabel} insights`}
+				</div>
+			)}
 			{showCash && mode === "executive" && (
 				<div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
 					<div>
@@ -232,8 +240,12 @@ export default function OverviewPage() {
 							months={periodMonths}
 						/>
 						{hasUnclassified && (
-							<Link href="/reviewer" className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
-								Review unclassified transactions <span aria-hidden="true">→</span>
+							<Link
+								href="/reviewer"
+								className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-foreground underline decoration-ink/30 underline-offset-4 hover:decoration-ink"
+							>
+								Review unclassified transactions{" "}
+								<span aria-hidden="true">→</span>
 							</Link>
 						)}
 					</div>
@@ -243,15 +255,15 @@ export default function OverviewPage() {
 							title={`Revenue, ${periodLabel.toLowerCase()}`}
 							totalLabel={formatGhs(revenueTotal)}
 							series={selectedRevenuePoints}
-								color="var(--color-ink)"
-								idleCaption="No revenue recorded in window"
+							color="var(--foreground)"
+							idleCaption="No revenue recorded in window"
 						/>
 					</div>
 					<TrendChart
 						title={`Operating cashflow, ${periodLabel.toLowerCase()}`}
 						totalLabel={formatGhs(seriesTotal(selectedCashflowSeries))}
 						series={selectedCashflowPoints}
-						color="var(--color-muted)"
+						color="var(--muted-foreground)"
 						idleCaption={`Coverage: ${coverage.data?.continuous_months ?? 0}/${coverage.data?.analysis_window_months ?? 12} months`}
 					/>
 				</div>
@@ -268,19 +280,19 @@ export default function OverviewPage() {
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Transaction value"
-							value={transactionTotal}
-							detail={periodLabel}
+						value={transactionTotal}
+						detail={periodLabel}
 					/>
 					<MetricStat
 						label="Average ticket"
-							value={avgTicket}
-							detail="Revenue transactions"
+						value={avgTicket}
+						detail="Revenue transactions"
 					/>
 					<MetricStat
 						label="Active trading days"
 						value={activeTradingDays}
-							unit="count"
-							detail={periodLabel}
+						unit="count"
+						detail={periodLabel}
 					/>
 					<div className="md:col-span-3">
 						<TransactionValueBreakdown
@@ -320,8 +332,8 @@ export default function OverviewPage() {
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Revenue"
-							value={revenueTotal}
-							detail={periodLabel}
+						value={revenueTotal}
+						detail={periodLabel}
 					/>
 					<MetricStat
 						label="Operating expense ratio"
@@ -331,7 +343,7 @@ export default function OverviewPage() {
 								: (opexRatio?.v ?? null)
 						}
 						unit="ratio"
-							detail="Operating expenses / revenue"
+						detail="Operating expenses / revenue"
 					/>
 					<MetricStat
 						label="Unclassified value"
@@ -340,7 +352,7 @@ export default function OverviewPage() {
 								? null
 								: transactionTotal * (unclassified?.v ?? 0)
 						}
-							detail="Needs categorisation"
+						detail="Needs categorisation"
 					/>
 				</div>
 			)}
@@ -349,19 +361,19 @@ export default function OverviewPage() {
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
 						label="Operating cashflow"
-							value={seriesTotal(selectedCashflowSeries)}
-							detail={periodLabel}
+						value={seriesTotal(selectedCashflowSeries)}
+						detail={periodLabel}
 					/>
 					<MetricStat
 						label="Net cashflow"
-							value={seriesTotal(selectedNetCashflow)}
-							detail={periodLabel}
+						value={seriesTotal(selectedNetCashflow)}
+						detail={periodLabel}
 					/>
 					<MetricStat
 						label="Negative balance days"
 						value={negativeBalanceDays}
-							unit="count"
-							detail="Within analysis window"
+						unit="count"
+						detail="Within analysis window"
 					/>
 				</div>
 			)}
@@ -387,7 +399,7 @@ export default function OverviewPage() {
 			{showCash && mode !== "coverage" && (
 				<>
 					<div className="h-px bg-border mb-10" />
-					<div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">
+					<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
 						Gaps &amp; coverage
 					</div>
 					<GapsAndCoverage
@@ -408,7 +420,9 @@ export default function OverviewPage() {
 
 			{showInvoices && (
 				<>
-					<div className="text-xs tracking-wider uppercase text-ink/45 mb-4.5">Invoices &amp; billing</div>
+					<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
+						Invoices &amp; billing
+					</div>
 					<InvoiceInsightsPanel data={invoiceInsights.data} />
 				</>
 			)}
