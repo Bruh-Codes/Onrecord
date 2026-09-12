@@ -177,6 +177,15 @@ export function BellIcon({ className }: IconProps) {
   );
 }
 
+export function KeyIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.2" className={className} aria-hidden="true">
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.85 12.15 19 4M18 5l2 2M15 8l2 2" />
+    </svg>
+  );
+}
+
 export function TrashIcon({ className }: IconProps) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">

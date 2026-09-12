@@ -45,7 +45,27 @@ BETTER_AUTH_URL=http://localhost:3000
 # Server-only; do not prefix with NEXT_PUBLIC_. It is used by Better Auth on Vercel.
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+# Password-reset emails (Better Auth sendResetPassword → Resend). Unset key =
+# the reset link is only logged to the server console (local dev fallback);
+# with a key, RESEND_FROM_EMAIL must be a sender verified on Resend.
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=Onrecord <no-reply@your-domain.com>
 ```
+
+Password reset: `/forgot-password` requests a one-hour, single-use token via
+`authClient.requestPasswordReset`; Better Auth hands the reset URL to
+`emailAndPassword.sendResetPassword`, which sends it through
+`lib/resend.ts`. The emailed link first hits `/api/auth/reset-password/<token>`
+(validates the token server-side), then redirects to `/reset-password?token=…`,
+the new-password form, which calls `authClient.resetPassword`. Unknown emails
+get the identical "if this email exists…" response, so the endpoint can't be
+used to probe for registered accounts.
+
+Signed-in users can also change their password from the profile dropdown
+(topbar) → "Change password", which calls `authClient.changePassword`
+(`revokeOtherSessions: true`, so other devices are signed out). Accounts created
+via Google have no password to change — that case is reported instead of
+failing silently.
 
 Apply Better Auth's schema after any config change to `lib/auth.ts`:
 
@@ -113,6 +133,8 @@ BETTER_AUTH_SECRET=<32+ char random string, stable across deploys>
 BETTER_AUTH_URL=https://<your-app>.vercel.app
 DATABASE_URL=postgresql://...railway...     # Public Network DSN from Railway Postgres → Connect
 NEXT_PUBLIC_BACKEND_URL=https://sme-project-production-9437.up.railway.app
+RESEND_API_KEY=re_...                        # password-reset email delivery
+RESEND_FROM_EMAIL=Onrecord <no-reply@your-domain.com>  # verified sender
 ```
 
 The browser talks to the Railway API directly (CORS), so the API's

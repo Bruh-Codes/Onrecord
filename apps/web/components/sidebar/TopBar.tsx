@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BellIcon, SearchIcon, SunIcon, MoonIcon, LogOutIcon } from "@/components/icons";
+import { BellIcon, SearchIcon, SunIcon, MoonIcon, LogOutIcon, KeyIcon } from "@/components/icons";
 import { useTheme } from "@/lib/theme";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
+import { ChangePasswordModal } from "@/components/sidebar/ChangePasswordModal";
 import icon from "@/public/icon.png";
 
 export function TopBar() {
@@ -21,6 +22,8 @@ export function TopBar() {
   const markAllRead = useMarkAllNotificationsRead(businessId);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [changePasswordOpenedAt, setChangePasswordOpenedAt] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -73,6 +76,7 @@ export function TopBar() {
   const displayTime = (value: string) => value.replace("T", " ").slice(0, 16);
 
   return (
+    <>
     <div className="flex items-center gap-3 px-3 sm:px-7 py-3 sm:py-3.5 border-b border-border sticky top-0 z-30 bg-background/80 backdrop-blur">
       <Link
         href="/dashboard"
@@ -240,6 +244,20 @@ export function TopBar() {
               <button
                 type="button"
                 role="menuitem"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Remount the modal so each open starts from a clean form.
+                  setChangePasswordOpenedAt(Date.now());
+                  setIsChangePasswordOpen(true);
+                }}
+                className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:bg-foreground hover:text-background cursor-pointer"
+              >
+                <KeyIcon className="w-4 h-4" />
+                Change password
+              </button>
+              <button
+                type="button"
+                role="menuitem"
                 onClick={handleLogout}
                 disabled={isLoading}
                 className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:bg-foreground hover:text-background cursor-pointer disabled:opacity-60"
@@ -252,5 +270,12 @@ export function TopBar() {
         </div>
       </div>
     </div>
+
+    <ChangePasswordModal
+      key={changePasswordOpenedAt}
+      open={isChangePasswordOpen}
+      onClose={() => setIsChangePasswordOpen(false)}
+    />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { admin, jwt, organization, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
+import { sendPasswordResetEmail } from "@/lib/resend";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -61,6 +62,18 @@ export const auth = betterAuth({
 
 	emailAndPassword: {
 		enabled: true,
+		// Password reset: POST /api/auth/request-password-reset issues a
+		// one-hour, single-use token and hands the reset URL to Resend (or the
+		// console fallback when RESEND_API_KEY is unset-see lib/resend.ts).
+		// The returned URL is /reset-password/<token>?callbackURL=..., which the
+		// client follows after the token is validated at
+		// /api/auth/reset-password/<token>.
+		sendResetPassword: ({ user, url }) =>
+			sendPasswordResetEmail({
+				to: user.email,
+				name: user.name,
+				url,
+			}),
 	},
 
 	user: {

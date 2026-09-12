@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CheckIcon, GoogleLogo } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
@@ -172,6 +173,17 @@ export default function SignupPage() {
 					</div>
 
 					{error && <p className="text-[12.5px] text-destructive mt-3">{error}</p>}
+
+					{authMode === "login" && !busy && (
+						<p className="text-right -mt-1.5 mb-0">
+							<Link
+								href="/forgot-password"
+								className="text-[12px] opacity-60 hover:opacity-100"
+							>
+								Forgot password?
+							</Link>
+						</p>
+					)}
 
 					<button
 						type="button"
