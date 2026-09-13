@@ -97,3 +97,35 @@ def test_openai_structure_failure_falls_back_cleanly(monkeypatch):
         [StructureRow("s0:l0", "Revenue", 0, None, 0, False)],
         "income_statement",
     ) is None
+
+
+def test_groq_structure_request_uses_groq_endpoint_without_openai_store_option(monkeypatch):
+    captured = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"output_text": json.dumps({
+                "statement_type": "income_statement",
+                "statement_type_confidence": 0.9,
+                "annotations": [],
+            })}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    mapper = OpenAIFinancialStructureMapper(
+        "groq-secret",
+        "llama-3.3-70b-versatile",
+        responses_url="https://api.groq.com/openai/v1/responses",
+        responses_options={},
+    )
+
+    assert mapper.structure_rows([StructureRow("s0:l0", "Revenue", 0, None, 0, False)], "income_statement")
+    assert captured["url"] == "https://api.groq.com/openai/v1/responses"
+    assert "store" not in captured["json"]

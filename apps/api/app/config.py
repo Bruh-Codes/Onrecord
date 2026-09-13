@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,10 +12,36 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     task_always_eager: bool = False
 
-    # Optional OpenAI semantic pass. Without a key, financial extraction stays
-    # fully local and unknown structure/concepts remain unclassified.
+    # Optional semantic pass. Without a provider key, financial extraction
+    # stays fully local and unknown structure/concepts remain unclassified.
+    llm_provider: Literal["openai", "groq"] = "openai"
     openai_api_key: str = ""
+    groq_api_key: str = ""
+    llm_base_url: str = ""
     financial_mapping_model: str = "gpt-5.6-luna"
+
+    @property
+    def llm_api_key(self) -> str:
+        return self.groq_api_key if self.llm_provider == "groq" else self.openai_api_key
+
+    @property
+    def responses_api_url(self) -> str:
+        base_url = self.llm_base_url or (
+            "https://api.groq.com/openai/v1"
+            if self.llm_provider == "groq"
+            else "https://api.openai.com/v1"
+        )
+        return f"{base_url.rstrip('/')}/responses"
+
+    def responses_options(self) -> dict:
+        # Groq's Responses API does not support OpenAI's `store` field. Its
+        # GPT-OSS models support the same low reasoning setting; other Groq
+        # models receive no reasoning option to avoid a compatibility error.
+        if self.llm_provider == "openai":
+            return {"store": False, "reasoning": {"effort": "low"}}
+        if self.financial_mapping_model.startswith("openai/gpt-oss-"):
+            return {"reasoning": {"effort": "low"}}
+        return {}
 
     # Better Auth (apps/web) issues these tokens via its `jwt` plugin, which
     # defaults to EdDSA/Ed25519 and is verified against its JWKS endpoint —

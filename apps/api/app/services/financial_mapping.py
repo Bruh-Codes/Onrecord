@@ -64,11 +64,13 @@ class FinancialStructureMapper(Protocol):
 
 
 class OpenAIFinancialStructureMapper:
-    """Responses API adapter using strict Structured Outputs."""
+    """OpenAI-compatible Responses API adapter using strict Structured Outputs."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str, model: str, *, responses_url: str = "https://api.openai.com/v1/responses", responses_options: dict | None = None) -> None:
         self._api_key = api_key
         self._model = model
+        self._responses_url = responses_url
+        self._responses_options = responses_options if responses_options is not None else {"store": False, "reasoning": {"effort": "low"}}
 
     def structure_rows(
         self,
@@ -79,15 +81,14 @@ class OpenAIFinancialStructureMapper:
             return None
         try:
             response = httpx.post(
-                "https://api.openai.com/v1/responses",
+                self._responses_url,
                 headers={
                     "authorization": f"Bearer {self._api_key}",
                     "content-type": "application/json",
                 },
                 json={
                     "model": self._model,
-                    "store": False,
-                    "reasoning": {"effort": "low"},
+                    **self._responses_options,
                     "input": [
                         {
                             "role": "developer",
@@ -124,11 +125,13 @@ class OpenAIFinancialStructureMapper:
 
 def get_structure_mapper() -> OpenAIFinancialStructureMapper | None:
     settings = get_settings()
-    if not settings.openai_api_key or not settings.financial_mapping_model:
+    if not settings.llm_api_key or not settings.financial_mapping_model:
         return None
     return OpenAIFinancialStructureMapper(
-        api_key=settings.openai_api_key,
+        api_key=settings.llm_api_key,
         model=settings.financial_mapping_model,
+        responses_url=settings.responses_api_url,
+        responses_options=settings.responses_options(),
     )
 
 

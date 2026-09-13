@@ -50,16 +50,15 @@ class ParsedInvoice:
 
 def extract_invoice(document: ProcessedDocument) -> ParsedInvoice | None:
     settings = get_settings()
-    if not settings.openai_api_key or not settings.financial_mapping_model:
+    if not settings.llm_api_key or not settings.financial_mapping_model:
         return None
     try:
         response = httpx.post(
-            "https://api.openai.com/v1/responses",
-            headers={"authorization": f"Bearer {settings.openai_api_key}", "content-type": "application/json"},
+            settings.responses_api_url,
+            headers={"authorization": f"Bearer {settings.llm_api_key}", "content-type": "application/json"},
             json={
                 "model": settings.financial_mapping_model,
-                "store": False,
-                "reasoning": {"effort": "low"},
+                **settings.responses_options(),
                 "input": [
                     {"role": "developer", "content": _INSTRUCTIONS},
                     {"role": "user", "content": json.dumps(_evidence_payload(document), ensure_ascii=False)},

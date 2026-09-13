@@ -29,13 +29,14 @@ In Railway, API and worker must use the same S3-compatible `STORAGE_*` settings;
 local-disk storage is not shared between services. Keep the worker at
 `--concurrency=1` because Docling loads CPU/memory-intensive local models.
 
-### OpenAI semantic structuring
+### AI semantic structuring (OpenAI or Groq)
 
-Set `OPENAI_API_KEY` on the Railway service that runs the Celery worker. Keep
-the key server-side; it must not be added to `apps/web`, committed to git, or
-sent to the browser. The default model is `gpt-5.6-luna`, configurable with
-`FINANCIAL_MAPPING_MODEL` (for example, `gpt-5.6-terra` for a higher-cost
-fallback). The worker sends OpenAI row labels and stable source IDs only:
+Set the selected provider key on the Railway service that runs the Celery worker.
+Keep it server-side; it must not be added to `apps/web`, committed to git, or
+sent to the browser. Use `LLM_PROVIDER=openai` with `OPENAI_API_KEY`, or
+`LLM_PROVIDER=groq` with `GROQ_API_KEY`. Groq uses its OpenAI-compatible
+Responses API. Configure `FINANCIAL_MAPPING_MODEL` for the selected provider.
+The worker sends row labels and stable source IDs only:
 Docling/parser output remains authoritative for amounts, periods, and
 provenance. If the key is absent or the model call fails, extraction continues
 with deterministic/local structure and marks uncertain values for review.
@@ -46,7 +47,7 @@ the optional Luna pass classifies only unresolved, non-internal labels in
 batches. The model returns a strict category plus confidence; low-confidence
 responses are left unclassified. It never receives transaction amounts,
 balances, dates, or account identifiers, and it cannot alter extracted facts.
-Re-running recompute after enabling `OPENAI_API_KEY` applies the model to
+Re-running recompute after enabling an LLM provider applies the model to
 existing unresolved transactions as well as newly ingested documents.
 
 ### Evidence review and scoring eligibility
@@ -108,8 +109,10 @@ STORAGE_ENDPOINT_URL=http://localhost:9000
 STORAGE_ACCESS_KEY=minioadmin
 STORAGE_SECRET_KEY=minioadmin
 STORAGE_BUCKET=sme-documents
-OPENAI_API_KEY=                       # optional; omit for local-only extraction
-FINANCIAL_MAPPING_MODEL=gpt-5.6-luna  # optional override
+LLM_PROVIDER=openai                   # openai (default) or groq
+OPENAI_API_KEY=                       # used when LLM_PROVIDER=openai
+GROQ_API_KEY=                         # used when LLM_PROVIDER=groq
+FINANCIAL_MAPPING_MODEL=gpt-5.6-luna  # select a model compatible with the provider
 ```
 
 Or skip all of this and run `docker compose up` from the repo root instead —
