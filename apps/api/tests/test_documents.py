@@ -63,6 +63,34 @@ async def test_complete_document_enqueues_ingest(client, monkeypatch):
     assert enqueued == [document_id]
 
 
+async def test_retry_received_document_reenqueues_ingest(client, monkeypatch):
+    from app.workers.tasks import s1_ingest
+
+    owner_id = uuid.uuid4()
+    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    business_id = await _create_business(client, admin_headers)
+    owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
+    created = await client.post(
+        f"/v1/businesses/{business_id}/documents",
+        json={
+            "filename": "stuck.jpeg",
+            "mime": "image/jpeg",
+            "size_bytes": 1024,
+            "sha256": hashlib.sha256(b"stuck-image").hexdigest(),
+        },
+        headers=owner_headers,
+    )
+    document_id = created.json()["document_id"]
+    enqueued: list[str] = []
+    monkeypatch.setattr(s1_ingest, "delay", enqueued.append)
+
+    response = await client.post(f"/v1/documents/{document_id}/retry-processing", headers=owner_headers)
+
+    assert response.status_code == 202
+    assert response.json() == {"status": "received", "requeued": True}
+    assert enqueued == [document_id]
+
+
 async def test_duplicate_sha256_is_rejected(client):
     owner_id = uuid.uuid4()
     admin_headers = bearer_header(role="admin", user_id=owner_id)

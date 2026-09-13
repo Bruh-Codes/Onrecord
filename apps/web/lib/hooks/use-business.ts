@@ -134,6 +134,14 @@ export function useDeleteDocument(businessId: string | null) {
   });
 }
 
+export function useRetryDocumentProcessing(businessId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) => api.retryDocumentProcessing(documentId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents", businessId] }),
+  });
+}
+
 export function useTransactions(businessId: string | null, params?: Record<string, string | number>) {
   const key = JSON.stringify(params ?? {});
   return useQuery<{ items: Transaction[]; total: number }>({
