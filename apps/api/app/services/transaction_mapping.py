@@ -40,21 +40,22 @@ class TransactionCategorizer(Protocol):
 
 
 class OpenAITransactionCategorizer:
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str, model: str, *, responses_url: str = "https://api.openai.com/v1/responses", responses_options: dict | None = None) -> None:
         self._api_key = api_key
         self._model = model
+        self._responses_url = responses_url
+        self._responses_options = responses_options if responses_options is not None else {"store": False, "reasoning": {"effort": "low"}}
 
     def categorize(self, labels: list[TransactionLabel]) -> tuple[TransactionCategory, ...]:
         if not labels:
             return ()
         try:
             response = httpx.post(
-                "https://api.openai.com/v1/responses",
+                self._responses_url,
                 headers={"authorization": f"Bearer {self._api_key}", "content-type": "application/json"},
                 json={
                     "model": self._model,
-                    "store": False,
-                    "reasoning": {"effort": "low"},
+                    **self._responses_options,
                     "input": [
                         {"role": "developer", "content": _INSTRUCTIONS},
                         {"role": "user", "content": json.dumps({"labels": [_payload(label) for label in labels]})},
@@ -81,9 +82,14 @@ class OpenAITransactionCategorizer:
 
 def get_transaction_categorizer() -> OpenAITransactionCategorizer | None:
     settings = get_settings()
-    if not settings.openai_api_key or not settings.financial_mapping_model:
+    if not settings.llm_api_key or not settings.financial_mapping_model:
         return None
-    return OpenAITransactionCategorizer(settings.openai_api_key, settings.financial_mapping_model)
+    return OpenAITransactionCategorizer(
+        settings.llm_api_key,
+        settings.financial_mapping_model,
+        responses_url=settings.responses_api_url,
+        responses_options=settings.responses_options(),
+    )
 
 
 _INSTRUCTIONS = """Classify unresolved business transaction labels.

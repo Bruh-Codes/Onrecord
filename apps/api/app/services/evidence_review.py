@@ -77,7 +77,7 @@ def review_extracted_document(
         )
 
     settings = get_settings()
-    if not settings.openai_api_key or not settings.financial_mapping_model:
+    if not settings.llm_api_key or not settings.financial_mapping_model:
         return EvidenceReview(
             status="pending",
             risk_level="unknown",
@@ -90,8 +90,10 @@ def review_extracted_document(
 
     try:
         payload = _call_model(
-            api_key=settings.openai_api_key,
+            api_key=settings.llm_api_key,
             model=settings.financial_mapping_model,
+            responses_url=settings.responses_api_url,
+            responses_options=settings.responses_options(),
             doc_type=doc_type,
             page_count=page_count,
             row_count=row_count,
@@ -112,14 +114,13 @@ def review_extracted_document(
         )
 
 
-def _call_model(*, api_key: str, model: str, doc_type: str | None, page_count: int | None, row_count: int | None, review_context: dict[str, Any] | None, text: str) -> dict:
+def _call_model(*, api_key: str, model: str, responses_url: str, responses_options: dict, doc_type: str | None, page_count: int | None, row_count: int | None, review_context: dict[str, Any] | None, text: str) -> dict:
     response = httpx.post(
-        "https://api.openai.com/v1/responses",
+        responses_url,
         headers={"authorization": f"Bearer {api_key}", "content-type": "application/json"},
         json={
             "model": model,
-            "store": False,
-            "reasoning": {"effort": "low"},
+            **responses_options,
             "input": [
                 {"role": "developer", "content": _INSTRUCTIONS},
                 {"role": "user", "content": json.dumps({"doc_type": doc_type, "page_count": page_count, "row_count": row_count, "review_context": review_context or {}, "extracted_structure": text})},
