@@ -44,7 +44,7 @@ def s1_ingest(document_id: str) -> dict:
     from app.db import engine_sync
     from app.pipeline.s2_classify import classify_document
     from app.services.document_processing import DoclingProcessor
-    from app.services.evidence_review import review_extracted_document
+    from app.services.evidence_review import allow_partial_transaction_use, review_extracted_document
     from app.services.financial_mapping import get_structure_mapper
     from app.services.storage import get_storage_backend
 
@@ -110,11 +110,20 @@ def s1_ingest(document_id: str) -> dict:
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
-            _record_evidence_review(doc, review_extracted_document(
+            transaction_quality = _transaction_quality(parsed_rows)
+            doc.quality_flags["transaction_quality"] = transaction_quality
+            review = review_extracted_document(
                 doc_type=doc.doc_type.value if doc.doc_type else None,
                 page_count=doc.page_count,
                 extracted_text=processed.text,
                 row_count=len(parsed_rows),
+                review_context=transaction_quality,
+            )
+            _record_evidence_review(doc, allow_partial_transaction_use(
+                review,
+                row_count=len(parsed_rows),
+                rows_missing_balance=transaction_quality["rows_missing_balance"],
+                rows_with_description_artifacts=transaction_quality["rows_with_description_artifacts"],
             ))
         elif result.supported and doc.doc_type == DocType.FINANCIAL_STATEMENT:
             fields, extraction_error = parse_financial_statement(
@@ -286,7 +295,10 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 category_l2=row.category_l2,
                 category_confidence=row.category_confidence,
                 category_source=row.category_source,
-                flags={"internal_transfer": True} if row.internal_transfer else {},
+                flags={
+                    **({"internal_transfer": True} if row.internal_transfer else {}),
+                    **({"extraction_quality": list(row.quality_flags)} if row.quality_flags else {}),
+                },
                 provenance={"extraction_ids": [str(extraction.id)]},
             )
         )
@@ -329,6 +341,15 @@ def _persist_financial_fields(session: Session, doc: Document, fields: list[Fina
                 confidence=0.85,
             )
         )
+
+
+def _transaction_quality(rows: list[ParsedRow]) -> dict[str, int]:
+    return {
+        "rows_total": len(rows),
+        "rows_missing_balance": sum("balance_missing" in row.quality_flags for row in rows),
+        "rows_with_description_artifacts": sum("description_artifact" in row.quality_flags for row in rows),
+        "rows_with_truncated_descriptions": sum("description_truncated" in row.quality_flags for row in rows),
+    }
 
 
 def _persist_invoice(session: Session, doc: Document, invoice: ParsedInvoice) -> None:

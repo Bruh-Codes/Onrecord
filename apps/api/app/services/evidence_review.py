@@ -9,7 +9,7 @@ import hashlib
 import json
 import logging
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, replace
 from typing import Any
 
 import httpx
@@ -159,6 +159,29 @@ def _validated_review(payload: object, *, input_hash: str, model: str) -> Eviden
     return EvidenceReview(status, risk_level, eligible, _sanitize_text(summary)[:500], tuple(findings[:20]), model, input_hash)
 
 
+def allow_partial_transaction_use(
+    review: EvidenceReview,
+    *,
+    row_count: int,
+    rows_missing_balance: int,
+    rows_with_description_artifacts: int,
+) -> EvidenceReview:
+    """Keep a mostly complete statement usable while preserving its warning.
+
+    Date, direction, and amount are the core fields for cash-flow analysis.
+    A small number of missing balances or PDF delimiter artifacts should not
+    discard every otherwise valid transaction. Balance-based indicators already
+    ignore rows without a balance.
+    """
+    if review.status != "warning" or row_count < 10:
+        return review
+    allowed_missing_balances = max(2, row_count // 20)
+    allowed_artifacts = max(2, row_count // 10)
+    if rows_missing_balance > allowed_missing_balances or rows_with_description_artifacts > allowed_artifacts:
+        return review
+    return replace(review, scoring_eligible=True)
+
+
 def _sanitize_text(text: str) -> str:
     # Preserve labels and layout cues while removing amounts, account numbers,
     # dates, phone numbers, references, and other high-risk numeric content.
@@ -197,4 +220,10 @@ contains a structured extraction summary, use it as the primary evidence for
 field completeness; do not call a field incomplete merely because its label is
 not visible in the redacted text or because OCR put a label and value on
 different lines. Only flag explicit validation issues or a missing source-backed
-field; absent optional invoice fields are not an extraction failure."""
+field; absent optional invoice fields are not an extraction failure. For mobile-
+money transaction statements, date, direction, and amount are the core fields.
+A small number of blank running balances or PDF table delimiter artifacts does
+not make the whole statement unusable when review_context confirms the rows
+were parsed with those core fields. Do not infer a truncated source merely
+because the markdown ends with an incomplete-looking cell; use row counts and
+explicit parser validation failures as the evidence for truncation."""

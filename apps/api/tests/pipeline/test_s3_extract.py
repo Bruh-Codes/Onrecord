@@ -103,6 +103,36 @@ def test_parse_momo_uses_balance_movement_when_amount_cell_is_shifted():
     assert rows[0].amount_pesewas == 1_000
 
 
+def test_keeps_transaction_with_missing_balance_and_marks_it_for_balance_metrics():
+    rows, error = parse_statement(
+        """
+        | Date | Type | Description | Amount | Balance |
+        | --- | --- | --- | ---: | ---: |
+        | 2026-09-01 | CREDIT | Customer payment | 100.00 | |
+        """
+    )
+
+    assert error is None
+    assert len(rows) == 1
+    assert rows[0].amount_pesewas == 10_000
+    assert rows[0].balance_after_pesewas is None
+    assert "balance_missing" in rows[0].quality_flags
+
+
+def test_cleans_pdf_table_artifacts_without_discarding_the_transaction():
+    rows, error = parse_statement(
+        """
+        | Date | Type | Description | Amount | Balance |
+        | --- | --- | --- | ---: | ---: |
+        | 2026-09-01 | DEBIT | VPOS MerchantIlIELEVYIlIRef | 100.00 | 200.00 |
+        """
+    )
+
+    assert error is None
+    assert "IlI" not in rows[0].description
+    assert "description_artifact" in rows[0].quality_flags
+
+
 def test_long_table_keeps_using_amount_header_after_four_rows():
     rows = [
         "| Date | From acct | Type | Description | Amount | Balance |",
