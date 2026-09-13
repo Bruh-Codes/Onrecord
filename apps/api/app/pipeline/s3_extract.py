@@ -24,6 +24,7 @@ class ParsedRow:
     category_confidence: float | None = None
     category_source: str | None = None
     internal_transfer: bool = False
+    quality_flags: tuple[str, ...] = ()
 
 
 _DATE_PATTERNS = (
@@ -87,7 +88,8 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
     if occurred_on is None:
         return None
     descriptions = [cell for index, cell in enumerate(cells) if index != date_index and not _amount_value(cell)]
-    description = " ".join(descriptions).strip()
+    raw_description = " ".join(descriptions).strip()
+    description = _clean_description(raw_description)
     if not description:
         description = cells[1] if len(cells) > 1 else ""
 
@@ -126,6 +128,14 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
             amount = movement
     category_l1, category_l2, confidence = categorize_transaction(description, transaction_type, direction)
     internal_transfer = bool(re.search(r"\binternal\b", f"{description} {transaction_type or ''}", re.I))
+    quality_flags: list[str] = []
+    if balance is None:
+        quality_flags.append("balance_missing")
+    if _has_pdf_table_artifact(raw_description):
+        quality_flags.append("description_artifact")
+    if len(description) < 8:
+        quality_flags.append("description_truncated")
+
     return ParsedRow(
         occurred_on,
         description,
@@ -137,7 +147,17 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         category_confidence=confidence,
         category_source="rule" if category_l1 else None,
         internal_transfer=internal_transfer,
+        quality_flags=tuple(quality_flags),
     )
+
+
+def _clean_description(value: str) -> str:
+    """Remove layout separators leaked from a PDF table without inventing text."""
+    return re.sub(r"\s+", " ", re.sub(r"(?:IlI|I\|I|\|)+", " ", value)).strip()
+
+
+def _has_pdf_table_artifact(value: str) -> bool:
+    return bool(re.search(r"(?:IlI|I\|I|\|)+", value))
 
 
 def categorize_transaction(

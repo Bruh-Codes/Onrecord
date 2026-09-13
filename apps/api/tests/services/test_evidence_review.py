@@ -1,4 +1,4 @@
-from app.services.evidence_review import _sanitize_text, _validated_review
+from app.services.evidence_review import allow_partial_transaction_use, _sanitize_text, _validated_review
 
 
 def test_sanitize_redacts_financial_identifiers_and_amounts():
@@ -23,3 +23,21 @@ def test_validated_review_only_allows_clear_low_risk_to_score():
     )
     assert review.scoring_eligible is False
     assert review.findings[0].evidence_ref == "page:1"
+
+
+def test_allows_mostly_complete_transaction_statement_to_remain_usable_with_warning():
+    review = _validated_review(
+        {"status": "warning", "risk_level": "medium", "summary": "Minor table artifacts", "findings": []},
+        input_hash="abc",
+        model="gpt-5.6-luna",
+    )
+
+    partial = allow_partial_transaction_use(
+        review,
+        row_count=134,
+        rows_missing_balance=2,
+        rows_with_description_artifacts=7,
+    )
+
+    assert partial.status == "warning"
+    assert partial.scoring_eligible is True

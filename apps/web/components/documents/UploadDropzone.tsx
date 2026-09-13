@@ -22,10 +22,11 @@ const UPLOAD_COMPLETE_REDIRECT_PATH = "/overview";
 
 function hasDocumentReviewIssue(document: Document) {
 	const evidenceReview = document.quality_flags?.evidence_review as
-		| { status?: string }
+		| { status?: string; scoring_eligible?: boolean }
 		| undefined;
 	return Boolean(
-		["pending", "warning", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
+		["pending", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
+		(evidenceReview?.status === "warning" && !evidenceReview.scoring_eligible) ||
 		document.quality_flags?.extraction_error ||
 		document.quality_flags?.processing_error ||
 		Number(document.quality_flags?.financial_statement_validation_issues ?? 0) > 0 ||

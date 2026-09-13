@@ -35,10 +35,11 @@ function isUnsupportedDocument(document: Document) {
 function needsReview(document: Document) {
 	if (isUnsupportedDocument(document)) return false;
 	const evidenceReview = document.quality_flags?.evidence_review as
-		| { status?: string }
+		| { status?: string; scoring_eligible?: boolean }
 		| undefined;
 	return Boolean(
-		["pending", "warning", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
+		["pending", "error", "rejected"].includes(evidenceReview?.status ?? "") ||
+		(evidenceReview?.status === "warning" && !evidenceReview.scoring_eligible) ||
 		document.quality_flags?.extraction_error ||
 		document.quality_flags?.processing_error ||
 		Number(document.quality_flags?.financial_statement_validation_issues ?? 0) > 0 ||
@@ -54,6 +55,13 @@ function evidenceReviewMessage(document: Document): string | null {
 		| undefined;
 	if (!review || !["pending", "warning", "error", "rejected"].includes(review.status ?? "")) return null;
 	return review.summary || "This document will be reviewed before it contributes to readiness scoring.";
+}
+
+function isPartiallyUsable(document: Document) {
+	const review = document.quality_flags?.evidence_review as
+		| { status?: string; scoring_eligible?: boolean }
+		| undefined;
+	return review?.status === "warning" && review.scoring_eligible === true;
 }
 
 function canDelete(document: Document) {
@@ -132,8 +140,9 @@ export function UploadedDocumentsList({
 							{documentDateFormatter.format(new Date(doc.created_at))}
 						</div>
 						{evidenceReviewMessage(doc) && (
-							<div className="text-[11px] text-destructive/80 mt-1">
-								{evidenceReviewMessage(doc)} Human review required before scoring.
+							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
+								{isPartiallyUsable(doc) ? "Usable with warnings: " : "Human review required before scoring. "}
+								{evidenceReviewMessage(doc)}
 							</div>
 						)}
 					</div>
