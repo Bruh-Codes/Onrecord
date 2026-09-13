@@ -107,6 +107,8 @@ export const api = {
   getDocument: (id: string) => request<Document>(`/v1/documents/${id}`),
   completeDocument: (id: string) =>
     request<{ status: Document["status"] }>(`/v1/documents/${id}/complete`, { method: "POST" }),
+  retryDocumentProcessing: (id: string) =>
+    request<{ status: Document["status"]; requeued: boolean }>(`/v1/documents/${id}/retry-processing`, { method: "POST" }),
   confirmDocument: (id: string, docType: string) =>
     request<Document>(`/v1/documents/${id}/confirm`, { method: "POST", body: JSON.stringify({ doc_type: docType }) }),
   deleteDocument: (id: string) => request<void>(`/v1/documents/${id}`, { method: "DELETE" }),

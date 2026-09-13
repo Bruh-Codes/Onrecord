@@ -226,6 +226,36 @@ async def complete_document_upload(
     return {"status": document.status.value}
 
 
+@router.post("/v1/documents/{document_id}/retry-processing", status_code=202)
+async def retry_document_processing(
+    document_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Re-enqueue an upload whose original background message was lost."""
+    _, document = await require_document_access(document_id, claims=claims, session=session)
+    if document.status != DocStatus.RECEIVED:
+        return {"status": document.status.value, "requeued": False}
+
+    flags = {**(document.quality_flags or {})}
+    flags["processing_retry_count"] = int(flags.get("processing_retry_count", 0)) + 1
+    document.quality_flags = flags
+    await write_audit_event(
+        session,
+        business_id=document.business_id,
+        actor=claims.user_id,
+        action="document.retry_processing",
+        target=f"document:{document.id}",
+        after={"retry_count": flags["processing_retry_count"]},
+    )
+    await session.commit()
+
+    from app.workers.tasks import s1_ingest
+
+    s1_ingest.delay(str(document.id))
+    return {"status": document.status.value, "requeued": True}
+
+
 @router.get("/v1/businesses/{business_id}/documents", response_model=Page[DocumentSummary])
 async def list_documents(
     business_id: uuid.UUID,

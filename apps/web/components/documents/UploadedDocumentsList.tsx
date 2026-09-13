@@ -81,15 +81,19 @@ export function UploadedDocumentsList({
 	loading,
 	error,
 	onRetry,
+	onRetryProcessing,
 	onRemove,
 	removingId,
+	retryingId,
 }: {
 	documents: Document[] | null;
 	loading: boolean;
 	error: string | null;
 	onRetry: () => void;
+	onRetryProcessing: (documentId: string) => void;
 	onRemove: (documentId: string) => void;
 	removingId: string | null;
+	retryingId: string | null;
 }) {
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [pendingDelete, setPendingDelete] = useState<Document | null>(null);
@@ -147,6 +151,14 @@ export function UploadedDocumentsList({
 						)}
 					</div>
 					<div className="shrink-0 flex items-center gap-2">
+						{doc.status === "received" && (
+							<PillButton
+								onClick={() => onRetryProcessing(doc.id)}
+								disabled={retryingId === doc.id}
+							>
+								{retryingId === doc.id ? "Retrying..." : "Retry processing"}
+							</PillButton>
+						)}
 						{doc.doc_type === "financial_statement" && doc.status === "extracted" && (
 							<PillButton onClick={() => setExpandedId(expandedId === doc.id ? null : doc.id)}>
 								{expandedId === doc.id ? "Hide data" : "View data"}

@@ -7,6 +7,7 @@ import {
 	useDeleteDocument,
 	useDocuments,
 	useMe,
+	useRetryDocumentProcessing,
 } from "@/lib/hooks/use-business";
 
 export default function DocumentsPage() {
@@ -14,13 +15,23 @@ export default function DocumentsPage() {
 	const { businessId } = me;
 	const documents = useDocuments(businessId);
 	const deleteDocument = useDeleteDocument(businessId);
+	const retryDocumentProcessing = useRetryDocumentProcessing(businessId);
 	const [removingId, setRemovingId] = useState<string | null>(null);
+	const [retryingId, setRetryingId] = useState<string | null>(null);
 	async function removeDocument(documentId: string) {
 		setRemovingId(documentId);
 		try {
 			await deleteDocument.mutateAsync(documentId);
 		} finally {
 			setRemovingId(null);
+		}
+	}
+	async function retryProcessing(documentId: string) {
+		setRetryingId(documentId);
+		try {
+			await retryDocumentProcessing.mutateAsync(documentId);
+		} finally {
+			setRetryingId(null);
 		}
 	}
 
@@ -51,8 +62,10 @@ export default function DocumentsPage() {
 						loading={documents.isLoading}
 						error={documents.isError ? "Couldn't load your documents." : null}
 						onRetry={() => documents.refetch()}
+						onRetryProcessing={retryProcessing}
 						onRemove={removeDocument}
 						removingId={removingId}
+						retryingId={retryingId}
 					/>
 				</section>
 			)}
