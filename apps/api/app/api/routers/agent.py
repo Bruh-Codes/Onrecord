@@ -16,6 +16,10 @@ from app.services.audit import write_audit_event
 from app.services.ona import answer_question, build_business_snapshot
 
 router = APIRouter(tags=["agent"])
+_ACTION_LABELS = {
+    "recompute_readiness": "Refresh readiness",
+    "retry_stuck_documents": "Retry stuck uploads",
+}
 
 
 @router.post("/v1/businesses/{business_id}/agent/messages", response_model=AgentReply)
@@ -33,17 +37,17 @@ async def ask_ona(
 
     session.add(AgentMessage(session_id=agent_session.id, role="owner", content=body.message.strip()))
     proposal: dict | None = None
-    if answer.proposed_action == "recompute_readiness":
+    if answer.proposed_action in _ACTION_LABELS:
         tool_message = AgentMessage(
             session_id=agent_session.id,
             role="tool",
-            content="Awaiting owner confirmation to refresh readiness.",
-            tool_name="recompute_readiness",
+            content="Awaiting owner confirmation.",
+            tool_name=answer.proposed_action,
             tool_payload={"state": "pending"},
         )
         session.add(tool_message)
         await session.flush()
-        proposal = {"id": str(tool_message.id), "label": "Refresh readiness"}
+        proposal = {"id": str(tool_message.id), "label": _ACTION_LABELS[answer.proposed_action]}
     session.add(AgentMessage(
         session_id=agent_session.id,
         role="agent",
@@ -82,7 +86,7 @@ async def confirm_ona_action(
     session: AsyncSession = Depends(get_session),
 ) -> AgentReply:
     proposal = await session.get(AgentMessage, proposal_id)
-    if proposal is None or proposal.role != "tool" or proposal.tool_name != "recompute_readiness":
+    if proposal is None or proposal.role != "tool" or proposal.tool_name not in _ACTION_LABELS:
         raise not_found("AGENT_ACTION_NOT_FOUND", "No pending Ona action with that id.")
     agent_session = await session.get(AgentSession, proposal.session_id)
     if agent_session is None or agent_session.business_id != business_id or agent_session.opened_by != claims.user_id:
@@ -96,24 +100,38 @@ async def confirm_ona_action(
         actor=claims.user_id,
         action="agent.action.confirm",
         target=f"agent_message:{proposal.id}",
-        after={"tool": "recompute_readiness"},
+        after={"tool": proposal.tool_name},
     )
     # Persist the owner's confirmation before publishing the side effect, as
     # with document ingestion. A worker can never observe an uncommitted tool
     # decision or execute a proposal that was rolled back.
     await session.commit()
-    from app.workers.tasks import recompute
+    if proposal.tool_name == "recompute_readiness":
+        from app.workers.tasks import recompute
 
-    result = recompute.delay(str(business_id))
-    answer = "I started refreshing your readiness. It will update when the calculation finishes."
-    session.add(AgentMessage(session_id=agent_session.id, role="agent", content=answer, tool_name="recompute_readiness", tool_payload={"task_id": result.id}))
+        result = recompute.delay(str(business_id))
+        answer = "I started refreshing your readiness. It will update when the calculation finishes."
+        payload = {"task_id": result.id}
+    else:
+        from app.workers.tasks import s1_ingest
+
+        documents = (await session.scalars(select(Document.id).where(
+            Document.business_id == business_id,
+            Document.status == DocStatus.RECEIVED,
+            Document.deleted_at.is_(None),
+        ))).all()
+        for document_id in documents:
+            s1_ingest.delay(str(document_id))
+        answer = f"I restarted processing for {len(documents)} queued upload(s)."
+        payload = {"documents_requeued": len(documents)}
+    session.add(AgentMessage(session_id=agent_session.id, role="agent", content=answer, tool_name=proposal.tool_name, tool_payload=payload))
     await write_audit_event(
         session,
         business_id=business_id,
         actor=claims.user_id,
         action="agent.action.confirm",
         target=f"agent_message:{proposal.id}",
-        after={"tool": "recompute_readiness", "task_id": result.id},
+        after={"tool": proposal.tool_name, **payload},
     )
     await session.commit()
     return AgentReply(session_id=agent_session.id, answer=answer, cited_facts=[], proposed_action=None)

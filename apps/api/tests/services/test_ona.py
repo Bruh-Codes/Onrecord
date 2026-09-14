@@ -25,3 +25,13 @@ def test_ona_drops_unapproved_action_names():
     })
 
     assert answer.proposed_action is None
+
+
+def test_ona_allows_only_the_two_confirmation_gated_tools():
+    answer = _validate_answer({
+        "answer": "I can retry the queued uploads after you confirm.",
+        "cited_facts": ["documents"],
+        "proposed_action": "retry_stuck_documents",
+    })
+
+    assert answer.proposed_action == "retry_stuck_documents"
