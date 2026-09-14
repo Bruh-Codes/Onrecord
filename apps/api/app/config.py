@@ -19,10 +19,16 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     llm_base_url: str = ""
     financial_mapping_model: str = "gpt-5.6-luna"
+    ona_model: str = ""
+    ona_max_questions_per_hour: int = 20
 
     @property
     def llm_api_key(self) -> str:
         return self.groq_api_key if self.llm_provider == "groq" else self.openai_api_key
+
+    @property
+    def agent_model(self) -> str:
+        return self.ona_model or self.financial_mapping_model
 
     @property
     def responses_api_url(self) -> str:

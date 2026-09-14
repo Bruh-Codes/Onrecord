@@ -21,6 +21,7 @@ import type {
   TransactionReviewItem,
   UploadTarget,
   AppNotification,
+  AgentReply,
 } from "./api-types";
 
 const API_BASE_URL =
@@ -157,6 +158,12 @@ export const api = {
     request<AppNotification>(`/v1/notifications/${notificationId}/read`, { method: "POST" }),
   markAllNotificationsRead: (businessId: string) =>
     request<{ updated: number }>(`/v1/businesses/${businessId}/notifications/read-all`, { method: "POST" }),
+
+  // ---- Ona (read-only financial-readiness assistant) ----
+  askOna: (businessId: string, body: { message: string; session_id?: string }) =>
+    request<AgentReply>(`/v1/businesses/${businessId}/agent/messages`, { method: "POST", body: JSON.stringify(body) }),
+  confirmOnaAction: (businessId: string, proposalId: string) =>
+    request<AgentReply>(`/v1/businesses/${businessId}/agent/actions/${proposalId}/confirm`, { method: "POST" }),
 };
 
 /** PUT file bytes to a presigned upload URL. A relative URL means the
