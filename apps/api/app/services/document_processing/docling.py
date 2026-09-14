@@ -43,6 +43,7 @@ class DoclingProcessor:
 
         result = DocumentConverter().convert(source)
         document = result.document
+        tables = tuple(_table_from_docling(table) for table in document.tables)
         text = document.export_to_markdown()
         # Some text-based PDFs are routed through the OCR path and Docling can
         # return an empty markdown export when OCR finds no glyphs.  Preserve
@@ -50,11 +51,13 @@ class DoclingProcessor:
         # scanned PDFs still correctly remain empty and can be handled by OCR.
         if not text.strip() and source.suffix.lower() == ".pdf":
             text = _extract_embedded_pdf_text(source)
+        if not text.strip() and tables:
+            text = _tables_to_markdown(tables)
         return ProcessedDocument(
             text=text,
             page_count=len(document.pages),
             structure=document.export_to_dict(),
-            tables=tuple(_table_from_docling(table) for table in document.tables),
+            tables=tables,
         )
 
 
@@ -69,6 +72,19 @@ def _extract_embedded_pdf_text(source: Path) -> str:
         # A missing/invalid text layer must not fail ingestion; OCR behaviour
         # and the existing unsupported-document response remain unchanged.
         return ""
+
+
+def _tables_to_markdown(tables: tuple[DocumentTable, ...]) -> str:
+    """Expose Docling table cells to the classifier/parser when page text is empty."""
+    output: list[str] = []
+    for table in tables:
+        by_row: dict[int, dict[int, str]] = {}
+        for cell in table.cells:
+            by_row.setdefault(cell.row, {})[cell.column] = cell.text.strip()
+        for row in sorted(by_row):
+            values = [by_row[row].get(column, "") for column in range(table.column_count)]
+            output.append("| " + " | ".join(values) + " |")
+    return "\n".join(output)
 
 
 def _table_from_docling(table: Any) -> DocumentTable:
