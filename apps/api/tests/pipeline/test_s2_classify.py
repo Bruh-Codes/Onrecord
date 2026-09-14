@@ -51,6 +51,17 @@ def test_classifies_standard_financial_statement_titles():
         assert result.supported is True
 
 
+def test_classifies_unknown_bank_statement_from_transaction_columns():
+    result = classify_document(
+        "Transaction Date | Description | Debit | Credit | Balance",
+        "gtbank_dummy_statement.xlsx",
+    )
+
+    assert result.doc_type == DocType.BANK_STATEMENT
+    assert result.issuer is None
+    assert result.supported is True
+
+
 def test_classifies_untitled_statement_from_multiple_financial_rows():
     result = classify_document("Total assets 100 Total liabilities 40 Retained earnings 60", "scan.pdf")
 
