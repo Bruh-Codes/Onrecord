@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routers.accounts import router as accounts_router
+from app.api.routers.agent import router as agent_router
 from app.api.routers.analytics import router as analytics_router
 from app.api.routers.businesses import router as businesses_router
 from app.api.routers.counterparties import router as counterparties_router
@@ -44,6 +45,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 app.include_router(businesses_router)
 app.include_router(me_router)
 app.include_router(accounts_router)
+app.include_router(agent_router)
 app.include_router(documents_router)
 app.include_router(transactions_router)
 app.include_router(notifications_router)

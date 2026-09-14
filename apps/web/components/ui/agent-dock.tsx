@@ -11,7 +11,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Image, { StaticImageData } from "next/image";
 import { LiveWaveform } from "@/components/ui/live-waveform";
 import { ThinkingOrb } from "@/components/ui/thinking-orbs";
-import { ToolGroup, type NestedTool } from "@/components/ui/tool-group";
 import { useTheme } from "@/lib/theme";
 import {
 	type FormEvent,
@@ -24,12 +23,11 @@ import {
 } from "react";
 
 type AgentDockMode = "idle" | "composing" | "working";
-type AgentWorkingActivity = "searching" | "thinking";
 type DockConversationMessage = {
 	id: number;
 	role: "user" | "agent";
 	text: string;
-	activity?: AgentWorkingActivity;
+	activity?: "thinking";
 };
 
 type AgentDockProps = {
@@ -41,6 +39,8 @@ type AgentDockProps = {
 	agentResponse?: string;
 	agentResponseKey?: number;
 	onMessageSubmit?: (message: string) => void | Promise<void>;
+	pendingAction?: { id: string; label: string } | null;
+	onActionConfirm?: (proposalId: string) => void | Promise<void>;
 };
 
 const dockTransition = {
@@ -56,16 +56,6 @@ const dockLayoutTransition = {
 } as const;
 
 const idleCollapseDelay = 8000;
-const agentThinkingDelay = 3200;
-const agentThinkingPhaseDelay = 1200;
-const agentSearchPhaseDelay = agentThinkingDelay - agentThinkingPhaseDelay;
-
-const simulatedTools: NestedTool[] = [
-	{ category: "file", title: "Read", subtitle: "readiness data" },
-	{ category: "search", title: "Grep", subtitle: "unclassified" },
-	{ category: "file", title: "Read", subtitle: "cashflow records" },
-	{ category: "search", title: "Search", subtitle: "recent activity" },
-];
 
 export function AgentDock({
 	agentName,
@@ -76,6 +66,8 @@ export function AgentDock({
 	agentResponse,
 	agentResponseKey,
 	onMessageSubmit,
+	pendingAction = null,
+	onActionConfirm,
 }: AgentDockProps) {
 	const [mode, setMode] = useState<AgentDockMode>("idle");
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -263,19 +255,6 @@ export function AgentDock({
 		]);
 		setIsExpanded(true);
 		setMode("working");
-		await new Promise((resolve) =>
-			window.setTimeout(resolve, agentThinkingPhaseDelay),
-		);
-		setConversation((current) =>
-			current.map((entry) =>
-				entry.id === agentMessageId
-					? { ...entry, activity: "searching" }
-					: entry,
-			),
-		);
-		await new Promise((resolve) =>
-			window.setTimeout(resolve, agentSearchPhaseDelay),
-		);
 		await onMessageSubmit?.(nextMessage);
 		setMode("composing");
 		window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -536,21 +515,9 @@ export function AgentDock({
 													className="flex flex-col gap-2 pb-8 pt-7"
 													ref={conversationContentRef}
 												>
-													{conversation.map((entry, index) => (
+											{conversation.map((entry, index) => (
 														<div key={`${entry.role}-${entry.id ?? index}`}>
-															{entry.activity === "searching" ? (
-																<div className="w-full">
-																	<ToolGroup
-																		state="pending"
-																		nestedTools={simulatedTools}
-																		completeLabel="Explored"
-																		shimmerLabel="Exploring"
-																		interruptedLabel="Exploration interrupted"
-																		maxVisibleTools={3}
-																		defaultOpen
-																	/>
-																</div>
-															) : entry.activity === "thinking" ? (
+															{entry.activity === "thinking" ? (
 																<div className="flex items-center gap-3 px-2 py-2 text-sm text-muted-foreground">
 																	<ThinkingOrb
 																		state="working"
@@ -571,7 +538,16 @@ export function AgentDock({
 																</div>
 															)}
 														</div>
-													))}
+											))}
+											{pendingAction && (
+												<button
+													className="w-full rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background"
+													onClick={() => void onActionConfirm?.(pendingAction.id)}
+													type="button"
+												>
+													{pendingAction.label}
+												</button>
+											)}
 												</div>
 											</div>
 										</div>

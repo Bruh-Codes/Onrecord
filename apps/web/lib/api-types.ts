@@ -134,6 +134,13 @@ export type Document = {
 	financial_statements?: FinancialStatement[];
 };
 
+export type AgentReply = {
+	session_id: string;
+	answer: string;
+	cited_facts: string[];
+	proposed_action: { id: string; label: string } | null;
+};
+
 export type AppNotification = {
 	id: string;
 	kind: string;
