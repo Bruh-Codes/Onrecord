@@ -54,7 +54,52 @@ def parse_statement(text: str) -> tuple[list[ParsedRow], str | None]:
             rows.append(parsed)
     if rows:
         return rows, None
+    plain_rows = _parse_plain_text_statement(text)
+    if plain_rows:
+        return plain_rows, None
     return [], "No unambiguous transaction table was found"
+
+
+def _parse_plain_text_statement(text: str) -> list[ParsedRow]:
+    """Recover simple PDF text-layer statements when table delimiters are lost."""
+    if "transaction history" not in text.lower():
+        return []
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    date_indexes = [index for index, line in enumerate(lines) if _looks_like_date(line)]
+    if len(date_indexes) < 2:
+        return []
+    rows: list[ParsedRow] = []
+    for position, start in enumerate(date_indexes):
+        end = date_indexes[position + 1] if position + 1 < len(date_indexes) else len(lines)
+        block = lines[start:end]
+        occurred_on = _parse_date(block[0])
+        if occurred_on is None:
+            continue
+        description_lines = [line for line in block[1:] if not _amount_value(line)]
+        description = _clean_description(" ".join(description_lines))
+        amounts = [_amount_value(line) for line in block[1:]]
+        amounts = [amount for amount in amounts if amount is not None]
+        # Opening/closing balance rows are not transactions.
+        if not amounts or re.search(r"opening balance|closing balance", description, re.I):
+            continue
+        balance = amounts[-1]
+        movement = abs(amounts[-2] - amounts[-1]) if len(amounts) >= 2 else amounts[0]
+        if movement <= 0:
+            continue
+        direction = "out" if re.search(r"debit|purchase|withdraw|cash out|charge|levy|payment", description, re.I) else "in"
+        category_l1, category_l2, confidence = categorize_transaction(description, None, direction)
+        rows.append(ParsedRow(
+            occurred_on,
+            description or "Statement transaction",
+            direction,
+            movement,
+            balance,
+            category_l1=category_l1,
+            category_l2=category_l2,
+            category_confidence=confidence,
+            category_source="rule" if category_l1 else None,
+        ))
+    return rows
 
 
 def _cells(line: str) -> list[str]:

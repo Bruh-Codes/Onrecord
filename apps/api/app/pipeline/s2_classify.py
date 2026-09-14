@@ -46,6 +46,27 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
         return ClassificationResult(doc_type, 0.90 if momo_filename else 0.95, issuer or Provider.MTN, period_start, period_end, True, reason)
     if issuer is not None and ("statement" in haystack or "opening balance" in haystack):
         return ClassificationResult(DocType.BANK_STATEMENT, 0.92, issuer, period_start, period_end, True, "Bank statement header detected")
+
+    # Bank exports frequently omit the bank name from the sheet and some
+    # issuers are not in our provider enum.  If the file has a statement title
+    # and several transaction/balance columns, treat it as a bank statement
+    # and leave the issuer unknown rather than rejecting financial evidence.
+    bank_statement_markers = (
+        "transaction", "transaction date", "debit", "credit", "amount",
+        "balance", "bal before", "bal after", "opening balance",
+        "closing balance", "value date",
+    )
+    marker_count = sum(marker in haystack for marker in bank_statement_markers)
+    if "statement" in haystack and marker_count >= 2:
+        return ClassificationResult(
+            DocType.BANK_STATEMENT,
+            0.78,
+            issuer,
+            period_start,
+            period_end,
+            True,
+            "Bank statement transaction and balance markers detected",
+        )
     if "invoice" in haystack:
         doc_type = DocType.INVOICE_RECEIVED if "supplier" in haystack else DocType.INVOICE_ISSUED
         return ClassificationResult(doc_type, 0.82, None, None, None, True, "Invoice markers detected")

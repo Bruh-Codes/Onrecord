@@ -43,12 +43,32 @@ class DoclingProcessor:
 
         result = DocumentConverter().convert(source)
         document = result.document
+        text = document.export_to_markdown()
+        # Some text-based PDFs are routed through the OCR path and Docling can
+        # return an empty markdown export when OCR finds no glyphs.  Preserve
+        # the embedded text layer as a classification/extraction fallback;
+        # scanned PDFs still correctly remain empty and can be handled by OCR.
+        if not text.strip() and source.suffix.lower() == ".pdf":
+            text = _extract_embedded_pdf_text(source)
         return ProcessedDocument(
-            text=document.export_to_markdown(),
+            text=text,
             page_count=len(document.pages),
             structure=document.export_to_dict(),
             tables=tuple(_table_from_docling(table) for table in document.tables),
         )
+
+
+def _extract_embedded_pdf_text(source: Path) -> str:
+    """Extract a PDF text layer when Docling's markdown export is empty."""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(source))
+        return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except Exception:
+        # A missing/invalid text layer must not fail ingestion; OCR behaviour
+        # and the existing unsupported-document response remain unchanged.
+        return ""
 
 
 def _table_from_docling(table: Any) -> DocumentTable:
