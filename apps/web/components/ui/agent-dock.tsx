@@ -3,14 +3,22 @@
 import {
 	CaretDownIcon,
 	ChatIcon,
+	ClockCounterClockwiseIcon,
 	MicrophoneIcon,
 	PaperPlaneTiltIcon,
+	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Image, { StaticImageData } from "next/image";
 import { LiveWaveform } from "@/components/ui/live-waveform";
 import { ThinkingOrb } from "@/components/ui/thinking-orbs";
+import { ToolGroup } from "@/components/ui/tool-group";
+import {
+	activityStatusLabel,
+	detectOnaActivity,
+	type OnaActivity,
+} from "@/lib/ona-activity";
 import { useTheme } from "@/lib/theme";
 import {
 	type FormEvent,
@@ -23,11 +31,19 @@ import {
 } from "react";
 
 type AgentDockMode = "idle" | "composing" | "working";
-type DockConversationMessage = {
+
+export type DockConversationMessage = {
 	id: number;
 	role: "user" | "agent";
 	text: string;
-	activity?: "thinking";
+	activity?: OnaActivity;
+};
+
+type ChatSessionSummary = {
+	id: string;
+	opened_at: string;
+	preview: string;
+	message_count: number;
 };
 
 type AgentDockProps = {
@@ -35,12 +51,20 @@ type AgentDockProps = {
 	avatarSrc: StaticImageData | string;
 	className?: string;
 	idleStatus?: string;
-	workingStatus?: string;
+	workingActivity?: OnaActivity;
 	agentResponse?: string;
 	agentResponseKey?: number;
 	onMessageSubmit?: (message: string) => void | Promise<void>;
 	pendingAction?: { id: string; label: string } | null;
 	onActionConfirm?: (proposalId: string) => void | Promise<void>;
+	chatSessions?: ChatSessionSummary[];
+	activeSessionId?: string;
+	onSelectSession?: (sessionId: string) => void | Promise<void>;
+	onDeleteSession?: (sessionId: string) => void | Promise<void>;
+	onNewChat?: () => void;
+	onRefreshSessions?: () => void | Promise<void>;
+	initialMessages?: DockConversationMessage[];
+	sessionResetKey?: number;
 };
 
 const dockTransition = {
@@ -62,12 +86,20 @@ export function AgentDock({
 	avatarSrc,
 	className,
 	idleStatus = "Ready",
-	workingStatus = "Working...",
+	workingActivity = "checking_data",
 	agentResponse,
 	agentResponseKey,
 	onMessageSubmit,
 	pendingAction = null,
 	onActionConfirm,
+	chatSessions = [],
+	activeSessionId,
+	onSelectSession,
+	onDeleteSession,
+	onNewChat,
+	onRefreshSessions,
+	initialMessages = [],
+	sessionResetKey = 0,
 }: AgentDockProps) {
 	const [mode, setMode] = useState<AgentDockMode>("idle");
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -90,10 +122,34 @@ export function AgentDock({
 	const { theme } = useTheme();
 	const waveformColor = theme === "dark" ? "#C0C0C0" : "#555555";
 	const [isMobileViewport, setIsMobileViewport] = useState(false);
+	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+	const [currentActivity, setCurrentActivity] = useState<OnaActivity>("thinking");
+	const historyPanelRef = useRef<HTMLDivElement>(null);
 	const handleVoiceError = useCallback(() => {
 		setIsVoiceActive(false);
 		setIsTranscribing(false);
 	}, []);
+
+	useEffect(() => {
+		if (sessionResetKey === 0 && initialMessages.length === 0) return;
+		setConversation(initialMessages);
+		setHasStartedChat(initialMessages.length > 0);
+		conversationId.current = initialMessages.length;
+		activeAgentMessageId.current = null;
+		setMode(initialMessages.length > 0 ? "composing" : "idle");
+		setIsHistoryOpen(false);
+	}, [sessionResetKey, initialMessages]);
+
+	useEffect(() => {
+		if (!isHistoryOpen) return;
+		function handlePointerDown(event: MouseEvent) {
+			if (!historyPanelRef.current?.contains(event.target as Node)) {
+				setIsHistoryOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handlePointerDown);
+		return () => document.removeEventListener("mousedown", handlePointerDown);
+	}, [isHistoryOpen]);
 
 	useEffect(() => {
 		const mediaQuery = window.matchMedia("(max-width: 767px)");
@@ -246,12 +302,14 @@ export function AgentDock({
 		setHasStartedChat(true);
 		shouldStickToBottom.current = true;
 		forceScrollToBottom.current = true;
+		const activity = detectOnaActivity(nextMessage);
+		setCurrentActivity(activity);
 		const agentMessageId = ++conversationId.current;
 		activeAgentMessageId.current = agentMessageId;
 		setConversation((current) => [
 			...current,
 			{ id: ++conversationId.current, role: "user", text: nextMessage },
-			{ id: agentMessageId, role: "agent", text: "", activity: "thinking" },
+			{ id: agentMessageId, role: "agent", text: "", activity },
 		]);
 		setIsExpanded(true);
 		setMode("working");
@@ -427,11 +485,95 @@ export function AgentDock({
 											key={mode}
 											transition={{ duration: 0.16, ease: "easeOut" }}
 										>
-											{mode === "working" ? workingStatus : idleStatus}
+											{mode === "working"
+												? activityStatusLabel(workingActivity ?? currentActivity)
+												: idleStatus}
 										</motion.p>
 									</AnimatePresence>
 								</div>
 								<div className="flex shrink-0 items-center gap-1.5">
+									<div className="relative" ref={historyPanelRef}>
+												<button
+													aria-expanded={isHistoryOpen}
+													aria-label="Chat history"
+													className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+													onClick={() => {
+														setIsHistoryOpen((open) => {
+															const next = !open;
+															if (next) void onRefreshSessions?.();
+															return next;
+														});
+													}}
+													type="button"
+												>
+													<ClockCounterClockwiseIcon className="size-4" weight="bold" />
+												</button>
+												{isHistoryOpen && (
+													<div className="absolute right-0 top-full z-20 mt-1.5 w-72 overflow-hidden rounded-xl border border-foreground/10 bg-card shadow-card">
+														<div className="flex items-center justify-between border-b border-foreground/10 px-3 py-2">
+															<span className="text-xs font-semibold">Chat history</span>
+															<button
+																className="text-xs font-medium text-muted-foreground hover:text-foreground"
+																onClick={() => {
+																	onNewChat?.();
+																	setIsHistoryOpen(false);
+																}}
+																type="button"
+															>
+																New chat
+															</button>
+														</div>
+														<div className="max-h-64 overflow-y-auto p-1">
+															{chatSessions.length === 0 ? (
+																<p className="px-2 py-3 text-xs text-muted-foreground">
+																	No saved chats yet.
+																</p>
+															) : (
+																chatSessions.map((entry) => (
+																	<div
+																		className={`group flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted ${
+																			entry.id === activeSessionId ? "bg-muted" : ""
+																		}`}
+																		key={entry.id}
+																	>
+																		<button
+																			className="min-w-0 flex-1 text-left"
+																			onClick={() => {
+																				void onSelectSession?.(entry.id);
+																				setIsHistoryOpen(false);
+																			}}
+																			type="button"
+																		>
+																			<span className="block truncate text-sm">
+																				{entry.preview}
+																			</span>
+																			<span className="mt-0.5 block text-[11px] text-muted-foreground">
+																				{new Date(entry.opened_at).toLocaleString(undefined, {
+																					dateStyle: "medium",
+																					timeStyle: "short",
+																				})}
+																				{" · "}
+																				{entry.message_count} messages
+																			</span>
+																		</button>
+																		<button
+																			aria-label={`Delete chat: ${entry.preview}`}
+																			className="mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-hover:opacity-100"
+																			onClick={(event) => {
+																				event.stopPropagation();
+																				void onDeleteSession?.(entry.id);
+																			}}
+																			type="button"
+																		>
+																			<TrashIcon className="size-3.5" weight="bold" />
+																		</button>
+																	</div>
+																))
+															)}
+														</div>
+													</div>
+												)}
+									</div>
 									{(hasStartedChat || mode === "idle") && (
 										<button
 											aria-label="Collapse assistant"
@@ -517,15 +659,8 @@ export function AgentDock({
 												>
 											{conversation.map((entry, index) => (
 														<div key={`${entry.role}-${entry.id ?? index}`}>
-															{entry.activity === "thinking" ? (
-																<div className="flex items-center gap-3 px-2 py-2 text-sm text-muted-foreground">
-																	<ThinkingOrb
-																		state="working"
-																		size={20}
-																		theme={theme}
-																	/>
-																	<span>Thinking...</span>
-																</div>
+															{entry.activity ? (
+																<ActivityIndicator activity={entry.activity} theme={theme} />
 															) : (
 																<div
 																	className={
@@ -624,6 +759,53 @@ export function AgentDock({
 				)}
 			</motion.div>
 		</form>
+	);
+}
+
+function ActivityIndicator({
+	activity,
+	theme,
+}: {
+	activity: OnaActivity;
+	theme: "light" | "dark";
+}) {
+	if (activity === "thinking") {
+		return (
+			<div className="flex items-center gap-3 px-2 py-2 text-sm text-muted-foreground">
+				<ThinkingOrb state="working" size={20} theme={theme} />
+				<span>Thinking...</span>
+			</div>
+		);
+	}
+
+	const config = {
+		searching: {
+			label: "Searching the web",
+			title: "Looking up current information",
+			category: "search" as const,
+		},
+		checking_data: {
+			label: "Checking your business data",
+			title: "Reading readiness and documents",
+			category: "file" as const,
+		},
+		running_action: {
+			label: "Running action",
+			title: "Processing your request",
+			category: "command" as const,
+		},
+	}[activity];
+
+	return (
+		<ToolGroup
+			className="px-2 py-1"
+			completeLabel={config.label}
+			interruptedLabel={`${config.label} interrupted`}
+			nestedTools={[{ category: config.category, title: config.title }]}
+			shimmerLabel={config.label}
+			showElapsed={false}
+			state="pending"
+		/>
 	);
 }
 

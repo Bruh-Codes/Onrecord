@@ -1,4 +1,5 @@
-from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _validate_answer
+from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _snapshot_for_turn, _validate_answer
+from app.services.ona_web import is_casual_turn
 
 
 def test_ona_response_accepts_expanded_citations():
@@ -48,6 +49,14 @@ def test_build_input_includes_history_and_snapshot():
 def test_citation_keys_cover_snapshot_sections():
     assert "transactions" in CITATION_KEYS
     assert "counterparties" in CITATION_KEYS
+
+
+def test_casual_turn_skips_heavy_snapshot():
+    assert is_casual_turn("Hi")
+    snapshot = _snapshot_for_turn("Hi", {"readiness_score": {"total": 0}, "gap_details": [{"title": "bank"}]})
+    assert "readiness_score" not in snapshot
+    assert "gap_details" not in snapshot
+    assert snapshot["_note"]
 
 
 def test_ona_allows_empty_citations_for_general_answers():

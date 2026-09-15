@@ -22,6 +22,8 @@ import type {
   UploadTarget,
   AppNotification,
   AgentReply,
+  AgentSessionDetail,
+  AgentSessionSummary,
 } from "./api-types";
 
 const API_BASE_URL =
@@ -164,6 +166,12 @@ export const api = {
     request<AgentReply>(`/v1/businesses/${businessId}/agent/messages`, { method: "POST", body: JSON.stringify(body) }),
   confirmOnaAction: (businessId: string, proposalId: string) =>
     request<AgentReply>(`/v1/businesses/${businessId}/agent/actions/${proposalId}/confirm`, { method: "POST" }),
+  listOnaSessions: (businessId: string) =>
+    request<{ items: AgentSessionSummary[] }>(`/v1/businesses/${businessId}/agent/sessions`),
+  getOnaSession: (businessId: string, sessionId: string) =>
+    request<AgentSessionDetail>(`/v1/businesses/${businessId}/agent/sessions/${sessionId}`),
+  deleteOnaSession: (businessId: string, sessionId: string) =>
+    request<void>(`/v1/businesses/${businessId}/agent/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
 /** PUT file bytes to a presigned upload URL. A relative URL means the
