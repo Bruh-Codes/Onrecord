@@ -11,9 +11,11 @@ from app.db import get_session
 from app.errors import AppError, not_found
 from app.models.agent import AgentMessage, AgentSession
 from app.models.audit import CostEvent
+from app.models.document import Document
+from app.models.enums import DocStatus
 from app.schemas.agent import AgentAsk, AgentReply
 from app.services.audit import write_audit_event
-from app.services.ona import answer_question, build_business_snapshot
+from app.services.ona import HistoryTurn, answer_question, build_business_snapshot
 
 router = APIRouter(tags=["agent"])
 _ACTION_LABELS = {
@@ -32,8 +34,14 @@ async def ask_ona(
 ) -> AgentReply:
     await _enforce_rate_limit(session, claims.user_id, settings.ona_max_questions_per_hour)
     agent_session = await _resolve_session(session, business_id, claims.user_id, body.session_id)
+    history = await _session_history(session, agent_session.id)
     snapshot = await build_business_snapshot(session, business_id)
-    answer = await answer_question(settings=settings, message=body.message.strip(), snapshot=snapshot)
+    answer = await answer_question(
+        settings=settings,
+        message=body.message.strip(),
+        snapshot=snapshot,
+        history=history,
+    )
 
     session.add(AgentMessage(session_id=agent_session.id, role="owner", content=body.message.strip()))
     proposal: dict | None = None
@@ -135,6 +143,17 @@ async def confirm_ona_action(
     )
     await session.commit()
     return AgentReply(session_id=agent_session.id, answer=answer, cited_facts=[], proposed_action=None)
+
+
+async def _session_history(session: AsyncSession, session_id: uuid.UUID) -> list[HistoryTurn]:
+    rows = (
+        await session.scalars(
+            select(AgentMessage)
+            .where(AgentMessage.session_id == session_id, AgentMessage.role.in_(("owner", "agent")))
+            .order_by(AgentMessage.created_at.asc())
+        )
+    ).all()
+    return [HistoryTurn(role=row.role, content=row.content) for row in rows]
 
 
 async def _resolve_session(

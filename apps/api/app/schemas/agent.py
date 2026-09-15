@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class AgentAsk(BaseModel):
-    message: str = Field(min_length=1, max_length=600)
+    message: str = Field(min_length=1, max_length=2000)
     session_id: uuid.UUID | None = None
 
 

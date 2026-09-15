@@ -49,6 +49,15 @@ class Settings(BaseSettings):
             return {"reasoning": {"effort": "low"}}
         return {}
 
+    def ona_responses_options(self) -> dict:
+        """Slightly higher reasoning for conversational business Q&A."""
+        opts = self.responses_options()
+        if self.llm_provider == "openai":
+            return {**opts, "reasoning": {"effort": "medium"}}
+        if self.agent_model.startswith("openai/gpt-oss-"):
+            return {**opts, "reasoning": {"effort": "medium"}}
+        return opts
+
     # Better Auth (apps/web) issues these tokens via its `jwt` plugin, which
     # defaults to EdDSA/Ed25519 and is verified against its JWKS endpoint —
     # apps/api never holds a shared secret. iss/aud default to the web app's
