@@ -1,17 +1,43 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CheckIcon, GoogleLogo } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
 import { Footer } from "@/components/ui/Footer";
 
 export default function SignupPage() {
+	const router = useRouter();
 	const { toast } = useToast();
+	const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
 	const [consented, setConsented] = useState(true);
+	const [submitting, setSubmitting] = useState(false);
 	const [googleLoading, setGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const busy = googleLoading;
+	const ready = authMode === "signup"
+		? email.trim() && password.trim() && consented
+		: email.trim() && password.trim();
+	const busy = submitting || googleLoading;
+
+	async function handleSubmit() {
+		if (!ready || busy) return;
+		setSubmitting(true);
+		setError(null);
+		const name = email.trim().split("@")[0] || "User";
+		const { error: authError } = authMode === "signup"
+			? await authClient.signUp.email({ email, password, name })
+			: await authClient.signIn.email({ email, password });
+		if (authError) {
+			setError(authError.message ?? "Something went wrong. Please try again.");
+			setSubmitting(false);
+			return;
+		}
+		router.push(authMode === "signup" ? "/setup" : "/dashboard");
+	}
 
 	async function handleGoogleSignIn() {
 		if (busy) return;
@@ -68,25 +94,36 @@ export default function SignupPage() {
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
 				<div className="w-full max-w-[460px] bg-card rounded-3xl shadow-card p-6 sm:p-9">
-					<h1 className="m-0 mb-2 text-center font-display text-2xl">Continue with Google</h1>
-					<p className="m-0 mb-6 text-center text-sm opacity-65">
-						Create an account or sign in securely with your Google account.
-					</p>
+					<div className="flex gap-1 bg-muted rounded-full p-1 mb-6.5">
+						<button type="button" onClick={() => setAuthMode("signup")} disabled={busy} className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${authMode === "signup" ? "bg-foreground text-background font-semibold" : "text-foreground"}`}>Sign up</button>
+						<button type="button" onClick={() => setAuthMode("login")} disabled={busy} className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${authMode === "login" ? "bg-foreground text-background font-semibold" : "text-foreground"}`}>Log in</button>
+					</div>
 
 					<button
 						type="button"
 						onClick={handleGoogleSignIn}
-						disabled={!consented || busy}
+						disabled={busy}
 						className="w-full flex items-center justify-center gap-2.5 bg-card border border-foreground/16 rounded-full text-sm p-3 hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
 					>
 						<GoogleLogo />
 						{googleLoading ? "Redirecting…" : "Continue with Google"}
 					</button>
 
+					<div className="flex items-center gap-2.5 mb-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or</span><div className="flex-1 h-px bg-foreground/12" /></div>
+					<div className="mb-3.5">
+						<label className="block text-xs mb-1.5 text-foreground/70">Email</label>
+						<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} placeholder="you@business.com" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
+					</div>
+					<div className="mb-2">
+						<label className="block text-xs mb-1.5 text-foreground/70">Password</label>
+						<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} placeholder="••••••••" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
+					</div>
 					{error && <p className="text-[12.5px] text-destructive mt-3">{error}</p>}
 
-					{/* Email/password authentication remains configured in Better Auth.
-					    Its sign-in, sign-up, and reset UI are intentionally retired for now. */}
+					{authMode === "login" && !busy && <p className="text-right -mt-1.5 mb-0"><Link href="/forgot-password" className="text-[12px] opacity-60 hover:opacity-100">Forgot password?</Link></p>}
+					<button type="button" disabled={!ready || busy} onClick={handleSubmit} className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed" style={{ background: ready && !submitting ? "var(--foreground)" : "var(--muted-foreground)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
+						{submitting ? "Please wait…" : authMode === "signup" ? "Create account" : "Log in"}
+					</button>
 					<button
 						type="button"
 						onClick={() => setConsented((value) => !value)}

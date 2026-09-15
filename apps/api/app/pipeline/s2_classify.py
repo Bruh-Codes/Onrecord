@@ -1,10 +1,15 @@
-"""Classify Docling output using explainable issuer and document fingerprints."""
+"""Classify normalized document capture using heuristics plus optional AI."""
 
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.models.enums import DocType, Provider
+
+# Heuristics above this threshold are trusted without an LLM call.
+_HEURISTIC_AUTO_CONFIDENCE = 0.90
+# Below this threshold, an LLM pass is attempted when configured.
+_HEURISTIC_AI_THRESHOLD = 0.75
 
 
 @dataclass(frozen=True)
@@ -16,6 +21,21 @@ class ClassificationResult:
     period_end: date | None
     supported: bool
     reason: str
+    classifier: str = "heuristic"
+
+    @property
+    def category(self) -> str:
+        """Broad bucket for routing: statement, invoice, or other."""
+        if self.doc_type in {
+            DocType.BANK_STATEMENT,
+            DocType.MOMO_STATEMENT,
+            DocType.MOMO_MERCHANT_STATEMENT,
+            DocType.FINANCIAL_STATEMENT,
+        }:
+            return "statement"
+        if self.doc_type in {DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED}:
+            return "invoice"
+        return "other"
 
 
 _ISSUERS = {
@@ -30,7 +50,68 @@ _ISSUERS = {
 }
 
 
-def classify_document(text: str, filename: str) -> ClassificationResult:
+def classify_document(text: str, filename: str, *, has_tables: bool = False) -> ClassificationResult:
+    """Classify a document using heuristics first, then optional AI."""
+    heuristic = _classify_heuristic(text, filename, has_tables=has_tables)
+    if heuristic.confidence >= _HEURISTIC_AUTO_CONFIDENCE:
+        return heuristic
+
+    from app.pipeline.s2_classify_ai import classify_document_with_ai
+
+    ai_result = classify_document_with_ai(text, filename, has_tables=has_tables)
+    if ai_result is None:
+        return heuristic
+
+    ai_result = ClassificationResult(
+        ai_result.doc_type,
+        ai_result.confidence,
+        ai_result.issuer,
+        ai_result.period_start,
+        ai_result.period_end,
+        ai_result.supported,
+        ai_result.reason,
+        classifier="ai",
+    )
+
+    if heuristic.confidence < _HEURISTIC_AI_THRESHOLD:
+        return _prefer_ai_result(heuristic, ai_result)
+    if not heuristic.supported and ai_result.supported:
+        return ai_result
+    if (
+        heuristic.supported
+        and heuristic.doc_type == DocType.OTHER
+        and ai_result.supported
+        and ai_result.doc_type != DocType.OTHER
+    ):
+        return ai_result
+    if ai_result.doc_type == heuristic.doc_type:
+        return ClassificationResult(
+            heuristic.doc_type,
+            max(heuristic.confidence, ai_result.confidence),
+            heuristic.issuer or ai_result.issuer,
+            heuristic.period_start or ai_result.period_start,
+            heuristic.period_end or ai_result.period_end,
+            heuristic.supported,
+            heuristic.reason,
+            classifier="heuristic+ai",
+        )
+    if ai_result.confidence > heuristic.confidence:
+        return ai_result
+    return heuristic
+
+
+def _prefer_ai_result(
+    heuristic: ClassificationResult,
+    ai_result: ClassificationResult,
+) -> ClassificationResult:
+    if ai_result.confidence >= heuristic.confidence:
+        return ai_result
+    if not heuristic.supported and not ai_result.supported:
+        return ai_result
+    return heuristic
+
+
+def _classify_heuristic(text: str, filename: str, *, has_tables: bool = False) -> ClassificationResult:
     """Return a supported financial type only when document evidence warrants it."""
     haystack = f"{filename}\n{text}".lower()
     issuer = next((provider for marker, provider in _ISSUERS.items() if marker in haystack), None)
@@ -43,9 +124,9 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
     if "mtn mobile money" in haystack or "momo statement" in haystack or momo_filename:
         doc_type = DocType.MOMO_MERCHANT_STATEMENT if "merchant" in haystack else DocType.MOMO_STATEMENT
         reason = "MoMo statement header detected" if not momo_filename else "MoMo statement filename detected"
-        return ClassificationResult(doc_type, 0.90 if momo_filename else 0.95, issuer or Provider.MTN, period_start, period_end, True, reason)
+        return ClassificationResult(doc_type, 0.90 if momo_filename else 0.95, issuer or Provider.MTN, period_start, period_end, True, reason, classifier="heuristic")
     if issuer is not None and ("statement" in haystack or "opening balance" in haystack):
-        return ClassificationResult(DocType.BANK_STATEMENT, 0.92, issuer, period_start, period_end, True, "Bank statement header detected")
+        return ClassificationResult(DocType.BANK_STATEMENT, 0.92, issuer, period_start, period_end, True, "Bank statement header detected", classifier="heuristic")
 
     # Bank exports frequently omit the bank name from the sheet and some
     # issuers are not in our provider enum.  If the file has a statement title
@@ -57,10 +138,14 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
         "closing balance", "value date",
     )
     marker_count = sum(marker in haystack for marker in bank_statement_markers)
-    if "statement" in haystack and marker_count >= 2:
+    has_transaction_shape = any(marker in haystack for marker in ("transaction", "transaction date", "posted", "value date"))
+    if marker_count >= 2 and (
+        ("statement" in haystack and any(marker in haystack for marker in ("debit", "credit", "balance", "running balance")))
+        or (has_tables and has_transaction_shape)
+    ):
         return ClassificationResult(
             DocType.BANK_STATEMENT,
-            0.78,
+            0.78 if "statement" in haystack else 0.70,
             issuer,
             period_start,
             period_end,
@@ -103,7 +188,34 @@ def classify_document(text: str, filename: str) -> ClassificationResult:
         return ClassificationResult(DocType.FINANCIAL_STATEMENT, 0.78, None, None, None, True, "Financial statement markers detected")
     if not text.strip():
         return ClassificationResult(DocType.OTHER, 0.0, None, None, None, False, "No readable text or tables were found")
+    if _looks_like_financial_record(haystack, has_tables):
+        # Keep the file even when its shape is unfamiliar. Specialized
+        # interpreters may not understand it yet, but the normalized capture
+        # remains available for review and future parsers.
+        return ClassificationResult(
+            DocType.OTHER,
+            0.35,
+            issuer,
+            period_start,
+            period_end,
+            True,
+            "Readable financial record captured; shape requires review",
+        )
     return ClassificationResult(DocType.OTHER, 0.0, None, None, None, False, "File is not a supported financial or business document")
+
+
+def _looks_like_financial_record(text: str, has_tables: bool) -> bool:
+    markers = (
+        "statement", "transaction", "ledger", "cash book", "invoice", "receipt",
+        "debit", "credit", "balance", "amount", "value", "payment", "revenue", "sales",
+        "expense", "asset", "liabilit", "equity", "cash flow", "profit", "narration",
+        "details", "posted", "deposit", "withdrawal", "pos", " dr", " cr", "payout",
+        "gross", "net", "fees", "refund", "settlement", "payroll", "holding", "portfolio",
+        "trial balance", "aging", "operating", "authorized", "settled",
+    )
+    marker_count = sum(marker in text for marker in markers)
+    has_number = bool(re.search(r"\b\d[\d,.]*\b|\b(?:19|20)\d{2}\b", text))
+    return marker_count >= 2 or (has_tables and marker_count >= 1) or (marker_count >= 1 and has_number)
 
 
 def _statement_period(text: str) -> tuple[date | None, date | None]:

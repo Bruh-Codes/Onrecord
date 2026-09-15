@@ -1,0 +1,4 @@
+customer_id,customer_name,invoice_number,invoice_date,due_date,current,days_1_30,days_31_60,days_61_90,over_90,total_due
+CUS-100,Bluebird Foods,INV-1048,2026-08-03,2026-09-02,1840.00,0.00,0.00,0.00,0.00,1840.00
+CUS-104,Kiteworks,INV-1029,2026-06-11,2026-07-11,0.00,0.00,290.00,0.00,0.00,290.00
+CUS-109,Fable Retail,INV-0991,2026-03-16,2026-04-15,0.00,0.00,0.00,0.00,1250.00,1250.00
