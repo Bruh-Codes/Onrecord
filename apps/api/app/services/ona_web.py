@@ -76,12 +76,39 @@ class WebSnippet:
     snippet: str
 
 
+_CASUAL_PHRASES = frozenset({
+    "hi",
+    "hello",
+    "hey",
+    "thanks",
+    "thank you",
+    "ok",
+    "okay",
+    "good morning",
+    "good afternoon",
+    "good evening",
+})
+
+
+def is_casual_turn(message: str) -> bool:
+    """Greetings and small talk — no business snapshot dump."""
+    lower = message.lower().strip()
+    if not lower:
+        return False
+    if lower in _CASUAL_PHRASES:
+        return True
+    words = lower.split()
+    if len(words) <= 4 and any(word in {"hi", "hello", "hey", "thanks", "thank"} for word in words):
+        return True
+    return False
+
+
 def needs_web_search(message: str) -> bool:
     """Whether to fetch web context before calling the LLM."""
     lower = message.lower().strip()
     if not lower:
         return False
-    if lower in {"hi", "hello", "hey", "thanks", "thank you", "ok", "okay"}:
+    if is_casual_turn(message):
         return False
     platform_only = any(p in lower for p in _PLATFORM_PHRASES) and not any(g in lower for g in _GENERAL_SIGNALS)
     if platform_only:

@@ -141,6 +141,26 @@ export type AgentReply = {
 	proposed_action: { id: string; label: string } | null;
 };
 
+export type AgentSessionSummary = {
+	id: string;
+	opened_at: string;
+	preview: string;
+	message_count: number;
+};
+
+export type AgentSessionMessage = {
+	id: string;
+	role: "owner" | "agent";
+	content: string;
+	created_at: string;
+};
+
+export type AgentSessionDetail = {
+	id: string;
+	opened_at: string;
+	messages: AgentSessionMessage[];
+};
+
 export type AppNotification = {
 	id: string;
 	kind: string;

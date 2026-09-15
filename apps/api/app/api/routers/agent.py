@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Response
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Claims, require_business_access
@@ -13,7 +13,14 @@ from app.models.agent import AgentMessage, AgentSession
 from app.models.audit import CostEvent
 from app.models.document import Document
 from app.models.enums import DocStatus
-from app.schemas.agent import AgentAsk, AgentReply
+from app.schemas.agent import (
+    AgentAsk,
+    AgentReply,
+    AgentSessionDetail,
+    AgentSessionList,
+    AgentSessionMessage,
+    AgentSessionSummary,
+)
 from app.services.audit import write_audit_event
 from app.services.ona import HistoryTurn, answer_question, build_business_snapshot
 
@@ -22,6 +29,102 @@ _ACTION_LABELS = {
     "recompute_readiness": "Refresh readiness",
     "retry_stuck_documents": "Retry stuck uploads",
 }
+
+
+@router.get("/v1/businesses/{business_id}/agent/sessions", response_model=AgentSessionList)
+async def list_agent_sessions(
+    business_id: uuid.UUID,
+    claims: Claims = Depends(require_business_access),
+    session: AsyncSession = Depends(get_session),
+) -> AgentSessionList:
+    sessions = (
+        await session.scalars(
+            select(AgentSession)
+            .where(AgentSession.business_id == business_id, AgentSession.opened_by == claims.user_id)
+            .order_by(AgentSession.opened_at.desc())
+            .limit(50)
+        )
+    ).all()
+    items: list[AgentSessionSummary] = []
+    for agent_session in sessions:
+        first_message = await session.scalar(
+            select(AgentMessage.content)
+            .where(AgentMessage.session_id == agent_session.id, AgentMessage.role == "owner")
+            .order_by(AgentMessage.created_at.asc())
+            .limit(1)
+        )
+        message_count = await session.scalar(
+            select(func.count())
+            .select_from(AgentMessage)
+            .where(
+                AgentMessage.session_id == agent_session.id,
+                AgentMessage.role.in_(("owner", "agent")),
+            )
+        )
+        preview = (first_message or "New chat").strip()
+        items.append(
+            AgentSessionSummary(
+                id=agent_session.id,
+                opened_at=agent_session.opened_at,
+                preview=preview[:80],
+                message_count=int(message_count or 0),
+            )
+        )
+    return AgentSessionList(items=items)
+
+
+@router.get(
+    "/v1/businesses/{business_id}/agent/sessions/{session_id}",
+    response_model=AgentSessionDetail,
+)
+async def get_agent_session(
+    business_id: uuid.UUID,
+    session_id: uuid.UUID,
+    claims: Claims = Depends(require_business_access),
+    session: AsyncSession = Depends(get_session),
+) -> AgentSessionDetail:
+    agent_session = await _accessible_session(session, business_id, claims.user_id, session_id)
+    rows = (
+        await session.scalars(
+            select(AgentMessage)
+            .where(AgentMessage.session_id == agent_session.id, AgentMessage.role.in_(("owner", "agent")))
+            .order_by(AgentMessage.created_at.asc())
+        )
+    ).all()
+    return AgentSessionDetail(
+        id=agent_session.id,
+        opened_at=agent_session.opened_at,
+        messages=[
+            AgentSessionMessage(
+                id=row.id,
+                role=row.role,
+                content=row.content,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ],
+    )
+
+
+@router.delete("/v1/businesses/{business_id}/agent/sessions/{session_id}", status_code=204)
+async def delete_agent_session(
+    business_id: uuid.UUID,
+    session_id: uuid.UUID,
+    claims: Claims = Depends(require_business_access),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    agent_session = await _accessible_session(session, business_id, claims.user_id, session_id)
+    await session.execute(delete(AgentMessage).where(AgentMessage.session_id == agent_session.id))
+    await session.delete(agent_session)
+    await write_audit_event(
+        session,
+        business_id=business_id,
+        actor=claims.user_id,
+        action="agent.session.delete",
+        target=f"agent_session:{agent_session.id}",
+    )
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.post("/v1/businesses/{business_id}/agent/messages", response_model=AgentReply)
@@ -156,14 +259,20 @@ async def _session_history(session: AsyncSession, session_id: uuid.UUID) -> list
     return [HistoryTurn(role=row.role, content=row.content) for row in rows]
 
 
+async def _accessible_session(
+    session: AsyncSession, business_id: uuid.UUID, user_id: uuid.UUID, session_id: uuid.UUID
+) -> AgentSession:
+    agent_session = await session.scalar(select(AgentSession).where(AgentSession.id == session_id))
+    if agent_session is None or agent_session.business_id != business_id or agent_session.opened_by != user_id:
+        raise not_found("AGENT_SESSION_NOT_FOUND", "No accessible agent session with that id.")
+    return agent_session
+
+
 async def _resolve_session(
     session: AsyncSession, business_id: uuid.UUID, user_id: uuid.UUID, session_id: uuid.UUID | None
 ) -> AgentSession:
     if session_id is not None:
-        agent_session = await session.scalar(select(AgentSession).where(AgentSession.id == session_id))
-        if agent_session is None or agent_session.business_id != business_id or agent_session.opened_by != user_id:
-            raise not_found("AGENT_SESSION_NOT_FOUND", "No accessible agent session with that id.")
-        return agent_session
+        return await _accessible_session(session, business_id, user_id, session_id)
     agent_session = AgentSession(
         business_id=business_id,
         opened_by=user_id,

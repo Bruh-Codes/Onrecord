@@ -24,7 +24,12 @@ from app.models.enums import Direction, DocStatus, GapStatus
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
 from app.models.transaction import Counterparty, Transaction
 from app.services.coverage import build_coverage
-from app.services.ona_web import asks_about_platform_data, fetch_web_context, needs_web_search
+from app.services.ona_web import (
+    asks_about_platform_data,
+    fetch_web_context,
+    is_casual_turn,
+    needs_web_search,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +352,15 @@ async def answer_question(
 
 
 def _snapshot_for_turn(message: str, snapshot: dict[str, Any]) -> dict[str, Any]:
-    """Skip bulky platform JSON when the turn is general and web-backed."""
+    """Trim snapshot when the turn does not need full platform context."""
+    if is_casual_turn(message):
+        business = snapshot.get("business") or {}
+        return {
+            "business": {"legal_name": business.get("legal_name"), "trading_name": business.get("trading_name")}
+            if business
+            else None,
+            "_note": "Casual greeting: do not mention scores, gaps, or documents unless asked.",
+        }
     if needs_web_search(message) and not asks_about_platform_data(message):
         return {
             "business": snapshot.get("business"),
@@ -472,6 +485,10 @@ Push back on unsafe requests (fake records, back-dating, score gaming, guarantee
 Readiness score = file completeness, not loan approval. No personalized legal/tax/investment advice.
 
 Plain language; match the question (English or Ghanaian Pidgin).
+
+Greetings & small talk (hi, hello, thanks): reply warmly in one or two short sentences.
+Use their name from verified_facts.business if available. Do NOT lead with readiness scores,
+gap lists, or document status unless they ask about their business.
 
 Actions (confirmation required): recompute_readiness when they ask to refresh readiness;
 retry_stuck_documents only if documents.retryable > 0 and they ask to retry uploads.

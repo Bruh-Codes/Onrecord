@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -13,3 +14,27 @@ class AgentReply(BaseModel):
     answer: str
     cited_facts: list[str]
     proposed_action: dict | None = None
+
+
+class AgentSessionSummary(BaseModel):
+    id: uuid.UUID
+    opened_at: datetime
+    preview: str
+    message_count: int
+
+
+class AgentSessionList(BaseModel):
+    items: list[AgentSessionSummary]
+
+
+class AgentSessionMessage(BaseModel):
+    id: uuid.UUID
+    role: str
+    content: str
+    created_at: datetime
+
+
+class AgentSessionDetail(BaseModel):
+    id: uuid.UUID
+    opened_at: datetime
+    messages: list[AgentSessionMessage]
