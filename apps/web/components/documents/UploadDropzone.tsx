@@ -177,7 +177,7 @@ export function UploadDropzone({
 					id="upload-input"
 					type="file"
 					multiple
-					accept="application/pdf,image/jpeg,image/png,image/heic,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,.jpg,.jpeg,.png,.heic,.csv,.xlsx"
+					accept="application/pdf,image/jpeg,image/png,image/heic,image/webp,text/csv,text/tab-separated-values,text/plain,application/xml,text/xml,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.jpg,.jpeg,.png,.heic,.webp,.csv,.tsv,.txt,.xml,.xlsx,.xlsm,.xls,.ods,.docx"
 					disabled={!uploadReady}
 					className="absolute  inset-0 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {
@@ -208,7 +208,7 @@ export function UploadDropzone({
 				</span>
 			</label>
 			<div className="mt-2 px-1 text-[12px] text-foreground/55">
-				Supported formats: PDF, JPG/JPEG, PNG, HEIC, CSV, XLSX
+				Supported formats: PDF, images, CSV/TSV/XML, XLS/XLSX/ODS, DOCX
 			</div>
 			{businessError && (
 				<button

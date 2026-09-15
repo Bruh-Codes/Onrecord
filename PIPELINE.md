@@ -19,6 +19,102 @@ Upload → S1 ingest → S2 classify → S3 extract → S4 normalise → S5 reco
        → S9 checklist and gaps → human review / S10 export
 ```
 
+## Document capture and classification (set-and-forget)
+
+This is the path every uploaded file follows before S3 extraction. The goal is
+one normalized representation regardless of source format, with classification
+and non-financial rejection handled automatically.
+
+### Format routing
+
+| Format | Primary reader | Why |
+| --- | --- | --- |
+| PDF, JPEG, PNG, HEIC, DOCX | **Docling** | Layout, OCR, table structure, bounding boxes |
+| CSV, TSV, TXT | **Native delimited reader** | Exact rows, delimiter sniffing, no layout loss |
+| XLSX, XLSM | **Native spreadsheet reader** | Preserves sheets, blank cells, signs, cell types |
+| XML exports | **Native XML reader** | Repeated record nodes become tables without guessing |
+
+Docling is the **layout engine**, not the universal source of truth for
+structured spreadsheet/export formats. Sending bank exports through a layout
+model can shift columns, lose sheet boundaries, or misread numeric identifiers
+as amounts.
+
+If native XLSX parsing fails (for example a PDF saved with an `.xlsx` extension),
+Docling is used as a safe fallback. Every path still produces the same
+`ProcessedDocument` shape: text, tables, page count, structure JSON, and
+processing method tags (`native:delimited`, `native:xlsx`, `native:xml`, or
+`docling`).
+
+Implementation: `apps/api/app/services/document_processing/docling.py`
+(`DocumentProcessor`).
+
+### End-to-end capture pipeline
+
+```mermaid
+flowchart TD
+    A[Upload] --> B[DocumentProcessor]
+    B --> C{Format}
+    C -->|CSV / XLSX / XML| D[Native reader]
+    C -->|PDF / image / DOCX| E[Docling]
+    C -->|Bad XLSX| F[Docling fallback]
+    D --> G[Normalized ProcessedDocument]
+    E --> G
+    F --> G
+    G --> H[S2 Classify]
+    H --> I{Heuristic confidence ≥ 0.90?}
+    I -->|Yes| J[Heuristic result]
+    I -->|No| K[AI classifier optional]
+    K --> L[Merge heuristic + AI]
+    J --> M{supported?}
+    L --> M
+    M -->|No| N[FAILED + unsupported_document]
+    M -->|Yes| O{doc_type}
+    O -->|Statement| P[parse_statement]
+    O -->|Financial statement| Q[parse_financial_statement]
+    O -->|Invoice| R[extract_invoice LLM]
+    O -->|Other financial| S[Raw capture for review]
+```
+
+### S2 classification passes
+
+**Pass 1 — heuristics (free, always runs).** Filename tokens, issuer fingerprints
+(MTN MoMo, GCB, Fidelity, etc.), statement/invoice keywords, and table-shape
+markers. High-confidence matches (≥ 0.90) skip the LLM.
+
+**Pass 2 — AI (optional, when configured).** Runs when heuristic confidence is
+below 0.90, the file looks financial but ambiguous, or heuristics would reject
+a borderline case. Uses the same provider key as invoice/financial structuring
+(`OPENAI_API_KEY` or `GROQ_API_KEY`, `FINANCIAL_MAPPING_MODEL`). Without a key,
+behaviour falls back to heuristics only.
+
+Each result includes:
+
+- `doc_type` — fine-grained enum (`bank_statement`, `momo_statement`,
+  `invoice_received`, `financial_statement`, etc.)
+- `category` — broad bucket: **statement**, **invoice**, or **other**
+- `supported` — `false` for non-financial files (travel plans, blank uploads, etc.)
+- `classifier` — `heuristic`, `ai`, or `heuristic+ai`
+
+Non-financial files are marked `status=failed` with
+`quality_flags.unsupported_document=true`. They never create transactions or
+readiness evidence.
+
+Implementation: `apps/api/app/pipeline/s2_classify.py`,
+`apps/api/app/pipeline/s2_classify_ai.py`.
+
+### S3 extraction by type
+
+| Classified type | Extractor | Output |
+| --- | --- | --- |
+| Bank / MoMo statement | `parse_statement` | Transactions with direction, amounts, balances |
+| Financial statement | `parse_financial_statement` | Line items, periods, optional AI structure mapping |
+| Invoice | `extract_invoice` | Canonical invoice envelope + line items |
+| Other supported financial | Raw normalized capture | Tables/text stored for review; no invented values |
+
+Deterministic parsers own the facts. AI assists classification, invoice
+envelope mapping, financial-statement structure, and evidence review — it does
+not rewrite extracted amounts.
+
 ## Supported document families
 
 | Family | Deterministic output | Insight treatment |
@@ -40,17 +136,24 @@ and storage key. A duplicate active file is rejected.
 
 ### S1 — Ingest
 
-The Celery worker reads the private object, runs Docling, and stores the lossless
-Docling representation and page count. OCR and layout models recover text and
-tables from scans. Originals remain the source evidence. If the worker cannot
-read the file, it becomes `failed` and no financial rows are created.
+The Celery worker reads the private object and runs the provider-neutral
+`DocumentProcessor`. CSV/TSV/TXT, XLSX/XLSM, and XML are normalized natively;
+PDFs, images, and office documents use Docling as a layout adapter. Both paths
+produce the same lossless text/table representation. Originals remain the source
+evidence. If the worker cannot read the file, it becomes `failed` and no
+financial rows are created.
+
+See [Document capture and classification (set-and-forget)](#document-capture-and-classification-set-and-forget) for the full routing diagram.
 
 ### S2 — Classify
 
 The system identifies document type, issuer, and period: for example,
 `momo_statement`, `bank_statement`, `financial_statement`, invoice, receipt, or
-tax document. Classification carries a confidence and an explanation.
-Unsupported or ambiguous files do not become financial evidence.
+tax document. **Pass 1** applies explainable heuristics (issuer fingerprints,
+filename tokens, table markers). **Pass 2** optionally calls the configured LLM
+when confidence is below 0.90 or the document shape is ambiguous. Each result
+includes a broad category (`statement`, `invoice`, `other`), confidence, and an
+explanation. Unsupported or non-financial files do not become financial evidence.
 
 ### S3 — Extract
 

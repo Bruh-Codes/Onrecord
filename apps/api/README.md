@@ -15,15 +15,26 @@ work are summarized below and tracked in `../../ROADMAP.md`.
 
 ### Current processing status
 
-The Celery task `ingest_document.s1` reads uploads with Docling and stores its
-lossless `DoclingDocument` JSON. Bank/MoMo tables follow the transaction parser.
-Financial statements retain every printed line item and period value in a
-dynamic statement shape, with page/bounding-box provenance; unfamiliar labels
-are not dropped. Accounting equations are checked deterministically. An
-optional OpenAI pass may classify statement type, sections, hierarchy, totals,
-and canonical concepts, but receives no amounts and cannot change extracted
-values. Ambiguous documents remain
-classified rather than being given invented values.
+The Celery task `ingest_document.s1` first runs the provider-neutral
+`DocumentProcessor`. CSV/TSV/TXT and XLSX/XLSM files are normalized natively;
+PDFs, images, and office documents use Docling as a layout adapter. Both paths
+produce the same lossless text/table representation, while the original
+Docling/layout JSON or workbook rows remain stored for provenance. Bank/MoMo
+tables then follow the transaction parser. Financial statements retain every
+printed line item and period value in a dynamic statement shape, with
+page/bounding-box provenance; unfamiliar labels are not dropped. When a
+specialized parser cannot confidently understand a financial record, the
+normalized rows/text are still captured and flagged for review instead of
+being discarded or turned into invented values. Accounting equations are
+checked deterministically. An optional OpenAI pass may classify statement type,
+sections, hierarchy, totals, and canonical concepts, but receives no amounts
+and cannot change extracted values. Ambiguous documents remain reviewable
+instead of being given invented values.
+
+See [`../../PIPELINE.md#document-capture-and-classification-set-and-forget`](../../PIPELINE.md#document-capture-and-classification-set-and-forget)
+for the end-to-end capture/classification diagram, format routing table, and
+non-financial rejection behaviour. S2 classification uses heuristics first, then
+an optional LLM pass (`s2_classify_ai.py`) when confidence is below 0.90.
 
 In Railway, API and worker must use the same S3-compatible `STORAGE_*` settings;
 local-disk storage is not shared between services. Keep the worker at

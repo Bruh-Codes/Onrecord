@@ -43,7 +43,7 @@ def s1_ingest(document_id: str) -> dict:
     """Read, classify, and extract a supported financial statement."""
     from app.db import engine_sync
     from app.pipeline.s2_classify import classify_document
-    from app.services.document_processing import DoclingProcessor
+    from app.services.document_processing import DocumentProcessor
     from app.services.evidence_review import allow_partial_transaction_use, review_extracted_document
     from app.services.financial_mapping import get_structure_mapper
     from app.services.storage import get_storage_backend
@@ -62,8 +62,8 @@ def s1_ingest(document_id: str) -> dict:
             with TemporaryDirectory() as directory:
                 source = Path(directory, _safe_filename(doc.storage_key))
                 source.write_bytes(payload)
-                processed = DoclingProcessor().process(source)
-            result = classify_document(processed.text, doc.storage_key)
+                processed = DocumentProcessor().process(source)
+            result = classify_document(processed.text, doc.storage_key, has_tables=bool(processed.tables))
         except Exception as exc:
             # Keep the document bytes and extracted content out of logs, but
             # retain the traceback needed to distinguish storage, model, and
@@ -85,8 +85,14 @@ def s1_ingest(document_id: str) -> dict:
         doc.period_end = result.period_end
         doc.quality_flags = {
             **(doc.quality_flags or {}),
-            "processor": "docling",
+            # Keep the original scalar flag for existing consumers and add
+            # the full adapter chain for the new capture architecture.
+            "processor": processed.methods[0] if processed.methods else "unknown",
+            "processor_methods": list(processed.methods),
+            "processor_warnings": list(processed.warnings),
             "classification_reason": result.reason,
+            "classification_classifier": result.classifier,
+            "classification_category": result.category,
             "supported": result.supported,
         }
         if result.supported and doc.doc_type in {
@@ -94,10 +100,12 @@ def s1_ingest(document_id: str) -> dict:
             DocType.MOMO_STATEMENT,
             DocType.MOMO_MERCHANT_STATEMENT,
         }:
-            parsed_rows, extraction_error = parse_statement(processed.text)
+            parsed_rows, extraction_error = parse_statement(processed.text, processed.tables)
             if extraction_error:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = extraction_error
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
@@ -132,8 +140,10 @@ def s1_ingest(document_id: str) -> dict:
                 structure_mapper=get_structure_mapper(),
             )
             if extraction_error:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = extraction_error
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
@@ -172,8 +182,10 @@ def s1_ingest(document_id: str) -> dict:
         elif result.supported and doc.doc_type in {DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED}:
             invoice = extract_invoice(processed)
             if invoice is None:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = "Invoice model extraction was unavailable or invalid."
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value,
                     page_count=doc.page_count,
@@ -205,12 +217,16 @@ def s1_ingest(document_id: str) -> dict:
             ))
         else:
             if result.supported:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.quality_flags["capture"] = _capture_summary(processed)
+                doc.status = DocStatus.EXTRACTED
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
                     extracted_text=processed.text,
-                    extraction_error="Document type is not supported for evidence scoring.",
+                    extraction_error="The financial record was captured, but no specialized interpreter matched its shape yet.",
+                    row_count=sum(table.row_count for table in processed.tables),
+                    review_context={"capture_methods": list(processed.methods)},
                 ))
             else:
                 # Unsupported files are not evidence-review cases. Keep the
@@ -226,6 +242,43 @@ def s1_ingest(document_id: str) -> dict:
         if doc.status == DocStatus.EXTRACTED:
             recompute.delay(str(doc.business_id))
         return {"status": doc.status.value, "document_id": str(doc.id), "supported": result.supported}
+
+
+def _capture_summary(processed) -> dict[str, object]:
+    return {
+        "methods": list(processed.methods),
+        "table_count": len(processed.tables),
+        "row_count": sum(table.row_count for table in processed.tables),
+        "text_char_count": len(processed.text),
+        "warnings": list(processed.warnings),
+    }
+
+
+def _persist_raw_capture(session: Session, doc: Document, processed) -> None:
+    """Persist the normalized source even when semantic extraction is unsure."""
+    for table_index, table in enumerate(processed.tables):
+        by_row: dict[int, dict[int, str]] = {}
+        for cell in table.cells:
+            by_row.setdefault(cell.row, {})[cell.column] = cell.text
+        for row_index, values in sorted(by_row.items()):
+            cells = [values.get(column, "") for column in range(table.column_count)]
+            session.add(Extraction(
+                document_id=doc.id,
+                page=table.page,
+                field_path=f"raw.tables[{table_index}].rows[{row_index}]",
+                value_json={"cells": cells, "page": table.page, "table_index": table_index, "row_index": row_index},
+                extractor="capture:normalized_table_v1",
+                confidence=1.0,
+            ))
+    if not processed.tables and processed.text.strip():
+        session.add(Extraction(
+            document_id=doc.id,
+            page=1,
+            field_path="raw.text",
+            value_json={"text": processed.text},
+            extractor="capture:normalized_text_v1",
+            confidence=1.0,
+        ))
 
 def _record_evidence_review(doc: Document, review) -> None:
     flags = {**(doc.quality_flags or {})}

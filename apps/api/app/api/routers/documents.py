@@ -38,8 +38,20 @@ _SUPPORTED_MIMES = {
     "image/jpeg",
     "image/png",
     "image/heic",
+    "image/webp",
     "text/csv",
+    "text/tab-separated-values",
+    "text/plain",
+    "application/xml",
+    "text/xml",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+_SUPPORTED_EXTENSIONS = {
+    ".pdf", ".jpg", ".jpeg", ".png", ".heic", ".webp", ".csv", ".tsv", ".txt",
+    ".xlsx", ".xlsm", ".xls", ".ods", ".docx", ".xml",
 }
 
 
@@ -145,7 +157,9 @@ async def create_document(
     settings: Settings = Depends(get_settings),
     storage: StorageBackend = Depends(get_storage_backend),
 ) -> DocumentUploadTarget:
-    if body.mime not in _SUPPORTED_MIMES:
+    extension = body.filename.lower().rsplit(".", maxsplit=1)
+    suffix = f".{extension[-1]}" if len(extension) == 2 else ""
+    if body.mime not in _SUPPORTED_MIMES and suffix not in _SUPPORTED_EXTENSIONS:
         from app.errors import unsupported_mime
 
         raise unsupported_mime(body.mime)
