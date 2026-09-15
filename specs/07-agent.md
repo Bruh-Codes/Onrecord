@@ -1,9 +1,15 @@
 # 07-Gap Agent
 
-Module: `app/agent/`
+Module: `app/agent/` (target). **Ona** (owner Q&A in the web dock) is implemented
+today in `app/services/ona.py` + `app/services/ona_web.py` with HTTP routes in
+`app/api/routers/agent.py`. Ona is read-only except for owner-confirmed
+`recompute_readiness` and `retry_stuck_documents`. It uses a platform snapshot
+plus optional server-side web search (Groq models have no built-in browsing);
+env vars are documented in `apps/api/README.md` and `apps/api/env.example`.
 
-Converts `gap` rows into resolutions through conversation with the business owner,
-in their own terms, explaining what each answer buys them.
+The gap-filling agent below converts `gap` rows into resolutions through
+conversation with the business owner, in their own terms, explaining what each
+answer buys them.
 
 **Read INV-3 before changing anything in this module.**
 

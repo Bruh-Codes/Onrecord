@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     financial_mapping_model: str = "gpt-5.6-luna"
     ona_model: str = ""
     ona_max_questions_per_hour: int = 20
+    ona_web_search_enabled: bool = True
+    ona_max_web_results: int = 5
+    # Optional: improves Ona web answers on Groq (no built-in browsing). Tavily
+    # or Brave is recommended in production; without either, DuckDuckGo fallback is used.
+    tavily_api_key: str = ""
+    brave_search_api_key: str = ""
 
     @property
     def llm_api_key(self) -> str:
@@ -48,6 +54,15 @@ class Settings(BaseSettings):
         if self.financial_mapping_model.startswith("openai/gpt-oss-"):
             return {"reasoning": {"effort": "low"}}
         return {}
+
+    def ona_responses_options(self) -> dict:
+        """Slightly higher reasoning for conversational business Q&A."""
+        opts = self.responses_options()
+        if self.llm_provider == "openai":
+            return {**opts, "reasoning": {"effort": "medium"}}
+        if self.agent_model.startswith("openai/gpt-oss-"):
+            return {**opts, "reasoning": {"effort": "medium"}}
+        return opts
 
     # Better Auth (apps/web) issues these tokens via its `jwt` plugin, which
     # defaults to EdDSA/Ed25519 and is verified against its JWKS endpoint —

@@ -16,7 +16,7 @@ export default function AssistantChatPage() {
 				</Link>
 				<h1 className="text-[22px] m-0 mb-1">Talk to Ona</h1>
 				<p className="text-[13px] opacity-65 m-0 mb-6">
-					Use Ona at the bottom right. She only uses verified business data.
+					Use Ona at the bottom right. Ask about your readiness or general SME and finance questions.
 				</p>
 			</div>
 		</div>

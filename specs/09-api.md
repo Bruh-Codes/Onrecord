@@ -124,25 +124,35 @@ POST /v1/businesses/{id}/recompute → 202 {task_id}
 GET  /v1/tasks/{task_id}           → {state, progress, result}
 ```
 
-### Agent
+### Agent (Ona — shipped)
+
+Read-only owner Q&A plus confirmation-gated side effects. Sessions and messages
+are persisted in `agent_session` / `agent_message`. Server builds a business
+snapshot; general SME/finance questions may include server-side web search
+before the LLM call (see `apps/api/README.md` § Ona).
+
+```
+POST /v1/businesses/{id}/agent/messages
+     {message, session_id?}
+     → {session_id, answer, cited_facts[], proposed_action?}
+
+POST /v1/businesses/{id}/agent/actions/{proposal_id}/confirm
+     → executes pending recompute or document retry after owner confirmation
+```
+
+`cited_facts` names snapshot sections used (e.g. `readiness_score`, `web`).
+Rate limit: `ONA_MAX_QUESTIONS_PER_HOUR` per user.
+
+### Agent (gap-filling — spec, not yet this surface)
 
 ```
 POST /v1/businesses/{id}/agent/sessions      → 201 {session_id, score_before}
-POST /v1/agent/sessions/{sid}/messages
-     {content}
-     → text/event-stream
-
-     event: token     data: {"text": "..."}
-     event: tool_call data: {"name": "categorise_counterparty", "args": {...}}
-     event: tool_result data: {"name": "...", "result": {...}}
-     event: done      data: {"questions_asked": n, "gaps_remaining": n}
-
-POST /v1/agent/sessions/{sid}/close → {score_before, score_after, delta}
-GET  /v1/agent/sessions/{sid}       → session + messages
+POST /v1/agent/sessions/{sid}/messages       → SSE (tool calls, gap resolution)
+POST /v1/agent/sessions/{sid}/close          → {score_before, score_after, delta}
+GET  /v1/agent/sessions/{sid}                → session + messages
 ```
 
-SSE, not WebSocket-one-directional streaming, survives mobile network changes
-better, and needs no separate connection lifecycle.
+See `specs/07-agent.md` for the write surface and gap conversation policy.
 
 ### Exports
 
