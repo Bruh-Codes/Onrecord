@@ -117,7 +117,7 @@ you don't have one running).
 cd apps/api
 uv venv --python 3.12
 uv pip install -e ".[dev]"
-# create .env-see apps/api/README.md "Setup" for the required vars
+# copy apps/api/env.example to .env — see apps/api/README.md (Ona + LLM vars)
 .venv/Scripts/alembic upgrade head        # Windows; .venv/bin/... on macOS/Linux
 .venv/Scripts/uvicorn app.api.main:app --reload
 ```

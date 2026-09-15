@@ -36,6 +36,7 @@ def test_build_input_includes_history_and_snapshot():
         "What gaps matter most?",
         {"readiness_score": {"total": 42.0}},
         [HistoryTurn(role="owner", content="Hi"), HistoryTurn(role="agent", content="Hello.")],
+        [],
     )
     assert turns[0]["role"] == "developer"
     assert turns[1]["content"] == "Hi"
@@ -47,3 +48,12 @@ def test_build_input_includes_history_and_snapshot():
 def test_citation_keys_cover_snapshot_sections():
     assert "transactions" in CITATION_KEYS
     assert "counterparties" in CITATION_KEYS
+
+
+def test_ona_allows_empty_citations_for_general_answers():
+    answer = _validate_answer({
+        "answer": "Register your business, open a dedicated MoMo or bank account, and keep every receipt.",
+        "cited_facts": [],
+        "proposed_action": None,
+    })
+    assert answer.cited_facts == ()
