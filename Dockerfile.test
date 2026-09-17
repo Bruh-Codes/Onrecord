@@ -1,0 +1,27 @@
+# Dockerfile for extraction testing
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libxcb1 \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the entire project
+COPY . .
+
+# Install the API dependencies
+RUN cd apps/api && pip install -e .
+
+# Copy test script to API directory
+RUN cp test_extraction.py apps/api/
+
+# Set working directory to API
+WORKDIR /app/apps/api
+
+# Run the extraction test
+CMD ["python", "test_extraction.py"]

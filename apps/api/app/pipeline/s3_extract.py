@@ -66,6 +66,10 @@ def parse_statement(
     plain_rows = _parse_plain_text_statement(text)
     if plain_rows:
         return plain_rows, None
+    # Try more aggressive pattern matching as fallback
+    fallback_rows = _parse_fallback_statement(text)
+    if fallback_rows:
+        return fallback_rows, None
     return [], "No unambiguous transaction table was found"
 
 
@@ -73,8 +77,11 @@ def _parse_plain_text_statement(text: str) -> list[ParsedRow]:
     """Recover simple PDF text-layer statements when table delimiters are lost."""
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     date_indexes = [index for index, line in enumerate(lines) if _looks_like_date(line)]
-    if len(date_indexes) < 2:
+    
+    # Be more flexible - try with even a single date if we have amounts
+    if len(date_indexes) < 1:
         return []
+    
     rows: list[ParsedRow] = []
     for position, start in enumerate(date_indexes):
         end = date_indexes[position + 1] if position + 1 < len(date_indexes) else len(lines)
@@ -106,6 +113,80 @@ def _parse_plain_text_statement(text: str) -> list[ParsedRow]:
             category_confidence=confidence,
             category_source="rule" if category_l1 else None,
         ))
+    return rows
+
+
+def _parse_fallback_statement(text: str) -> list[ParsedRow]:
+    """Aggressive fallback for messy OCR output - look for date-amount patterns anywhere."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    rows: list[ParsedRow] = []
+    
+    # Look for lines that contain both a date and an amount
+    for line in lines:
+        # Find dates in the line
+        date_match = _DATE_RE.search(line)
+        if not date_match:
+            continue
+            
+        occurred_on = _parse_date(date_match.group(1))
+        if occurred_on is None:
+            continue
+            
+        # Find amounts in the line
+        amount_matches = _AMOUNT_RE.findall(line)
+        if not amount_matches:
+            continue
+            
+        # Extract amounts from matches
+        amounts = []
+        for match in amount_matches:
+            raw = match.replace(",", "").replace("GH¢", "").replace("GHS", "").replace("₵", "").replace("$", "")
+            try:
+                amount = Decimal(raw.lstrip("+"))
+                if amount >= 0:
+                    amounts.append(int(amount * 100))
+            except (InvalidOperation, ValueError):
+                continue
+                
+        if not amounts:
+            continue
+            
+        # Use the largest amount as the transaction amount
+        amount = max(amounts)
+        
+        # Try to determine direction from context
+        description = re.sub(r'\s+', ' ', _DATE_RE.sub('', line)).strip()
+        description = re.sub(r'\$?\d[\d,]*\.?\d*', '', description).strip()
+        description = _clean_description(description)
+        
+        # Skip if description is too short
+        if len(description) < 3:
+            continue
+            
+        # Skip summary/account balance lines by looking for common summary patterns
+        if re.search(r'balance|total|summary|account summary|money in|money out|period|statement', description, re.I):
+            continue
+            
+        # Skip if description contains only numbers or special characters (poor OCR)
+        if not re.search(r'[a-zA-Z]', description):
+            continue
+            
+        direction = "out" if re.search(r"debit|purchase|withdraw|cash out|charge|levy|payment|bill", description, re.I) else "in"
+        
+        category_l1, category_l2, confidence = categorize_transaction(description, None, direction)
+        rows.append(ParsedRow(
+            occurred_on,
+            description or "Statement transaction",
+            direction,
+            amount,
+            None,  # No balance available in fallback mode
+            category_l1=category_l1,
+            category_l2=category_l2,
+            category_confidence=confidence,
+            category_source="rule" if category_l1 else None,
+            quality_flags=("fallback_extraction",),
+        ))
+        
     return rows
 
 

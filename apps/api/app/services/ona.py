@@ -310,6 +310,7 @@ async def answer_question(
     history: Sequence[HistoryTurn] = (),
 ) -> OnaAnswer:
     if not settings.llm_api_key or not settings.agent_model:
+        logger.warning("Ona not available: llm_api_key=%s, agent_model=%s", bool(settings.llm_api_key), bool(settings.agent_model))
         return OnaAnswer("Ona is not available right now. Please try again shortly.", ())
     web_sources: list[dict[str, str]] = []
     if needs_web_search(message):
@@ -346,8 +347,18 @@ async def answer_question(
                 int(usage.get("input_tokens", 0) or 0),
                 int(usage.get("output_tokens", 0) or 0),
             )
+    except httpx.HTTPStatusError as exc:
+        logger.warning("Ona answer failed: HTTPStatusError %s - %s", exc.response.status_code, exc.response.text[:200])
+        # Check if it's a 401/403 (auth issue) or 404 (endpoint issue)
+        if exc.response.status_code in (401, 403):
+            return OnaAnswer("I'm having trouble connecting to my knowledge base. Please check your API configuration.", ())
+        if exc.response.status_code == 404:
+            return OnaAnswer("The service I need isn't available right now. Please try again later.", ())
+        if exc.response.status_code == 429:
+            return OnaAnswer("I'm getting too many requests right now. Please wait a moment and try again.", ())
+        return OnaAnswer("I couldn't check your business data just now. Please try again.", ())
     except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
-        logger.warning("Ona answer failed: %s", type(exc).__name__)
+        logger.warning("Ona answer failed: %s - %s", type(exc).__name__, str(exc)[:200])
         return OnaAnswer("I couldn't check your business data just now. Please try again.", ())
 
 
