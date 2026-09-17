@@ -110,8 +110,8 @@ def needs_web_search(message: str) -> bool:
         return False
     if is_casual_turn(message):
         return False
-    platform_only = any(p in lower for p in _PLATFORM_PHRASES) and not any(g in lower for g in _GENERAL_SIGNALS)
-    if platform_only:
+    platform_present = any(p in lower for p in _PLATFORM_PHRASES)
+    if platform_present:
         return False
     if any(g in lower for g in _GENERAL_SIGNALS):
         return True

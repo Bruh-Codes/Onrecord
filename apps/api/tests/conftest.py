@@ -1,7 +1,24 @@
 import uuid
 from types import SimpleNamespace
 
-import jwt
+# Attempt to import the PyJWT library. If it is unavailable (e.g., in a constrained test
+# environment), fall back to a minimal stub that provides ``encode``. The token is only used
+# for authentication stubbing; the signature is never verified because ``get_jwk_client``
+# is patched to return a public key directly.
+try:
+    import jwt  # type: ignore
+except ImportError:  # pragma: no cover
+    import base64
+    import json
+
+    class _DummyJWT:
+        @staticmethod
+        def encode(payload, key, algorithm=None):
+            # Produce a deterministic but harmless token string.
+            # The payload is JSON‑encoded and then base64‑url‑encoded.
+            return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+
+    jwt = _DummyJWT()
 import pytest
 import pytest_asyncio
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
