@@ -141,6 +141,8 @@ async def ask_ona(
     snapshot = await build_business_snapshot(session, business_id)
     answer = await answer_question(
         settings=settings,
+        session=session,
+        business_id=business_id,
         message=body.message.strip(),
         snapshot=snapshot,
         history=history,
