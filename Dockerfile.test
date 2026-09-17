@@ -15,10 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 
 # Install the API dependencies
-RUN cd apps/api && pip install -e .
+RUN cd /app/apps/api && pip install -e .
 
 # Copy test script to API directory
-RUN cp test_extraction.py apps/api/
+RUN cp /app/test_extraction.py /app/apps/api/
 
 # Set working directory to API
 WORKDIR /app/apps/api
