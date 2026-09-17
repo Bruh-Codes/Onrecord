@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 MAX_ANSWER_CHARS = 2400
 MAX_HISTORY_TURNS = 14
+MAX_TOOL_ROUNDS = 4
 CITATION_KEYS = frozenset({
     "business",
     "readiness_score",
@@ -65,6 +66,58 @@ class OnaAnswer:
 class HistoryTurn:
     role: str
     content: str
+
+
+ONA_TOOLS = [
+    {
+        "type": "function",
+        "name": "get_business_overview",
+        "description": "Read verified business identity, accounts, and high-level financial coverage.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "type": "function",
+        "name": "list_documents",
+        "description": "List the business owner's uploaded documents and their processing status.",
+        "parameters": {
+            "type": "object",
+            "properties": {"status": {"type": "string"}},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_spending_summary",
+        "description": "Get verified outgoing spending totals ranked by category and date range.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "type": "function",
+        "name": "search_transactions",
+        "description": "Find verified transactions by direction or category, up to 25 rows.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "direction": {"type": "string", "enum": ["in", "out"]},
+                "category": {"type": "string"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 25},
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_readiness_gaps",
+        "description": "Read the current open readiness gaps and missing checklist requirements.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "type": "function",
+        "name": "get_top_counterparties",
+        "description": "Read the business's largest verified counterparties by money in or out.",
+        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+]
 
 
 async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> dict[str, Any]:
@@ -139,7 +192,11 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             select(Transaction.category_l1, func.count(), func.coalesce(func.sum(Transaction.amount_pesewas), 0))
             .select_from(Transaction)
             .join(Document, Transaction.document_id == Document.id)
-            .where(Transaction.business_id == business_id, Document.deleted_at.is_(None))
+            .where(
+                Transaction.business_id == business_id,
+                Transaction.direction == Direction.OUT,
+                Document.deleted_at.is_(None),
+            )
             .group_by(Transaction.category_l1)
             .order_by(func.coalesce(func.sum(Transaction.amount_pesewas), 0).desc())
             .limit(12)
@@ -177,6 +234,7 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             "latest_on": None,
             "unclassified_count": int(unclassified_count or 0),
             "by_category": [],
+            "spending_by_category": [],
         },
         "accounts": [],
         "counterparties": [],
@@ -247,13 +305,13 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
         facts["transactions"]["latest_on"] = latest.isoformat()
 
     for category, count, total in category_rows:
-        facts["transactions"]["by_category"].append(
-            {
-                "category_l1": category or "unclassified",
-                "count": int(count),
-                "volume_pesewas": int(total),
-            }
-        )
+        category_fact = {
+            "category_l1": category or "unclassified",
+            "count": int(count),
+            "volume_pesewas": int(total),
+        }
+        facts["transactions"]["by_category"].append(category_fact)
+        facts["transactions"]["spending_by_category"].append(category_fact)
 
     for account in accounts:
         facts["accounts"].append(
@@ -302,9 +360,97 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
     return facts
 
 
+async def execute_ona_tool(
+    session: AsyncSession,
+    business_id: UUID,
+    name: str,
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    """Execute one allowlisted, read-only tool within the current business scope."""
+    snapshot = await build_business_snapshot(session, business_id)
+    if name == "get_business_overview":
+        return {
+            "business": snapshot["business"],
+            "accounts": snapshot["accounts"],
+            "coverage": snapshot["coverage"],
+        }
+    if name == "get_spending_summary":
+        return {
+            "transactions": {
+                "money_out_pesewas": snapshot["transactions"]["money_out_pesewas"],
+                "earliest_on": snapshot["transactions"]["earliest_on"],
+                "latest_on": snapshot["transactions"]["latest_on"],
+                "by_category": snapshot["transactions"]["spending_by_category"],
+            }
+        }
+    if name == "get_readiness_gaps":
+        return {
+            "readiness_score": snapshot["readiness_score"],
+            "open_gaps": snapshot["open_gaps"],
+            "gap_details": snapshot["gap_details"],
+            "checklist": snapshot["checklist"],
+        }
+    if name == "get_top_counterparties":
+        return {"counterparties": snapshot["counterparties"]}
+    if name == "list_documents":
+        status = arguments.get("status")
+        query = select(Document).where(
+            Document.business_id == business_id,
+            Document.deleted_at.is_(None),
+        ).order_by(Document.created_at.desc())
+        if isinstance(status, str) and status in {item.value for item in DocStatus}:
+            query = query.where(Document.status == status)
+        documents = (await session.scalars(query.limit(50))).all()
+        return {
+            "documents": [
+                {
+                    "filename": document.filename,
+                    "doc_type": document.doc_type.value if document.doc_type else None,
+                    "status": document.status.value,
+                    "period_start": document.period_start.isoformat() if document.period_start else None,
+                    "period_end": document.period_end.isoformat() if document.period_end else None,
+                }
+                for document in documents
+            ],
+            "missing_requirements": snapshot["checklist"]["items_missing"],
+        }
+    if name == "search_transactions":
+        query = (
+            select(Transaction)
+            .join(Document, Transaction.document_id == Document.id)
+            .where(Transaction.business_id == business_id, Document.deleted_at.is_(None))
+            .order_by(Transaction.occurred_on.desc())
+        )
+        direction = arguments.get("direction")
+        category = arguments.get("category")
+        if direction in {"in", "out"}:
+            query = query.where(Transaction.direction == Direction(direction))
+        if isinstance(category, str) and category.strip():
+            query = query.where(Transaction.category_l1.ilike(f"%{category.strip()[:80]}%"))
+        limit = arguments.get("limit", 25)
+        if not isinstance(limit, int):
+            limit = 25
+        rows = (await session.scalars(query.limit(min(max(limit, 1), 25)))).all()
+        return {
+            "transactions": [
+                {
+                    "date": row.occurred_on.isoformat(),
+                    "direction": row.direction.value,
+                    "amount_pesewas": row.amount_pesewas,
+                    "category": row.category_l1 or "unclassified",
+                    "counterparty": row.counterparty_raw,
+                }
+                for row in rows
+            ]
+        }
+    return {"error": f"Unknown tool: {name}"}
+
+
 async def answer_question(
     *,
     settings: Settings,
+    session: AsyncSession,
+    business_id: UUID,
     message: str,
     snapshot: dict[str, Any],
     history: Sequence[HistoryTurn] = (),
@@ -317,36 +463,61 @@ async def answer_question(
         web_sources = await fetch_web_context(settings, message)
     turn_snapshot = _snapshot_for_turn(message, snapshot)
     try:
+        input_items: list[dict[str, Any]] = _build_input(message, turn_snapshot, history, web_sources)
+        input_tokens = 0
+        output_tokens = 0
         async with httpx.AsyncClient(timeout=90) as client:
-            response = await client.post(
-                settings.responses_api_url,
-                headers={"authorization": f"Bearer {settings.llm_api_key}", "content-type": "application/json"},
-                json={
-                    "model": settings.agent_model,
-                    **settings.ona_responses_options(),
-                    "input": _build_input(message, turn_snapshot, history, web_sources),
-                    "text": {
-                        "format": {
-                            "type": "json_schema",
-                            "name": "ona_reply",
-                            "strict": True,
-                            "schema": _schema(),
-                        }
+            for _ in range(MAX_TOOL_ROUNDS + 1):
+                response = await client.post(
+                    settings.responses_api_url,
+                    headers={"authorization": f"Bearer {settings.llm_api_key}", "content-type": "application/json"},
+                    json={
+                        "model": settings.agent_model,
+                        **settings.ona_responses_options(),
+                        "input": input_items,
+                        "tools": ONA_TOOLS,
+                        "tool_choice": "auto",
+                        "text": {
+                            "format": {
+                                "type": "json_schema",
+                                "name": "ona_reply",
+                                "strict": True,
+                                "schema": _schema(),
+                            }
+                        },
+                        "max_output_tokens": 900,
                     },
-                    "max_output_tokens": 900,
-                },
-            )
-            response.raise_for_status()
-            response_body = response.json()
-            answer = _validate_answer(json.loads(_output_text(response_body)))
-            usage = response_body.get("usage") or {}
-            return OnaAnswer(
-                answer.answer,
-                answer.cited_facts,
-                answer.proposed_action,
-                int(usage.get("input_tokens", 0) or 0),
-                int(usage.get("output_tokens", 0) or 0),
-            )
+                )
+                response.raise_for_status()
+                response_body = response.json()
+                usage = response_body.get("usage") or {}
+                input_tokens += int(usage.get("input_tokens", 0) or 0)
+                output_tokens += int(usage.get("output_tokens", 0) or 0)
+                calls = _function_calls(response_body)
+                if not calls:
+                    answer = _validate_answer(json.loads(_output_text(response_body)))
+                    return OnaAnswer(
+                        answer.answer,
+                        answer.cited_facts,
+                        answer.proposed_action,
+                        input_tokens,
+                        output_tokens,
+                    )
+                input_items.extend(response_body.get("output") or [])
+                for call in calls:
+                    try:
+                        arguments = json.loads(call["arguments"] or "{}")
+                    except (TypeError, json.JSONDecodeError):
+                        arguments = {}
+                    result = await execute_ona_tool(session, business_id, call["name"], arguments)
+                    input_items.append(
+                        {
+                            "type": "function_call_output",
+                            "call_id": call["call_id"],
+                            "output": json.dumps(result, ensure_ascii=False),
+                        }
+                    )
+        raise ValueError("Ona exceeded its tool-call limit")
     except httpx.HTTPStatusError as exc:
         logger.warning("Ona answer failed: HTTPStatusError %s - %s", exc.response.status_code, exc.response.text[:200])
         # Check if it's a 401/403 (auth issue) or 404 (endpoint issue)
@@ -386,8 +557,8 @@ def _build_input(
     snapshot: dict[str, Any],
     history: Sequence[HistoryTurn],
     web_sources: list[dict[str, str]],
-) -> list[dict[str, str]]:
-    turns: list[dict[str, str]] = [{"role": "developer", "content": _INSTRUCTIONS}]
+) -> list[dict[str, Any]]:
+    turns: list[dict[str, Any]] = [{"role": "developer", "content": _INSTRUCTIONS}]
     for turn in history[-MAX_HISTORY_TURNS:]:
         role = "assistant" if turn.role == "agent" else "user"
         if turn.role not in {"owner", "agent"}:
@@ -437,6 +608,22 @@ def _output_text(response: dict[str, Any]) -> str:
             if content.get("type") == "output_text" and isinstance(content.get("text"), str):
                 return content["text"]
     raise ValueError("response contains no output text")
+
+
+def _function_calls(response: dict[str, Any]) -> list[dict[str, str]]:
+    calls: list[dict[str, str]] = []
+    for item in response.get("output", []):
+        if not isinstance(item, dict) or item.get("type") != "function_call":
+            continue
+        name = item.get("name")
+        call_id = item.get("call_id")
+        if isinstance(name, str) and isinstance(call_id, str):
+            calls.append({
+                "name": name,
+                "call_id": call_id,
+                "arguments": item.get("arguments") if isinstance(item.get("arguments"), str) else "{}",
+            })
+    return calls
 
 
 def _validate_answer(payload: object) -> OnaAnswer:
@@ -489,6 +676,18 @@ Sources (strict priority):
   guidance clearly labeled as general tips.
 - Do not fill gaps with model memory when web_sources was expected but missing.
 
+Platform-data questions:
+- For questions about what the owner spends, spends most on, expenses, or costs, answer from
+  verified_facts.transactions.spending_by_category. It is already limited to money going out
+  and ordered from largest to smallest. Do not replace it with household spending advice.
+- For transaction questions, use verified_facts.transactions and say when categories are
+  unclassified or the data is empty. Never infer a category that is not present.
+- For document questions, distinguish documents actually uploaded in verified_facts.documents
+  from missing requirements in verified_facts.checklist.items_missing or verified_facts.gap_details.
+  Do not describe a checklist requirement as an uploaded document, and do not claim a document
+  is missing unless the verified facts say so. Use the document type values as labels a user can
+  understand (for example, bank_statement means bank statement).
+
 Cited_facts: list snapshot sections used (e.g. transactions, gap_details) and include "web" when
 you relied on web_sources. Mixed questions may use both.
 
@@ -503,5 +702,10 @@ gap lists, or document status unless they ask about their business.
 
 Actions (confirmation required): recompute_readiness when they ask to refresh readiness;
 retry_stuck_documents only if documents.retryable > 0 and they ask to retry uploads.
+
+Tools: You have read-only tools for detailed platform questions. Use them when the question asks
+for a specific list, comparison, transaction detail, document status, or information not present
+in the compact snapshot. Never claim to have used a tool unless its returned data supports the
+claim. Never ask a tool to mutate data. Only propose the two confirmation-gated actions above.
 
 Return only the required JSON."""

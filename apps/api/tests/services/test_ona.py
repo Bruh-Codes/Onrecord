@@ -1,4 +1,11 @@
-from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _snapshot_for_turn, _validate_answer
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+
+from app.config import Settings
+from app.services import ona
+from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _function_calls, _snapshot_for_turn, _validate_answer
 from app.services.ona_web import is_casual_turn
 
 
@@ -51,6 +58,25 @@ def test_citation_keys_cover_snapshot_sections():
     assert "counterparties" in CITATION_KEYS
 
 
+def test_ona_instructions_ground_spending_and_documents():
+    turns = _build_input(
+        "What do I spend money on most?",
+        {
+            "transactions": {
+                "spending_by_category": [
+                    {"category_l1": "inventory", "volume_pesewas": 12000}
+                ]
+            },
+            "documents": {"by_type": {"bank_statement": 1}},
+            "checklist": {"items_missing": [{"doc_type": "tax_doc"}]},
+        },
+        [],
+        [],
+    )
+    assert "spending_by_category" in turns[-1]["content"]
+    assert "checklist requirement as an uploaded document" in turns[0]["content"]
+
+
 def test_casual_turn_skips_heavy_snapshot():
     assert is_casual_turn("Hi")
     snapshot = _snapshot_for_turn("Hi", {"readiness_score": {"total": 0}, "gap_details": [{"title": "bank"}]})
@@ -66,3 +92,66 @@ def test_ona_allows_empty_citations_for_general_answers():
         "proposed_action": None,
     })
     assert answer.cited_facts == ()
+
+
+def test_function_calls_are_parsed_only_from_function_call_items():
+    calls = _function_calls({
+        "output": [
+            {"type": "reasoning"},
+            {"type": "function_call", "name": "get_spending_summary", "call_id": "call_1", "arguments": "{}"},
+        ]
+    })
+    assert calls == [{"name": "get_spending_summary", "call_id": "call_1", "arguments": "{}"}]
+
+
+@pytest.mark.asyncio
+async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
+    responses = [
+        SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "output": [{
+                    "type": "function_call",
+                    "name": "get_spending_summary",
+                    "call_id": "call_1",
+                    "arguments": "{}",
+                }],
+                "usage": {},
+            },
+        ),
+        SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "output_text": '{"answer":"Your largest spending category is inventory.","cited_facts":["transactions"],"proposed_action":null}',
+                "usage": {},
+            },
+        ),
+    ]
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, *args, **kwargs):
+            return responses.pop(0)
+
+    calls = []
+
+    async def fake_tool(session, business_id, name, arguments):
+        calls.append((session, business_id, name, arguments))
+        return {"transactions": {"by_category": [{"category_l1": "inventory"}]}}
+
+    monkeypatch.setattr(ona.httpx, "AsyncClient", lambda **kwargs: FakeClient())
+    monkeypatch.setattr(ona, "execute_ona_tool", fake_tool)
+    result = await ona.answer_question(
+        settings=Settings(openai_api_key="test", ona_model="test"),
+        session=object(),
+        business_id=uuid4(),
+        message="What do I spend money on most?",
+        snapshot={"transactions": {"spending_by_category": []}},
+    )
+    assert result.answer == "Your largest spending category is inventory."
+    assert calls[0][2] == "get_spending_summary"

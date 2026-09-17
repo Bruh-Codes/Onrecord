@@ -16,8 +16,15 @@ const PLATFORM_PHRASES = [
 	"my checklist",
 	"my indicator",
 	"how many transaction",
+	"transaction",
 	"money in",
 	"money out",
+	"spend",
+	"spent",
+	"expense",
+	"cost",
+	"document",
+	"upload",
 	"what is my",
 	"show my",
 ];
@@ -84,10 +91,7 @@ export function asksAboutPlatformData(message: string): boolean {
 export function needsWebSearch(message: string): boolean {
 	const lower = message.toLowerCase().trim();
 	if (!lower || isCasualTurn(message)) return false;
-	const platformOnly =
-		asksAboutPlatformData(message) &&
-		!GENERAL_SIGNALS.some((signal) => lower.includes(signal));
-	if (platformOnly) return false;
+	if (asksAboutPlatformData(message)) return false;
 	if (GENERAL_SIGNALS.some((signal) => lower.includes(signal))) return true;
 	return lower.includes("?") || lower.split(/\s+/).length > 10;
 }

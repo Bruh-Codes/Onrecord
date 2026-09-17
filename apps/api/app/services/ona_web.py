@@ -10,7 +10,6 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import quote_plus
 
 import httpx
 
@@ -34,8 +33,15 @@ _PLATFORM_PHRASES = (
     "my checklist",
     "my indicator",
     "how many transaction",
+    "transaction",
     "money in",
     "money out",
+    "spend",
+    "spent",
+    "expense",
+    "cost",
+    "document",
+    "upload",
     "what is my",
     "show my",
 )
