@@ -462,31 +462,40 @@ async def answer_question(
     if needs_web_search(message):
         web_sources = await fetch_web_context(settings, message)
     turn_snapshot = _snapshot_for_turn(message, snapshot)
+    use_tools = asks_about_platform_data(message)
     try:
         input_items: list[dict[str, Any]] = _build_input(message, turn_snapshot, history, web_sources)
         input_tokens = 0
         output_tokens = 0
         async with httpx.AsyncClient(timeout=90) as client:
             for _ in range(MAX_TOOL_ROUNDS + 1):
+                request_body: dict[str, Any] = {
+                    "model": settings.agent_model,
+                    **settings.ona_responses_options(),
+                    "input": input_items,
+                    "max_output_tokens": 900,
+                }
+                if use_tools:
+                    # Groq's Responses API rejects JSON mode and function
+                    # calling in the same request. Tool turns still receive
+                    # the JSON-only instruction and are validated below.
+                    request_body.update({
+                        "tools": ONA_TOOLS,
+                        "tool_choice": "auto",
+                    })
+                else:
+                    request_body["text"] = {
+                        "format": {
+                            "type": "json_schema",
+                            "name": "ona_reply",
+                            "strict": True,
+                            "schema": _schema(),
+                        }
+                    }
                 response = await client.post(
                     settings.responses_api_url,
                     headers={"authorization": f"Bearer {settings.llm_api_key}", "content-type": "application/json"},
-                    json={
-                        "model": settings.agent_model,
-                        **settings.ona_responses_options(),
-                        "input": input_items,
-                        "tools": ONA_TOOLS,
-                        "tool_choice": "auto",
-                        "text": {
-                            "format": {
-                                "type": "json_schema",
-                                "name": "ona_reply",
-                                "strict": True,
-                                "schema": _schema(),
-                            }
-                        },
-                        "max_output_tokens": 900,
-                    },
+                    json=request_body,
                 )
                 response.raise_for_status()
                 response_body = response.json()
