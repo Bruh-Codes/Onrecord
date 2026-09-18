@@ -501,10 +501,10 @@ export function AgentDock({
 								)}
 								{isVoiceActive && (
 									<div className="flex shrink-0 items-center gap-1.5">
-										<DockButton
-											icon={<XIcon weight="bold" />}
-											label="Stop"
-											onClick={stopVoice}
+																					<DockButton
+																						icon={<XIcon weight="bold" />}
+																						label="Stop"
+																						onClick={() => stopVoice(false)}
 											shortcut="V"
 										/>
 																					<DockButton
