@@ -469,7 +469,7 @@ async def answer_question(
     if needs_web_search(message):
         web_sources = await fetch_web_context(settings, message)
     turn_snapshot = _snapshot_for_turn(message, snapshot)
-    use_tools = asks_about_platform_data(message)
+    allow_tools = asks_about_platform_data(message)
     try:
         input_items: list[dict[str, Any]] = _build_input(message, turn_snapshot, history, web_sources)
         input_tokens = 0
@@ -482,7 +482,7 @@ async def answer_question(
                     "input": input_items,
                     "max_output_tokens": 900,
                 }
-                if use_tools:
+                if allow_tools:
                     # Groq's Responses API rejects JSON mode and function
                     # calling in the same request. Tool turns still receive
                     # the JSON-only instruction and are validated below.
@@ -511,6 +511,14 @@ async def answer_question(
                 output_tokens += int(usage.get("output_tokens", 0) or 0)
                 calls = _function_calls(response_body)
                 if not calls:
+                    if allow_tools:
+                        # Groq cannot combine function calling with structured
+                        # output. If it answers directly instead of calling a
+                        # tool, make one final schema-constrained pass so the
+                        # response is still safe to parse.
+                        input_items.extend(response_body.get("output") or [])
+                        allow_tools = False
+                        continue
                     answer = _validate_answer(json.loads(_output_text(response_body)))
                     return OnaAnswer(
                         answer.answer,
@@ -520,6 +528,10 @@ async def answer_question(
                         output_tokens,
                     )
                 input_items.extend(response_body.get("output") or [])
+                # Tool calls and structured output must be separate requests
+                # for Groq's Responses API. The next iteration formats the
+                # tool result as the validated final answer.
+                allow_tools = False
                 for call in calls:
                     try:
                         arguments = json.loads(call["arguments"] or "{}")
