@@ -60,6 +60,8 @@ class OnaAnswer:
     proposed_action: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    error: bool = False
+    error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -457,7 +459,12 @@ async def answer_question(
 ) -> OnaAnswer:
     if not settings.llm_api_key or not settings.agent_model:
         logger.warning("Ona not available: llm_api_key=%s, agent_model=%s", bool(settings.llm_api_key), bool(settings.agent_model))
-        return OnaAnswer("Ona is not available right now. Please try again shortly.", ())
+        return OnaAnswer(
+            "Ona is not available right now. Please try again shortly.",
+            (),
+            error=True,
+            error_code="ONA_UNAVAILABLE",
+        )
     web_sources: list[dict[str, str]] = []
     if needs_web_search(message):
         web_sources = await fetch_web_context(settings, message)
@@ -531,15 +538,40 @@ async def answer_question(
         logger.warning("Ona answer failed: HTTPStatusError %s - %s", exc.response.status_code, exc.response.text[:200])
         # Check if it's a 401/403 (auth issue) or 404 (endpoint issue)
         if exc.response.status_code in (401, 403):
-            return OnaAnswer("I'm having trouble connecting to my knowledge base. Please check your API configuration.", ())
+            return OnaAnswer(
+                "I'm having trouble connecting to my knowledge base. Please check your API configuration.",
+                (),
+                error=True,
+                error_code="ONA_UPSTREAM_AUTH",
+            )
         if exc.response.status_code == 404:
-            return OnaAnswer("The service I need isn't available right now. Please try again later.", ())
+            return OnaAnswer(
+                "The service I need isn't available right now. Please try again later.",
+                (),
+                error=True,
+                error_code="ONA_UPSTREAM_NOT_FOUND",
+            )
         if exc.response.status_code == 429:
-            return OnaAnswer("I'm getting too many requests right now. Please wait a moment and try again.", ())
-        return OnaAnswer("I couldn't check your business data just now. Please try again.", ())
+            return OnaAnswer(
+                "I'm getting too many requests right now. Please wait a moment and try again.",
+                (),
+                error=True,
+                error_code="ONA_RATE_LIMITED",
+            )
+        return OnaAnswer(
+            "I couldn't check your business data just now. Please try again.",
+            (),
+            error=True,
+            error_code="ONA_UPSTREAM_ERROR",
+        )
     except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         logger.warning("Ona answer failed: %s - %s", type(exc).__name__, str(exc)[:200])
-        return OnaAnswer("I couldn't check your business data just now. Please try again.", ())
+        return OnaAnswer(
+            "I couldn't check your business data just now. Please try again.",
+            (),
+            error=True,
+            error_code="ONA_UPSTREAM_ERROR",
+        )
 
 
 def _snapshot_for_turn(message: str, snapshot: dict[str, Any]) -> dict[str, Any]:
