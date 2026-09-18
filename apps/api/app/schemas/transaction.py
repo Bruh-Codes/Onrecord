@@ -16,7 +16,7 @@ class TransactionSummary(BaseModel):
     fee_pesewas: int
     levy_pesewas: int
     balance_after_pesewas: int | None
-    counterparty_raw: str | None
+    description: str | None
     category_l1: str | None
     category_l2: str | None
     category_source: CategorySource | None

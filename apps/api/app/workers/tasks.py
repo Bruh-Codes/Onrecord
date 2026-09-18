@@ -219,14 +219,23 @@ def s1_ingest(document_id: str) -> dict:
             if result.supported:
                 _persist_raw_capture(session, doc, processed)
                 doc.quality_flags["capture"] = _capture_summary(processed)
+                # Keep unfamiliar but readable datasets usable. The raw table
+                # is preserved with cell provenance, while the AI evidence
+                # pass decides whether the capture is trustworthy enough for
+                # downstream use. Lack of a specialized interpreter is not an
+                # extraction failure.
+                doc.quality_flags["interpretation_pending"] = True
                 doc.status = DocStatus.EXTRACTED
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
                     extracted_text=processed.text,
-                    extraction_error="The financial record was captured, but no specialized interpreter matched its shape yet.",
                     row_count=sum(table.row_count for table in processed.tables),
-                    review_context={"capture_methods": list(processed.methods)},
+                    review_context={
+                        "capture_methods": list(processed.methods),
+                        "interpretation_pending": True,
+                        "specialized_interpreter": False,
+                    },
                 ))
             else:
                 # Unsupported files are not evidence-review cases. Keep the
@@ -343,7 +352,7 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 direction=row.direction,
                 amount_pesewas=row.amount_pesewas,
                 balance_after_pesewas=row.balance_after_pesewas,
-                counterparty_raw=row.description or None,
+                description=row.description or None,
                 category_l1=row.category_l1,
                 category_l2=row.category_l2,
                 category_confidence=row.category_confidence,

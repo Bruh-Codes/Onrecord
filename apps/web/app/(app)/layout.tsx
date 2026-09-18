@@ -11,7 +11,7 @@ export default async function AppLayout({
 	const session = await auth.api.getSession({ headers: await headers() });
 
 	if (!session) {
-		redirect("/signup");
+		redirect("/signup?mode=login&callbackURL=/dashboard");
 	}
 
 	// Owners need a business before any of these screens mean anything —

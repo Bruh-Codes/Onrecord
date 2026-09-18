@@ -1,13 +1,13 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 from app.models.base import IdMixin
-from app.models.enums import CategorySource, CounterpartyKind, Direction
+from app.models.enums import CategorySource, Direction
 
 
 class Transaction(IdMixin, Base):
@@ -42,10 +42,7 @@ class Transaction(IdMixin, Base):
     levy_pesewas: Mapped[int] = mapped_column(BigInteger, default=0)
     balance_after_pesewas: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    counterparty_raw: Mapped[str | None] = mapped_column(nullable=True)
-    counterparty_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("counterparty.id"), nullable=True
-    )
+    description: Mapped[str | None] = mapped_column(nullable=True)
     provider_reference: Mapped[str | None] = mapped_column(nullable=True)
 
     category_l1: Mapped[str | None] = mapped_column(nullable=True)
@@ -55,19 +52,3 @@ class Transaction(IdMixin, Base):
 
     flags: Mapped[dict] = mapped_column(JSONB, default=dict)
     provenance: Mapped[dict] = mapped_column(JSONB, nullable=False)
-
-
-class Counterparty(IdMixin, Base):
-    __tablename__ = "counterparty"
-
-    business_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("business.id"), nullable=False)
-    canonical_name: Mapped[str] = mapped_column(nullable=False)
-    msisdn_hash: Mapped[str | None] = mapped_column(nullable=True)
-    display_suffix: Mapped[str | None] = mapped_column(String(4), nullable=True)
-    kind: Mapped[CounterpartyKind] = mapped_column(default=CounterpartyKind.UNKNOWN)
-    first_seen: Mapped[date | None] = mapped_column(nullable=True)
-    last_seen: Mapped[date | None] = mapped_column(nullable=True)
-    txn_count: Mapped[int] = mapped_column(default=0)
-    total_in_pesewas: Mapped[int] = mapped_column(BigInteger, default=0)
-    total_out_pesewas: Mapped[int] = mapped_column(BigInteger, default=0)
-    # embedding vector(1024)-added once pgvector is provisioned (specs/04-categorise.md); omitted for now

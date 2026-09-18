@@ -6,7 +6,6 @@ from app.models.enums import (
     AccountKind,
     Band,
     CategorySource,
-    CounterpartyKind,
     Direction,
     DocStatus,
     DocType,
@@ -20,7 +19,7 @@ from app.models.enums import (
 )
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
 from app.models.notification import Notification
-from app.models.transaction import Counterparty, Transaction
+from app.models.transaction import Transaction
 from app.models.user import User
 
 __all__ = [
@@ -35,7 +34,6 @@ __all__ = [
     "AccountKind",
     "Band",
     "CategorySource",
-    "CounterpartyKind",
     "Direction",
     "DocStatus",
     "DocType",
@@ -52,7 +50,6 @@ __all__ = [
     "Indicator",
     "ReadinessScore",
     "Notification",
-    "Counterparty",
     "Transaction",
     "User",
 ]

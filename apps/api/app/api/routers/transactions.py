@@ -74,7 +74,7 @@ async def transaction_review_queue(
             fee_pesewas=transaction.fee_pesewas,
             levy_pesewas=transaction.levy_pesewas,
             balance_after_pesewas=transaction.balance_after_pesewas,
-            counterparty_raw=transaction.counterparty_raw,
+            description=transaction.description,
             category_l1=transaction.category_l1,
             category_l2=transaction.category_l2,
             category_source=transaction.category_source,

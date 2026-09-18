@@ -74,16 +74,6 @@ class CategorySource(StrEnum):
     OWNER_STATED = "owner_stated"
 
 
-class CounterpartyKind(StrEnum):
-    CUSTOMER = "customer"
-    SUPPLIER = "supplier"
-    STAFF = "staff"
-    LENDER = "lender"
-    TAX = "tax"
-    SELF = "self"
-    UNKNOWN = "unknown"
-
-
 class GapKind(StrEnum):
     MISSING_DOCUMENT = "missing_document"
     MISSING_PERIOD = "missing_period"

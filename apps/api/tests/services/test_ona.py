@@ -55,7 +55,6 @@ def test_build_input_includes_history_and_snapshot():
 
 def test_citation_keys_cover_snapshot_sections():
     assert "transactions" in CITATION_KEYS
-    assert "counterparties" in CITATION_KEYS
 
 
 def test_ona_instructions_ground_spending_and_documents():

@@ -30,17 +30,6 @@ export function DocumentsIcon({ className }: IconProps) {
   );
 }
 
-export function CounterpartiesIcon({ className }: IconProps) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>
-      <circle cx="9" cy="8" r="3.2" />
-      <circle cx="17" cy="9.5" r="2.6" />
-      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
-      <path d="M14.5 14.5c2.3 0.2 4 2 4 4.5" />
-    </svg>
-  );
-}
-
 export function GapsIcon({ className }: IconProps) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>
@@ -210,6 +199,17 @@ export function GoogleLogo({ className }: IconProps) {
       <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.4-2.6c-.9.6-2 1-3.3 1-2.5 0-4.6-1.7-5.4-4H2.9v2.7C4.6 19.9 8 22 12 22z" />
       <path fill="#FBBC05" d="M6.6 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.3H2.9C2.3 8.6 2 10.3 2 12s.3 3.4.9 4.7z" />
       <path fill="#EA4335" d="M12 6c1.5 0 2.7.5 3.7 1.4l3-3C16.9 2.5 14.7 1.6 12 1.6c-4 0-7.4 2.1-9.1 5.7l3.7 2.7C7.4 7.7 9.5 6 12 6z" />
+    </svg>
+  );
+}
+
+export function GoogleSheetsLogo({ className }: IconProps) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="#0F9D58" d="M5 2h9l5 5v15H5z" />
+      <path fill="#87CEAC" d="M14 2v5h5z" />
+      <path fill="#fff" d="M8 10h8v1.5H8zM8 13h8v1.5H8zM8 16h8v1.5H8z" />
+      <path fill="#fff" d="M8 10v7.5h1.5V10zM11.25 10v7.5h1.5V10z" />
     </svg>
   );
 }

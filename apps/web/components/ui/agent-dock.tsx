@@ -19,7 +19,7 @@ import {
 	detectOnaActivity,
 	type OnaActivity,
 } from "@/lib/ona-activity";
-import { useTheme } from "@/lib/theme";
+import { useTheme } from "next-themes";
 import {
 	type FormEvent,
 	type KeyboardEvent,
@@ -119,7 +119,8 @@ export function AgentDock({
 	const conversationId = useRef(0);
 	const activeAgentMessageId = useRef<number | null>(null);
 	const shouldReduceMotion = useReducedMotion();
-	const { theme } = useTheme();
+	const { resolvedTheme } = useTheme();
+	const theme = resolvedTheme === "dark" ? "dark" : "light";
 	const waveformColor = theme === "dark" ? "#C0C0C0" : "#555555";
 	const [isMobileViewport, setIsMobileViewport] = useState(false);
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);

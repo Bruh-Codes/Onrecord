@@ -9,7 +9,6 @@
 import type {
   Business,
   ChecklistItem,
-  Counterparty,
   Coverage,
   Document,
   Gap,
@@ -130,14 +129,6 @@ export const api = {
     request<TransactionReviewItem[]>(`/v1/businesses/${businessId}/transaction-review-queue?limit=${limit}`),
   patchTransaction: (transactionId: string, body: { category_l1?: string; category_l2?: string | null; flags?: Record<string, unknown> }) =>
     request<Transaction>(`/v1/transactions/${transactionId}`, { method: "PATCH", body: JSON.stringify(body) }),
-
-  // ---- counterparties ----
-  listCounterparties: (businessId: string, params?: Record<string, string | number>) => {
-    const qs = new URLSearchParams(
-      Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])
-    ).toString();
-    return request<{ items: Counterparty[]; total: number }>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
-  },
 
   // ---- analytics ----
   getCoverage: (businessId: string) => request<Coverage>(`/v1/businesses/${businessId}/coverage`),

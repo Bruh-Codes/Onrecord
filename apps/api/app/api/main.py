@@ -6,7 +6,6 @@ from app.api.routers.accounts import router as accounts_router
 from app.api.routers.agent import router as agent_router
 from app.api.routers.analytics import router as analytics_router
 from app.api.routers.businesses import router as businesses_router
-from app.api.routers.counterparties import router as counterparties_router
 from app.api.routers.documents import router as documents_router
 from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
@@ -49,7 +48,6 @@ app.include_router(agent_router)
 app.include_router(documents_router)
 app.include_router(transactions_router)
 app.include_router(notifications_router)
-app.include_router(counterparties_router)
 app.include_router(analytics_router)
 app.include_router(internal_storage_router)
 

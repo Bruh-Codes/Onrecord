@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckIcon, GoogleLogo } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
@@ -10,8 +10,9 @@ import { Footer } from "@/components/ui/Footer";
 
 export default function SignupPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const { toast } = useToast();
-	const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+	const [authMode, setAuthMode] = useState<"signup" | "login">(() => searchParams.get("mode") === "login" ? "login" : "signup");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [consented, setConsented] = useState(true);
@@ -36,7 +37,8 @@ export default function SignupPage() {
 			setSubmitting(false);
 			return;
 		}
-		router.push(authMode === "signup" ? "/setup" : "/dashboard");
+		const callbackURL = searchParams.get("callbackURL") ?? "/dashboard";
+		router.push(authMode === "signup" ? "/setup" : callbackURL.startsWith("/") ? callbackURL : "/dashboard");
 	}
 
 	async function handleGoogleSignIn() {
@@ -62,7 +64,7 @@ export default function SignupPage() {
 		try {
 			const { error: socialError } = await authClient.signIn.social({
 				provider: "google",
-				callbackURL: "/dashboard",
+				callbackURL: searchParams.get("callbackURL") ?? "/dashboard",
 			});
 			window.clearTimeout(timer);
 			setGoogleLoading(false);
