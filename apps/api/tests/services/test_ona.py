@@ -136,9 +136,11 @@ async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
             return None
 
         async def post(self, *args, **kwargs):
+            requests.append(kwargs["json"])
             return responses.pop(0)
 
     calls = []
+    requests = []
 
     async def fake_tool(session, business_id, name, arguments):
         calls.append((session, business_id, name, arguments))
@@ -155,3 +157,7 @@ async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
     )
     assert result.answer == "Your largest spending category is inventory."
     assert calls[0][2] == "get_spending_summary"
+    assert "tools" in requests[0]
+    assert "text" not in requests[0]
+    assert "tools" not in requests[1]
+    assert requests[1]["text"]["format"]["type"] == "json_schema"
