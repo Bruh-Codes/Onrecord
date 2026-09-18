@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
 import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
 import {
@@ -18,6 +18,10 @@ export default function DocumentsPage() {
 	const retryDocumentProcessing = useRetryDocumentProcessing(businessId);
 	const [removingId, setRemovingId] = useState<string | null>(null);
 	const [retryingId, setRetryingId] = useState<string | null>(null);
+	const [duplicateDocumentId, setDuplicateDocumentId] = useState<string | null>(null);
+	useEffect(() => {
+		setDuplicateDocumentId(new URLSearchParams(window.location.search).get("duplicate_document_id"));
+	}, []);
 	async function removeDocument(documentId: string) {
 		setRemovingId(documentId);
 		try {
@@ -50,6 +54,7 @@ export default function DocumentsPage() {
 				onRetryBusiness={() => me.refetch()}
 				onUploaded={() => documents.refetch()}
 				processingDocuments={documents.data?.items ?? []}
+				duplicateDocumentId={duplicateDocumentId}
 			/>
 
 			{(documents.data?.items?.length ?? 0) > 0 && (

@@ -42,6 +42,7 @@ export function UploadDropzone({
 	onRetryBusiness,
 	onUploaded,
 	processingDocuments,
+	duplicateDocumentId,
 }: {
 	businessId: string | null;
 	businessLoading: boolean;
@@ -49,6 +50,7 @@ export function UploadDropzone({
 	onRetryBusiness: () => void;
 	onUploaded: () => void;
 	processingDocuments: Document[];
+	duplicateDocumentId?: string | null;
 }) {
 	const router = useRouter();
 	const upload = useUploadDocument(businessId ?? "");
@@ -170,6 +172,11 @@ export function UploadDropzone({
 
 	return (
 		<div>
+			{duplicateDocumentId && (
+				<div className="mb-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[12.5px] text-foreground/75" role="status">
+					That document has already been imported. Choose a replacement file above to replace the existing document.
+				</div>
+			)}
 			<label
 				className={`relative flex group bg-muted/60 items-center justify-center gap-2 border-[1.5px] border-dashed border-foreground/30 rounded-2xl p-5.5 text-foreground transition-colors ${uploadReady ? "cursor-pointer hover:border-foreground/50" : "cursor-not-allowed opacity-75"}`}
 			>
