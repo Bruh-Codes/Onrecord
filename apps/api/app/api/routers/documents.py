@@ -1,5 +1,6 @@
 import re
 import uuid
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import Claims, require_business_access, require_document_access, require_role, verify_token
 from app.config import Settings, get_settings
 from app.db import get_session
-from app.errors import file_too_large, not_found
+from app.errors import AppError, file_too_large, not_found
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
 from app.models.scoring import Indicator, ReadinessScore
@@ -27,11 +28,26 @@ from app.schemas.document import (
     EvidenceReviewDecision,
     EvidenceReviewOut,
 )
-from app.models.enums import Role
+from app.models.enums import DocStatus, Role
 from app.services.audit import write_audit_event
 from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
+logger = logging.getLogger(__name__)
+
+
+def _queue_ingest(document_id: uuid.UUID) -> None:
+	from app.workers.tasks import s1_ingest
+
+	try:
+		s1_ingest.delay(str(document_id))
+	except Exception as error:
+		logger.exception("Unable to queue document processing", extra={"document_id": str(document_id)})
+		raise AppError(
+			"PROCESSING_UNAVAILABLE",
+			"Document processing is temporarily unavailable. Please try again shortly.",
+			503,
+		) from error
 
 _SUPPORTED_MIMES = {
     "application/pdf",
@@ -234,9 +250,7 @@ async def complete_document_upload(
 
     # Enqueue only after the document and its audit event are committed so the
     # worker cannot race the transaction and observe a missing document.
-    from app.workers.tasks import s1_ingest
-
-    s1_ingest.delay(str(document.id))
+    _queue_ingest(document.id)
     return {"status": document.status.value}
 
 
@@ -264,9 +278,7 @@ async def retry_document_processing(
     )
     await session.commit()
 
-    from app.workers.tasks import s1_ingest
-
-    s1_ingest.delay(str(document.id))
+    _queue_ingest(document.id)
     return {"status": document.status.value, "requeued": True}
 
 
