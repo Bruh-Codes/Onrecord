@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { BellIcon, SearchIcon, SunIcon, MoonIcon, LogOutIcon } from "@/components/icons";
-import { useTheme } from "@/lib/theme";
+import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
 
 export function TopBar() {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const theme = resolvedTheme === "dark" ? "dark" : "light";
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const router = useRouter();
   const isDark = theme === "dark";
   const { data: session } = authClient.useSession();
@@ -160,12 +162,12 @@ export function TopBar() {
           aria-pressed={isDark}
           aria-label="Toggle dark mode"
           title="Toggle dark mode"
-          className={`hidden md:flex w-8 h-[18px] rounded-full relative cursor-pointer transition-colors ${
+          className={`hidden md:flex w-8 h-[18px] rounded-full relative cursor-pointer ${
             isDark ? "bg-[#4a4a47]" : "bg-[#dddddb]"
           }`}
         >
           <span
-            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-[#141414] transition-[left] ${
+            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-[#141414] ${
               isDark ? "left-4" : "left-0.5"
             }`}
           >
@@ -209,12 +211,12 @@ export function TopBar() {
                   onClick={toggleTheme}
                   aria-pressed={isDark}
                   aria-label="Toggle dark mode"
-                  className={`w-8 h-[18px] rounded-full relative cursor-pointer transition-colors ${
+                  className={`w-8 h-[18px] rounded-full relative cursor-pointer ${
                     isDark ? "bg-[#4a4a47]" : "bg-[#dddddb]"
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-[#141414] transition-[left] ${
+                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-[#141414] ${
                       isDark ? "left-4" : "left-0.5"
                     }`}
                   >

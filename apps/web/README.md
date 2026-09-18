@@ -17,7 +17,7 @@ endpoints-the only two resources built there so far, see the root
 `ROADMAP.md`). The Documents screen (`app/(app)/(shell)/documents/`) is wired
 to it end to end: `UploadDropzone` does a real upload (hash → presigned PUT →
 complete) and the "Your uploads" list reads real documents back. Every other
-screen (Overview, Counterparties, Gaps, Nearly-ready, Reviewer) still runs on
+screen (Overview, Gaps, Nearly-ready, Reviewer) still runs on
 `lib/mock-data.ts` / `lib/derived.ts`-their backing endpoints
 (coverage/indicators/score/checklist/gaps/review queue) are Phase 2 work, not
 built yet.
@@ -50,7 +50,18 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 # with a key, RESEND_FROM_EMAIL must be a sender verified on Resend.
 RESEND_API_KEY=re_...
 RESEND_FROM_EMAIL=Onrecord <no-reply@your-domain.com>
+GOOGLE_CLIENT_ID=<Google OAuth web client id>
+GOOGLE_CLIENT_SECRET=<Google OAuth web client secret>
 ```
+
+Google Sheets setup: enable the Google Drive API and Google Sheets API in the
+same Google Cloud project, create a Web application OAuth client, and register
+Better Auth's Google callback as an authorized redirect URI:
+`http://localhost:3000/api/auth/callback/google` (and the equivalent production
+URL). The Integrations page uses Better Auth's `linkSocial` flow to request
+additional Drive/Sheets scopes, then lets a signed-in owner choose a spreadsheet
+and sheet tab; OnRecord imports the tab as CSV and sends it through the existing
+document pipeline.
 
 Password reset: `/forgot-password` requests a one-hour, single-use token via
 `authClient.requestPasswordReset`; Better Auth hands the reset URL to

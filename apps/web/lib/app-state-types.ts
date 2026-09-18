@@ -2,7 +2,6 @@ import type { ChatMessage, ResolvedMap, ReviewStatus, RulePackName } from "./typ
 
 export type AppState = {
   resolved: ResolvedMap;
-  adomRole: string | null;
   oneOffRole: string | null;
   draftMode: boolean;
   rulePack: RulePackName;
@@ -13,8 +12,7 @@ export type AppState = {
 };
 
 export const INITIAL_APP_STATE: AppState = {
-  resolved: { adomVentures: false, coverage: false, oneOff: false, stockList: false },
-  adomRole: null,
+  resolved: { coverage: false, oneOff: false, stockList: false },
   oneOffRole: null,
   draftMode: false,
   rulePack: "MFI working capital",

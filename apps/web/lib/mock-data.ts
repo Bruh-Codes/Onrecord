@@ -1,7 +1,6 @@
 import type {
 	AppIntegration,
 	ChatStep,
-	DemoTransaction,
 	RulePackName,
 	ScoreSnapshot,
 	SeriesPoint,
@@ -54,36 +53,7 @@ export const CASHFLOW_SERIES: SeriesPoint[] = [
 	{ month: "Aug '26", value: 7100, x: 320, y: 35 },
 ];
 
-export const DEMO_TRANSACTIONS: Record<string, DemoTransaction[]> = {
-	"Adom Ventures": [
-		{ date: "2 Aug", desc: "Stock delivery", amount: "-GH¢1,200" },
-		{ date: "19 Jul", desc: "Stock delivery", amount: "-GH¢980" },
-		{ date: "5 Jul", desc: "Stock delivery", amount: "-GH¢1,450" },
-	],
-	"Nana Yeboah": [
-		{ date: "14 Mar", desc: "Transfer received", amount: "+GH¢18,000" },
-	],
-};
-
 export const CHAT_SCRIPT: ChatStep[] = [
-	{
-		key: "adomVentures",
-		question:
-			"I can see GH¢12,400 going to ADOM VENTURES over the last six months. Is that a supplier you buy stock from?",
-		hint: 'Answering this fills in your cost-of-goods figure and clears 34 transactions out of "unclassified."',
-		choices: [
-			{
-				label: "Yes, a supplier",
-				response:
-					"Got it-I've recorded Adom Ventures as a supplier and applied it to all 34 transactions. Your cost-of-goods figure is in the ledger now.",
-			},
-			{
-				label: "No, someone else",
-				response:
-					"Thanks-I've flagged that for a reviewer to confirm rather than guessing.",
-			},
-		],
-	},
 	{
 		key: "oneOff",
 		question:
@@ -123,6 +93,11 @@ export const CHAT_SCRIPT: ChatStep[] = [
 ];
 
 export const APP_INTEGRATIONS: AppIntegration[] = [
+	{
+		name: "Google Sheets",
+		desc: "Import bookkeeping records, sales trackers, and cash-flow sheets without re-uploading them.",
+		icon: "google-sheets",
+	},
 	{
 		name: "Paystack",
 		desc: "Pull settlement and payout history directly instead of uploading statements.",

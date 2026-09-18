@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { TodayStats } from "@/components/home/TodayStats";
+import { GoogleSheetsConnect } from "@/components/integrations/GoogleSheetsConnect";
 import { useAppState } from "@/lib/app-state";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -38,13 +39,13 @@ export default function HomePage() {
 				Welcome back{ownerFirstName ? `, ${ownerFirstName}` : ""}!
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6.5">
-				Review your <Link href="/overview" className="font-semibold text-white">readiness overview</Link>, close the{" "}
-				<Link href="/nearly-ready" className="font-semibold text-white">open gaps</Link>, or add documents:{" "}
-				<Link href="/documents" className="font-semibold text-white">upload a file</Link> or{" "}
-				<Link href="/documents" className="font-semibold text-white">enter figures manually</Link>.
+				Review your <Link href="/overview" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>readiness overview</Link>, close the{" "}
+				<Link href="/nearly-ready" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>open gaps</Link>, or add documents:{" "}
+				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>upload a file</Link> or{" "}
+				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>enter figures manually</Link>.
 			</p>
 
-			<GetStartedCard hasData={!isNewUser} />
+			<GetStartedCard hasData={!isNewUser} googleSheets={<GoogleSheetsConnect />} />
 
 			<TodayStats
 				coverage={coverage.data}

@@ -32,7 +32,6 @@ export function ReviewTable({
 				return (
 					<tr key={item.id} onClick={() => onSelect(item.id)} className={`cursor-pointer ${selectedId === item.id ? "bg-accent" : ""}`}>
 						<td className="px-4 py-3 border-b border-foreground/8">
-							<div className="font-medium">{item.counterparty_raw || "Unidentified transaction"}</div>
 							<div className="text-xs text-foreground/55">{item.occurred_on} · {item.direction === "in" ? "Inflow" : "Outflow"}</div>
 						</td>
 						<td className="px-4 py-3 border-b border-foreground/8 text-xs text-foreground/65">{item.document_filename}</td>

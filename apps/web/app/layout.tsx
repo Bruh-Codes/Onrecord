@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
-import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
+import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
@@ -18,14 +17,14 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en" className="h-full antialiased" suppressHydrationWarning>
-			<head>
-				<Script id="theme-init" strategy="beforeInteractive">
-					{THEME_INIT_SCRIPT}
-				</Script>
-			</head>
 			<body className="min-h-full font-sans">
 				<Providers>
-					<ThemeProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="light"
+						enableSystem={false}
+						disableTransitionOnChange
+					>
 						<ToastProvider>{children}</ToastProvider>
 					</ThemeProvider>
 				</Providers>

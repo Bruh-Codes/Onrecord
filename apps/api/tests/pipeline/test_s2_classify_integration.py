@@ -96,6 +96,23 @@ def test_ai_resolves_ambiguous_financial_capture(monkeypatch):
     assert result.classifier == "ai"
 
 
+def test_payroll_like_table_remains_supported_without_a_specialized_type(monkeypatch):
+    monkeypatch.setattr(
+        "app.pipeline.s2_classify_ai.classify_document_with_ai",
+        lambda text, filename, has_tables=False: None,
+    )
+
+    result = classify_document(
+        "Employee | Basic Salary | PAYE | Net Pay\nAma Mensah | 4200 | 320 | 3880",
+        "monthly-payroll.xlsx",
+        has_tables=True,
+    )
+
+    assert result.supported is True
+    assert result.doc_type == DocType.OTHER
+    assert "financial record" in result.reason
+
+
 def test_category_buckets():
     assert ClassificationResult(
         DocType.BANK_STATEMENT, 0.9, None, None, None, True, "x"

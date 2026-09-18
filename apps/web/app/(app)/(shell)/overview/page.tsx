@@ -8,7 +8,6 @@ import {
 	useGaps,
 	useIndicatorsMap,
 	useMe,
-	useCounterparties,
 	useInvoiceInsights,
 } from "@/lib/hooks/use-business";
 import { formatGhs, seriesToPoints, seriesTotal } from "@/lib/format";
@@ -65,7 +64,6 @@ export default function OverviewPage() {
 	const coverage = useCoverage(businessId);
 	const indicators = useIndicatorsMap(businessId);
 	const gaps = useGaps(businessId);
-	const counterparties = useCounterparties(businessId);
 	const invoiceInsights = useInvoiceInsights(businessId);
 
 	if (
@@ -73,7 +71,6 @@ export default function OverviewPage() {
 		coverage.isLoading ||
 		indicators.isLoading ||
 		gaps.isLoading ||
-		counterparties.isLoading ||
 		invoiceInsights.isLoading
 	) {
 		return <OverviewPageSkeleton />;
@@ -146,7 +143,7 @@ export default function OverviewPage() {
 	const coverageAvailable =
 		(coverage.data?.continuous_months ?? 0) > 0 ||
 		(gaps.data ?? []).some((gap) => gap.status === "open") ||
-		(counterparties.data?.items ?? []).length > 0;
+		(gaps.data ?? []).some((gap) => gap.status === "open");
 	const modeOptions = MODES.filter(
 		(item) => !(item.value === "coverage" && !coverageAvailable),
 	);
@@ -386,7 +383,6 @@ export default function OverviewPage() {
 						allGapCount={
 							(gaps.data ?? []).filter((g) => g.status === "open").length
 						}
-						counterparties={counterparties.data?.items ?? []}
 						unclassifiedRatio={
 							unclassified?.status === "insufficient_data"
 								? null
@@ -408,7 +404,6 @@ export default function OverviewPage() {
 						allGapCount={
 							(gaps.data ?? []).filter((g) => g.status === "open").length
 						}
-						counterparties={counterparties.data?.items ?? []}
 						unclassifiedRatio={
 							unclassified?.status === "insufficient_data"
 								? null

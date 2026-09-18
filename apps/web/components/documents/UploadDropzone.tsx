@@ -17,8 +17,8 @@ type UploadState = {
 	file?: File;
 };
 
-const REDIRECT_DELAY_MS = 3_000;
-const UPLOAD_COMPLETE_REDIRECT_PATH = "/overview";
+const REDIRECT_DELAY_MS = 1_000;
+const UPLOAD_COMPLETE_REDIRECT_PATH = "/documents";
 
 function hasDocumentReviewIssue(document: Document) {
 	const evidenceReview = document.quality_flags?.evidence_review as
@@ -86,14 +86,14 @@ export function UploadDropzone({
 		});
 
 	useEffect(() => {
-		if (!batchProcessingComplete) return;
+		if (!batchUploadsComplete) return;
 
 		const timer = window.setTimeout(() => {
 			router.push(UPLOAD_COMPLETE_REDIRECT_PATH);
 		}, REDIRECT_DELAY_MS);
 
 		return () => window.clearTimeout(timer);
-	}, [batchProcessingComplete, router]);
+	}, [batchUploadsComplete, router]);
 
 	async function uploadOne(file: File, id: string) {
 		if (!businessId) return;
@@ -274,7 +274,7 @@ export function UploadDropzone({
 			)}
 			{batchProcessingComplete && (
 				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
-					All files processed. Taking you to the overview in 3 seconds…
+					All files processed. Taking you to Documents…
 				</div>
 			)}
 			{upload.isPending && (

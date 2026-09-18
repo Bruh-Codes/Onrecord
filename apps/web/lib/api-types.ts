@@ -237,28 +237,6 @@ export type UploadTarget = {
 	upload_expires_at: string;
 };
 
-export type CounterpartyKind =
-	| "unknown"
-	| "customer"
-	| "supplier"
-	| "staff"
-	| "tax"
-	| "lender"
-	| "self";
-
-export type Counterparty = {
-	id: string;
-	business_id: string;
-	canonical_name: string;
-	display_suffix: string | null;
-	kind: CounterpartyKind;
-	first_seen: string | null;
-	last_seen: string | null;
-	txn_count: number;
-	total_in_pesewas: number;
-	total_out_pesewas: number;
-};
-
 export type Transaction = {
 	id: string;
 	occurred_on: string;
@@ -267,7 +245,6 @@ export type Transaction = {
 	fee_pesewas: number;
 	levy_pesewas: number;
 	balance_after_pesewas: number | null;
-	counterparty_raw: string | null;
 	category_l1: string | null;
 	category_l2: string | null;
 	category_source: string | null;

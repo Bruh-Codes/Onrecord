@@ -14,7 +14,7 @@ from typing import Any
 from uuid import UUID
 
 import httpx
-from sqlalchemy import desc, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -22,7 +22,7 @@ from app.models.business import Account, Business
 from app.models.document import Document
 from app.models.enums import Direction, DocStatus, GapStatus
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
-from app.models.transaction import Counterparty, Transaction
+from app.models.transaction import Transaction
 from app.services.coverage import build_coverage
 from app.services.ona_web import (
     asks_about_platform_data,
@@ -46,7 +46,6 @@ CITATION_KEYS = frozenset({
     "documents",
     "transactions",
     "accounts",
-    "counterparties",
     "checklist",
     "declarations",
     "web",
@@ -111,12 +110,6 @@ ONA_TOOLS = [
         "type": "function",
         "name": "get_readiness_gaps",
         "description": "Read the current open readiness gaps and missing checklist requirements.",
-        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
-    },
-    {
-        "type": "function",
-        "name": "get_top_counterparties",
-        "description": "Read the business's largest verified counterparties by money in or out.",
         "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
     },
 ]
@@ -204,15 +197,6 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             .limit(12)
         )
     ).all()
-    counterparties = (
-        await session.scalars(
-            select(Counterparty)
-            .where(Counterparty.business_id == business_id)
-            .order_by(desc(Counterparty.total_in_pesewas + Counterparty.total_out_pesewas))
-            .limit(12)
-        )
-    ).all()
-
     facts: dict[str, Any] = {
         "business": None,
         "readiness_score": None,
@@ -239,7 +223,6 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             "spending_by_category": [],
         },
         "accounts": [],
-        "counterparties": [],
         "checklist": {"satisfied": 0, "missing": 0, "not_applicable": 0, "items_missing": []},
         "declarations": {"count": int(declaration_count or 0)},
     }
@@ -326,17 +309,6 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             }
         )
 
-    for cp in counterparties:
-        facts["counterparties"].append(
-            {
-                "name": cp.canonical_name,
-                "kind": cp.kind.value,
-                "txn_count": cp.txn_count,
-                "total_in_pesewas": cp.total_in_pesewas,
-                "total_out_pesewas": cp.total_out_pesewas,
-            }
-        )
-
     seen_codes: set[str] = set()
     for row in indicator_rows:
         if row.code in seen_codes:
@@ -392,8 +364,6 @@ async def execute_ona_tool(
             "gap_details": snapshot["gap_details"],
             "checklist": snapshot["checklist"],
         }
-    if name == "get_top_counterparties":
-        return {"counterparties": snapshot["counterparties"]}
     if name == "list_documents":
         status = arguments.get("status")
         query = select(Document).where(
@@ -440,7 +410,7 @@ async def execute_ona_tool(
                     "direction": row.direction.value,
                     "amount_pesewas": row.amount_pesewas,
                     "category": row.category_l1 or "unclassified",
-                    "counterparty": row.counterparty_raw,
+                    "description": row.description,
                 }
                 for row in rows
             ]

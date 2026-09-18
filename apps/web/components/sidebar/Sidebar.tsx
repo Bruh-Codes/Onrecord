@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
 	AppsIcon,
-	CounterpartiesIcon,
 	DocumentsIcon,
 	GapsIcon,
 	HomeIcon,
@@ -16,7 +15,7 @@ import {
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
-import { useTheme } from "@/lib/theme";
+import { useTheme } from "next-themes";
 
 const MAX_WIDTH = 230;
 const COLLAPSED_WIDTH = 60;
@@ -35,11 +34,6 @@ const NAV_GROUPS = [
 	{
 		label: "Manage",
 		items: [
-			{
-				href: "/counterparties",
-				icon: <CounterpartiesIcon />,
-				label: "Counterparties",
-			},
 			{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
 			{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
 		],
@@ -58,7 +52,8 @@ function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 }
 
 export function Sidebar() {
-	const { theme } = useTheme();
+	const { resolvedTheme } = useTheme();
+	const theme = resolvedTheme === "dark" ? "dark" : "light";
 	const [collapsed, setCollapsed] = useState(() => {
 		if (typeof window !== "undefined") {
 			const saved = localStorage.getItem("sidebar-collapsed");

@@ -1,4 +1,4 @@
-export type GapKey = "adomVentures" | "coverage" | "oneOff" | "stockList";
+export type GapKey = "coverage" | "oneOff" | "stockList";
 
 export type ResolvedMap = Record<GapKey, boolean>;
 
@@ -20,28 +20,6 @@ export type DocumentItem = {
   done: boolean;
   actionLabel?: string;
   static?: boolean;
-};
-
-export type CounterpartyAction = {
-  label: string;
-  run: () => void;
-  variant: "primary" | "secondary";
-};
-
-export type DemoTransaction = {
-  date: string;
-  desc: string;
-  amount: string;
-};
-
-export type Counterparty = {
-  name: string;
-  txns: string;
-  value: string;
-  classified: boolean;
-  role: string;
-  needsAction: boolean;
-  demoTxns: DemoTransaction[];
 };
 
 export type ChatChoice = {
@@ -85,6 +63,7 @@ export type RulePackName = "MFI working capital" | "Bank term loan" | "Asset fin
 export type AppIntegration = {
   name: string;
   desc: string;
+  icon?: "google-sheets";
 };
 
 export type ScoreBand = "Not ready" | "Developing" | "Nearly ready" | "Lender-ready";
