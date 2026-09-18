@@ -54,13 +54,8 @@ function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 export function Sidebar() {
 	const { resolvedTheme } = useTheme();
 	const theme = resolvedTheme === "dark" ? "dark" : "light";
-	const [collapsed, setCollapsed] = useState(() => {
-		if (typeof window !== "undefined") {
-			const saved = localStorage.getItem("sidebar-collapsed");
-			if (saved !== null) return JSON.parse(saved);
-		}
-		return true;
-	});
+	const [collapsed, setCollapsed] = useState(true);
+	const [storageReady, setStorageReady] = useState(false);
 	const [width, setWidth] = useState(MAX_WIDTH);
 	const [dragging, setDragging] = useState(false);
 	const drag = useRef({
@@ -72,8 +67,18 @@ export function Sidebar() {
 	const effective = collapsed ? COLLAPSED_WIDTH : width;
 
 	useEffect(() => {
+		const saved = localStorage.getItem("sidebar-collapsed");
+		if (saved === "false") {
+			setCollapsed(false);
+			setWidth(MAX_WIDTH);
+		}
+		setStorageReady(true);
+	}, []);
+
+	useEffect(() => {
+		if (!storageReady) return;
 		localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
-	}, [collapsed]);
+	}, [collapsed, storageReady]);
 
 	useEffect(() => {
 		if (!dragging) return;

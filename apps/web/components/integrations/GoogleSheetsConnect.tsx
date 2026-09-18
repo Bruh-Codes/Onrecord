@@ -11,6 +11,7 @@ export function GoogleSheetsConnect() {
   const router = useRouter();
   const [files, setFiles] = useState<Spreadsheet[]>([]);
   const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
   const [fileId, setFileId] = useState("");
   const [sheetName, setSheetName] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "importing" | "done" | "error">("loading");
@@ -37,12 +38,29 @@ export function GoogleSheetsConnect() {
   async function selectFile(id: string) {
     setFileId(id);
     setSheetName("");
-    if (!id) return setSheets([]);
-    const response = await fetch(`/api/integrations/google-sheets/sheets?spreadsheetId=${encodeURIComponent(id)}`);
-    const data = (await response.json()) as { sheets?: Sheet[]; error?: string };
-    if (!response.ok) return showError(data.error ?? "Could not load the sheets.");
-    setSheets(data.sheets ?? []);
+    setSheets([]);
     setMessage("");
+    if (!id) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    setSheetsLoading(true);
+    try {
+      const response = await fetch(`/api/integrations/google-sheets/sheets?spreadsheetId=${encodeURIComponent(id)}`, {
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => ({}))) as { sheets?: Sheet[]; error?: string };
+      if (!response.ok) {
+        showError(data.error ?? "Could not load the sheets.");
+        return;
+      }
+      setSheets(data.sheets ?? []);
+    } catch (error) {
+      showError(error instanceof DOMException && error.name === "AbortError" ? "Loading sheet tabs timed out." : "Could not load the sheet tabs.");
+    } finally {
+      window.clearTimeout(timeout);
+      setSheetsLoading(false);
+    }
   }
 
   async function importSheet() {
@@ -80,10 +98,19 @@ export function GoogleSheetsConnect() {
               {status === "importing" ? "Importing..." : "Import"}
             </button>
           </div>
-          {sheets.length > 0 ? <select value={sheetName} onChange={(event) => setSheetName(event.target.value)} className="w-full text-[12px] px-2.5 py-2 rounded-lg bg-background border border-foreground/15">
-            <option value="">Choose a sheet tab</option>
-            {sheets.map((sheet) => <option key={sheet.sheetId} value={sheet.title}>{sheet.title}</option>)}
-          </select> : null}
+          {fileId && (
+            <select
+              aria-busy={sheetsLoading}
+              disabled={sheetsLoading || sheets.length === 0}
+              value={sheetName}
+              onChange={(event) => setSheetName(event.target.value)}
+              className="w-full text-[12px] px-2.5 py-2 rounded-lg bg-background border border-foreground/15 disabled:opacity-60"
+            >
+              <option value="">{sheetsLoading ? "Loading sheet tabs..." : sheets.length === 0 ? "No sheet tabs found" : "Choose a sheet tab"}</option>
+              {sheets.map((sheet) => <option key={sheet.sheetId} value={sheet.title}>{sheet.title}</option>)}
+            </select>
+          )}
+          {message && status === "error" ? <span className="text-[11px] text-destructive">{message}</span> : null}
         </>
       ) : status === "error" ? <div className="text-[12px] opacity-70">{message} <Link href="/apps" className="underline underline-offset-2">Connect Google Sheets in Integrations</Link></div> : status === "ready" ? <span className="text-[12px] opacity-65">No Google Sheets were found in this account.</span> : null}
       {message && status !== "error" ? <span className="text-[11px] text-right opacity-65">{message}</span> : null}

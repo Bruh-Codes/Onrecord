@@ -46,6 +46,22 @@ export class ApiError extends Error {
   }
 }
 
+export async function transcribeVoice(audio: Blob): Promise<string> {
+  const form = new FormData();
+  form.append("audio", audio, "recording.webm");
+  const response = await fetchWithTimeout("/api/voice/transcribe", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new ApiError(response.status, "VOICE_TRANSCRIPTION_FAILED", body.error?.message ?? response.statusText);
+  }
+  const result = (await response.json()) as { text?: string };
+  if (!result.text?.trim()) throw new ApiError(422, "VOICE_EMPTY", "No speech was detected.");
+  return result.text;
+}
+
 async function getToken(): Promise<string> {
   // Better Auth >= 1.2 no longer returns the JWT inside the get-session body
   // (`session.token`); the jwt plugin mints it via the dedicated GET

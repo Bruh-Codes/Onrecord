@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { TodayStats } from "@/components/home/TodayStats";
@@ -19,6 +20,7 @@ export default function HomePage() {
 	const { data: session } = authClient.useSession();
 	const ownerFirstName = session?.user?.name?.split(" ")[0];
 	const { businessId } = useMe();
+	const [googleSheetsConnected, setGoogleSheetsConnected] = useState(false);
 	const score = useScore(businessId);
 	const coverage = useCoverage(businessId);
 	const gaps = useGaps(businessId);
@@ -26,6 +28,20 @@ export default function HomePage() {
 	// Until the first document exists, keep the home state safe for a fresh account.
 	// This also avoids showing seeded actions if the documents request is unavailable.
 	const isNewUser = !documents.data || documents.data.total === 0;
+
+	useEffect(() => {
+		let active = true;
+		void fetch("/api/integrations/google-sheets/status")
+			.then(async (response) => {
+				if (!response.ok) return;
+				const data = (await response.json()) as { connected?: boolean };
+				if (active) setGoogleSheetsConnected(Boolean(data.connected));
+			})
+			.catch(() => undefined);
+		return () => {
+			active = false;
+		};
+	}, []);
 
 	return (
 		<div className="px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
@@ -45,7 +61,10 @@ export default function HomePage() {
 				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>enter figures manually</Link>.
 			</p>
 
-			<GetStartedCard hasData={!isNewUser} googleSheets={<GoogleSheetsConnect />} />
+			<GetStartedCard
+				hasData={!isNewUser}
+				googleSheets={googleSheetsConnected ? <GoogleSheetsConnect /> : undefined}
+			/>
 
 			<TodayStats
 				coverage={coverage.data}
