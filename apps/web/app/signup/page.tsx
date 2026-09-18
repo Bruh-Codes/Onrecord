@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckIcon, GoogleLogo } from "@/components/icons";
@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
 import { Footer } from "@/components/ui/Footer";
 
-export default function SignupPage() {
+function SignupForm() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { toast } = useToast();
@@ -152,5 +152,13 @@ export default function SignupPage() {
 
 			<Footer />
 		</div>
+	);
+}
+
+export default function SignupPage() {
+	return (
+		<Suspense fallback={null}>
+			<SignupForm />
+		</Suspense>
 	);
 }
