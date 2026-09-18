@@ -72,8 +72,18 @@ export function GoogleSheetsConnect() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ spreadsheetId: file.id, spreadsheetName: file.name, sheetName }),
     });
-    const data = (await response.json()) as { rows?: number; error?: string };
-    if (!response.ok) return showError(data.error ?? "Could not import that sheet.");
+    const data = (await response.json()) as {
+      rows?: number;
+      error?: string | { code?: string; message?: string; detail?: { existing_document_id?: string } };
+    };
+    if (!response.ok) {
+      const error = typeof data.error === "string" ? data.error : data.error?.message;
+      if (response.status === 409 || (typeof data.error !== "string" && data.error?.code === "DUPLICATE_DOCUMENT")) {
+        router.push("/documents");
+        return;
+      }
+      return showError(error ?? "Could not import that sheet.");
+    }
     setStatus("done");
     setMessage(`${data.rows ?? 0} rows sent to OnRecord for processing.`);
     router.push("/documents");
