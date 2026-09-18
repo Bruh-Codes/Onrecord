@@ -52,9 +52,16 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ filename, mime: "text/csv", size_bytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex") }),
-    });
+     });
      if (!create.ok) {
        const detail = await create.text().catch(() => "");
+       if (create.status === 409) {
+         try {
+           return Response.json(await JSON.parse(detail), { status: 409 });
+         } catch {
+           return Response.json({ error: { code: "DUPLICATE_DOCUMENT", message: "You have already imported this sheet." } }, { status: 409 });
+         }
+       }
        throw new Error(`OnRecord could not create the imported document (${create.status})${detail ? `: ${detail.slice(0, 240)}` : "."}`);
      }
     const target = (await create.json()) as { document_id: string; upload_url: string };
