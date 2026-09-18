@@ -29,6 +29,13 @@ _ACTION_LABELS = {
     "recompute_readiness": "Refresh readiness",
     "retry_stuck_documents": "Retry stuck uploads",
 }
+_ONA_ERROR_STATUS = {
+    "ONA_RATE_LIMITED": 429,
+    "ONA_UNAVAILABLE": 503,
+    "ONA_UPSTREAM_AUTH": 502,
+    "ONA_UPSTREAM_NOT_FOUND": 502,
+    "ONA_UPSTREAM_ERROR": 502,
+}
 
 
 @router.get("/v1/businesses/{business_id}/agent/sessions", response_model=AgentSessionList)
@@ -147,6 +154,9 @@ async def ask_ona(
         snapshot=snapshot,
         history=history,
     )
+    if answer.error:
+        code = answer.error_code or "ONA_UPSTREAM_ERROR"
+        raise AppError(code, answer.answer, _ONA_ERROR_STATUS.get(code, 502))
 
     session.add(AgentMessage(session_id=agent_session.id, role="owner", content=body.message.strip()))
     proposal: dict | None = None

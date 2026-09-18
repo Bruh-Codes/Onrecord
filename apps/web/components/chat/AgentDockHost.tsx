@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentDock, type DockConversationMessage } from "@/components/ui/agent-dock";
+import { useToast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
 import type { AgentSessionSummary } from "@/lib/api-types";
 import { useMe } from "@/lib/hooks/use-business";
@@ -21,6 +22,7 @@ function toConversationMessages(
 
 export function AgentDockHost() {
 	const { businessId } = useMe();
+	const { toast } = useToast();
 	const sessionId = useRef<string | undefined>(undefined);
 	const [agentResponse, setAgentResponse] = useState("");
 	const [responseKey, setResponseKey] = useState(0);
@@ -71,6 +73,11 @@ export function AgentDockHost() {
 					? error.message
 					: "I couldn't check your business data just now. Please try again.",
 			);
+			toast({
+				title: "Ona couldn't respond",
+				description: error instanceof ApiError ? error.message : "Please try again.",
+				tone: "error",
+			});
 		} finally {
 			setResponseKey((key) => key + 1);
 		}
@@ -89,6 +96,11 @@ export function AgentDockHost() {
 					? error.message
 					: "I couldn't complete that action. Please try again.",
 			);
+			toast({
+				title: "Action failed",
+				description: error instanceof ApiError ? error.message : "Please try again.",
+				tone: "error",
+			});
 		} finally {
 			setResponseKey((key) => key + 1);
 		}

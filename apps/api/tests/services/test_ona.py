@@ -161,3 +161,45 @@ async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
     assert "text" not in requests[0]
     assert "tools" not in requests[1]
     assert requests[1]["text"]["format"]["type"] == "json_schema"
+
+
+@pytest.mark.asyncio
+async def test_ona_marks_unavailable_turns_as_errors():
+    result = await ona.answer_question(
+        settings=Settings(),
+        session=object(),
+        business_id=uuid4(),
+        message="How am I doing?",
+        snapshot={},
+    )
+
+    assert result.error is True
+    assert result.error_code == "ONA_UNAVAILABLE"
+
+
+@pytest.mark.asyncio
+async def test_ona_marks_provider_rate_limits_as_errors(monkeypatch):
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, *args, **kwargs):
+            request = ona.httpx.Request("POST", "https://provider.test/responses")
+            response = ona.httpx.Response(429, text="slow down", request=request)
+            raise ona.httpx.HTTPStatusError("429", request=request, response=response)
+
+    monkeypatch.setattr(ona, "needs_web_search", lambda message: False)
+    monkeypatch.setattr(ona.httpx, "AsyncClient", lambda **kwargs: FakeClient())
+    result = await ona.answer_question(
+        settings=Settings(openai_api_key="test", ona_model="test"),
+        session=object(),
+        business_id=uuid4(),
+        message="How am I doing?",
+        snapshot={},
+    )
+
+    assert result.error is True
+    assert result.error_code == "ONA_RATE_LIMITED"
