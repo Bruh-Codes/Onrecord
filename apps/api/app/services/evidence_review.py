@@ -88,6 +88,20 @@ def review_extracted_document(
             input_hash=input_hash,
         )
 
+    # A raw capture is intentionally schema-neutral. It is preserved with
+    # source provenance for later mapping, so redacted dates, repeated rows,
+    # and unfamiliar column labels must not block the document itself.
+    if review_context and review_context.get("raw_capture"):
+        return EvidenceReview(
+            status="clear",
+            risk_level="unknown",
+            scoring_eligible=True,
+            summary="Captured as a source-backed dataset; field mapping is pending.",
+            findings=(),
+            model=settings.financial_mapping_model,
+            input_hash=input_hash,
+        )
+
     try:
         payload = _call_model(
             api_key=settings.llm_api_key,
