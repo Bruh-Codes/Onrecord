@@ -79,8 +79,6 @@ async def build_coverage(session: AsyncSession, business_id: uuid.UUID) -> dict:
         await session.scalars(
             select(Document).where(
                 Document.business_id == business_id,
-                Document.period_start.is_not(None),
-                Document.period_end.is_not(None),
                 Document.deleted_at.is_(None),
             )
         )
@@ -90,7 +88,8 @@ async def build_coverage(session: AsyncSession, business_id: uuid.UUID) -> dict:
         doc_ids = [d.id for d in docs]
         link_rows = (
             await session.execute(
-                select(Transaction.document_id, Transaction.account_id).where(Transaction.document_id.in_(doc_ids))
+                select(Transaction.document_id, Transaction.account_id, Transaction.occurred_on)
+                .where(Transaction.document_id.in_(doc_ids), Transaction.occurred_on.is_not(None))
             )
         ).all()
     return _assemble(accounts, docs, link_rows)
@@ -105,8 +104,6 @@ def build_coverage_sync(
     accounts = session.scalars(select(Account).where(Account.business_id == business_id)).all()
     conditions = [
         Document.business_id == business_id,
-        Document.period_start.is_not(None),
-        Document.period_end.is_not(None),
         Document.deleted_at.is_(None),
     ]
     if document_ids is not None:
@@ -116,21 +113,24 @@ def build_coverage_sync(
     if docs:
         doc_ids = [d.id for d in docs]
         link_rows = session.execute(
-            select(Transaction.document_id, Transaction.account_id).where(Transaction.document_id.in_(doc_ids))
+            select(Transaction.document_id, Transaction.account_id, Transaction.occurred_on)
+            .where(Transaction.document_id.in_(doc_ids), Transaction.occurred_on.is_not(None))
         ).all()
     return _assemble(accounts, docs, link_rows)
 
 
 def _assemble(accounts, docs, link_rows) -> dict:
-    doc_accounts: dict[uuid.UUID, set[uuid.UUID]] = {d.id: set() for d in docs}
-    for document_id, account_id in link_rows:
-        if document_id in doc_accounts:
-            doc_accounts[document_id].add(account_id)
+    doc_accounts: dict[uuid.UUID, dict[uuid.UUID, list[date]]] = {d.id: {} for d in docs}
+    for document_id, account_id, occurred_on in link_rows:
+        if document_id in doc_accounts and occurred_on is not None:
+            doc_accounts[document_id].setdefault(account_id, []).append(occurred_on)
 
     by_account: dict[uuid.UUID, list[tuple[date, date]]] = {a.id: [] for a in accounts}
     for doc in docs:
-        for account_id in doc_accounts.get(doc.id, set()):
-            by_account.setdefault(account_id, []).append((doc.period_start, doc.period_end))
+        for account_id, dates in doc_accounts.get(doc.id, {}).items():
+            start = doc.period_start or min(dates)
+            end = doc.period_end or max(dates)
+            by_account.setdefault(account_id, []).append((start, end))
 
     account_coverage = []
     latest_end: date | None = None
