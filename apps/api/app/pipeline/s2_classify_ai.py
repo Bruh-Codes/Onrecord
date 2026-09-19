@@ -205,7 +205,8 @@ Return:
 - reason: one short sentence citing the evidence.
 
 Guidance:
-- Transaction tables with dates, debits/credits, or balances → bank_statement or momo_statement.
+- Transaction tables with dates, debits/credits, or balances → bank_statement or momo_statement only when the source has clear account/statement evidence.
+- Employee, salary, payroll, PAYE, SSNIT, gross-pay, deduction, or net-pay tables are financial evidence but are not bank statements; use doc_type=other and is_financial_document=true so the raw dataset can be preserved for later mapping.
 - Merchant MoMoPay / merchant settlement wording → momo_merchant_statement.
 - Invoice / bill / tax invoice wording → invoice_received or invoice_issued (supplier vs customer context).
 - Profit and loss, balance sheet, cash flow titles → financial_statement.
