@@ -15,6 +15,7 @@ const ENTITY_TYPES: { value: string; label: string }[] = [
 
 export default function SetupPage() {
 	const router = useRouter();
+	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [legalName, setLegalName] = useState("");
 	const [entityType, setEntityType] = useState("sole_prop");
 	const [submitting, setSubmitting] = useState(false);
@@ -24,9 +25,10 @@ export default function SetupPage() {
 	const ready = legalName.trim().length > 0;
 
 	useEffect(() => {
+		if (sessionPending) return;
 		const raw = sessionStorage.getItem("onrecord_pending_signup");
 		if (!raw) {
-			router.replace("/signup");
+			if (!session) router.replace("/signup");
 			return;
 		}
 		try {
@@ -40,17 +42,22 @@ export default function SetupPage() {
 		}
 		sessionStorage.removeItem("onrecord_pending_signup");
 		router.replace("/signup");
-	}, [router]);
+		if (session) setPendingSignup({ email: "", password: "", name: "" });
+	}, [router, session, sessionPending]);
 
 	async function handleSubmit() {
 		if (!ready || submitting) return;
 		setSubmitting(true);
 		setError(null);
+		let createdAccount = false;
 
 		try {
 			if (!pendingSignup) return;
-			const { error: authError } = await authClient.signUp.email(pendingSignup);
-			if (authError) throw new Error(authError.message ?? "Could not create your account.");
+			if (pendingSignup.email) {
+				const { error: authError } = await authClient.signUp.email(pendingSignup);
+				if (authError) throw new Error(authError.message ?? "Could not create your account.");
+				createdAccount = true;
+			}
 			const business = await api.createBusiness({
 				legal_name: legalName.trim(),
 				entity_type: entityType,
@@ -63,7 +70,9 @@ export default function SetupPage() {
 			router.push("/dashboard");
 		} catch (err) {
 			// Do not leave a half-completed signup behind when setup fails after auth.
-			await authClient.deleteUser({ callbackURL: "/signup" }).catch(() => undefined);
+			if (createdAccount) {
+				await authClient.deleteUser({ callbackURL: "/signup" }).catch(() => undefined);
+			}
 			setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
 			setSubmitting(false);
 		}
