@@ -38,6 +38,9 @@ class DocumentSummary(BaseModel):
     status: DocStatus
     quality_flags: dict
     created_at: datetime
+    transaction_count: int = 0
+    money_in_pesewas: int = 0
+    money_out_pesewas: int = 0
 
 
 class FinancialStatementValue(BaseModel):

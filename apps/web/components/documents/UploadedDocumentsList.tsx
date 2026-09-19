@@ -8,6 +8,7 @@ import { DocumentsIcon, TrashIcon, XIcon } from "@/components/icons";
 import { DocumentRowSkeleton } from "@/components/ui/Skeleton";
 import { FinancialStatementView } from "@/components/documents/FinancialStatementView";
 import type { Document, DocumentStatus } from "@/lib/api-types";
+import { formatGhs } from "@/lib/format";
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
 	received: "Uploaded-waiting to be read",
@@ -143,6 +144,11 @@ export function UploadedDocumentsList({
 						<div className="text-xs opacity-60">
 							{documentDateFormatter.format(new Date(doc.created_at))}
 						</div>
+						{(doc.transaction_count ?? 0) > 0 && (
+							<div className="mt-1 text-[11px] text-foreground/60">
+								{doc.transaction_count} transactions · outflow {formatGhs(doc.money_out_pesewas ?? 0)}
+							</div>
+						)}
 						{evidenceReviewMessage(doc) && (
 							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
 								{isPartiallyUsable(doc) ? "Usable with warnings: " : "Human review required before scoring. "}

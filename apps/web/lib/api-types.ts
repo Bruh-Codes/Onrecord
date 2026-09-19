@@ -128,8 +128,11 @@ export type Document = {
 	period_start: string | null;
 	period_end: string | null;
 	status: DocumentStatus;
-	quality_flags: Record<string, unknown>;
-	created_at: string;
+  quality_flags: Record<string, unknown>;
+  created_at: string;
+  transaction_count?: number;
+  money_in_pesewas?: number;
+  money_out_pesewas?: number;
 	page_count?: number | null;
 	financial_statements?: FinancialStatement[];
 };

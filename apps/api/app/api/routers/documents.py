@@ -13,6 +13,7 @@ from app.db import get_session
 from app.errors import AppError, file_too_large, not_found
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
+from app.models.transaction import Transaction
 from app.models.scoring import Indicator, ReadinessScore
 from app.schemas.common import Page
 from app.schemas.document import (
@@ -296,7 +297,31 @@ async def list_documents(
     rows = await session.scalars(
         base_query.order_by(Document.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
-    items = [DocumentSummary.model_validate(row) for row in rows]
+    documents = list(rows)
+    document_ids = [document.id for document in documents]
+    transaction_rows = []
+    if document_ids:
+        transaction_rows = (
+            await session.execute(
+                select(
+                    Transaction.document_id,
+                    Transaction.direction,
+                    func.count(),
+                    func.coalesce(func.sum(Transaction.amount_pesewas), 0),
+                )
+                .where(Transaction.document_id.in_(document_ids))
+                .group_by(Transaction.document_id, Transaction.direction)
+            )
+        ).all()
+    aggregates: dict[uuid.UUID, dict[str, int]] = {}
+    for document_id, direction, count, total in transaction_rows:
+        summary = aggregates.setdefault(document_id, {"transaction_count": 0, "money_in_pesewas": 0, "money_out_pesewas": 0})
+        summary["transaction_count"] += int(count)
+        summary["money_in_pesewas" if direction.value == "in" else "money_out_pesewas"] += int(total or 0)
+    items = [
+        DocumentSummary.model_validate(document).model_copy(update=aggregates.get(document.id, {}))
+        for document in documents
+    ]
     return Page(items=items, total=total or 0, page=page, page_size=page_size)
 
 
