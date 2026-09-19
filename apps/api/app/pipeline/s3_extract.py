@@ -219,7 +219,7 @@ def _parse_document_table(table: DocumentTable) -> list[ParsedRow]:
     rows = [[values.get(column, "") for column in range(table.column_count)] for _, values in sorted(grid.items())]
     if not rows:
         return []
-    header_index = next((index for index, row in enumerate(rows[:5]) if _looks_like_header(row)), None)
+    header_index = next((index for index, row in enumerate(rows) if _looks_like_header(row)), None)
     header = [value.lower() for value in rows[header_index]] if header_index is not None else []
     start = header_index + 1 if header_index is not None else 0
     output: list[ParsedRow] = []
@@ -255,6 +255,8 @@ def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedR
     description = _clean_description(raw_description)
     if not description:
         description = cells[1] if len(cells) > 1 else ""
+    if re.search(r"\b(?:opening|closing)\s+balance\b", description, re.I):
+        return None
 
     debit = _amount_for_headers(cells, header, ("debit", "withdraw", "outflow", "paid", " dr", "dr ", "dr", "out"))
     credit = _amount_for_headers(cells, header, ("credit", "deposit", "inflow", "received", " cr", "cr ", "cr", "in"))
