@@ -72,7 +72,7 @@ export default function DocumentsPage() {
 				onRetryBusiness={() => me.refetch()}
 				onUploaded={() => documents.refetch()}
 				processingDocuments={documents.data?.items ?? []}
-				duplicateDocumentId={duplicateDocumentId}
+				duplicateDocumentId={duplicateSheet ? null : duplicateDocumentId}
 			/>
 
 			{(documents.data?.items?.length ?? 0) > 0 && (
