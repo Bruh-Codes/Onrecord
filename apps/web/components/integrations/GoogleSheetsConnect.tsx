@@ -16,6 +16,7 @@ export function GoogleSheetsConnect() {
   const [sheetName, setSheetName] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "importing" | "done" | "error">("loading");
   const [message, setMessage] = useState("");
+  const [duplicateDocumentId, setDuplicateDocumentId] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/integrations/google-sheets/files")
@@ -63,14 +64,15 @@ export function GoogleSheetsConnect() {
     }
   }
 
-  async function importSheet() {
+  async function importSheet(replaceDocumentId?: string) {
     const file = files.find((item) => item.id === fileId);
     if (!file || !sheetName) return;
     setStatus("importing");
+    setDuplicateDocumentId(null);
     const response = await fetch("/api/integrations/google-sheets/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ spreadsheetId: file.id, spreadsheetName: file.name, sheetName }),
+      body: JSON.stringify({ spreadsheetId: file.id, spreadsheetName: file.name, sheetName, replaceDocumentId }),
     });
     const data = (await response.json()) as {
       rows?: number;
@@ -80,7 +82,9 @@ export function GoogleSheetsConnect() {
       const error = typeof data.error === "string" ? data.error : data.error?.message;
       if (response.status === 409 || (typeof data.error !== "string" && data.error?.code === "DUPLICATE_DOCUMENT")) {
         const duplicateId = typeof data.error !== "string" ? data.error?.detail?.existing_document_id : undefined;
-        router.push(duplicateId ? `/documents?duplicate_document_id=${encodeURIComponent(duplicateId)}` : "/documents");
+        setDuplicateDocumentId(duplicateId ?? null);
+        setStatus("error");
+        setMessage("This sheet has already been imported.");
         return;
       }
       return showError(error ?? "Could not import that sheet.");
@@ -123,7 +127,18 @@ export function GoogleSheetsConnect() {
           )}
           {message && status === "error" ? <span className="text-[11px] text-destructive">{message}</span> : null}
         </>
-      ) : status === "error" ? <div className="text-[12px] opacity-70">{message} <Link href="/apps" className="underline underline-offset-2">Connect Google Sheets in Integrations</Link></div> : status === "ready" ? <span className="text-[12px] opacity-65">No Google Sheets were found in this account.</span> : null}
+      ) : status === "error" ? (
+        <div className="flex flex-wrap items-center gap-2 text-[12px] opacity-70">
+          <span>{message}</span>
+          {duplicateDocumentId ? (
+            <button type="button" onClick={() => void importSheet(duplicateDocumentId)} className="font-semibold underline underline-offset-2">
+              Replace existing
+            </button>
+          ) : (
+            <Link href="/apps" className="underline underline-offset-2">Connect Google Sheets in Integrations</Link>
+          )}
+        </div>
+      ) : status === "ready" ? <span className="text-[12px] opacity-65">No Google Sheets were found in this account.</span> : null}
       {message && status !== "error" ? <span className="text-[11px] text-right opacity-65">{message}</span> : null}
     </div>
   );
