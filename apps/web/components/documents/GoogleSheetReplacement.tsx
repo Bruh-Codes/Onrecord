@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Props = {
 	documentId: string;
@@ -16,7 +15,6 @@ export function GoogleSheetReplacement({
 	spreadsheetName,
 	sheetName,
 }: Props) {
-	const router = useRouter();
 	const [status, setStatus] = useState<"idle" | "importing" | "error">("idle");
 	const [error, setError] = useState("");
 
@@ -38,7 +36,7 @@ export function GoogleSheetReplacement({
 				const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
 				throw new Error(body.error?.message ?? "Could not replace the existing document.");
 			}
-			router.replace("/documents");
+			window.location.assign("/documents");
 		} catch (replacementError) {
 			setStatus("error");
 			setError(replacementError instanceof Error ? replacementError.message : "Could not replace the existing document.");
