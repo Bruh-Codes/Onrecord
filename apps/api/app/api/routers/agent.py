@@ -198,7 +198,13 @@ async def ask_ona(
         after={"cited_facts": list(answer.cited_facts), "question_length": len(body.message.strip())},
     )
     await session.commit()
-    return AgentReply(session_id=agent_session.id, answer=answer.answer, cited_facts=list(answer.cited_facts), proposed_action=proposal)
+    return AgentReply(
+        session_id=agent_session.id,
+        answer=answer.answer,
+        cited_facts=list(answer.cited_facts),
+        proposed_action=proposal,
+        used_tools=list(answer.used_tools),
+    )
 
 
 @router.post("/v1/businesses/{business_id}/agent/actions/{proposal_id}/confirm", response_model=AgentReply)

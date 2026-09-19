@@ -142,6 +142,7 @@ export type AgentReply = {
 	answer: string;
 	cited_facts: string[];
 	proposed_action: { id: string; label: string } | null;
+	used_tools: string[];
 };
 
 export type AgentSessionSummary = {

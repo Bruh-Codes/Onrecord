@@ -6,7 +6,6 @@ import { useToast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
 import type { AgentSessionSummary } from "@/lib/api-types";
 import { useMe } from "@/lib/hooks/use-business";
-import { detectOnaActivity } from "@/lib/ona-activity";
 import avatarSrc from "@/public/Ona.jpg";
 
 function toConversationMessages(
@@ -52,7 +51,7 @@ export function AgentDockHost() {
 	}, [refreshSessions]);
 
 	async function askOna(message: string) {
-		setWorkingActivity(detectOnaActivity(message));
+		setWorkingActivity("thinking");
 		if (!businessId) {
 			setAgentResponse("Set up your business first, then I can help with your readiness.");
 			setResponseKey((key) => key + 1);
@@ -62,8 +61,18 @@ export function AgentDockHost() {
 			const reply = await api.askOna(businessId, {
 				message,
 				session_id: sessionId.current,
-			});
+		});
 			sessionId.current = reply.session_id;
+			const selectedTool = reply.used_tools.at(-1);
+			if (selectedTool) {
+				setWorkingActivity(
+					selectedTool === "search_web" ? "searching" :
+					selectedTool === "recompute_readiness" || selectedTool === "retry_stuck_documents"
+						? "running_action"
+						: "checking_data",
+				);
+				await new Promise((resolve) => window.setTimeout(resolve, 350));
+			}
 			setAgentResponse(reply.answer);
 			setPendingAction(reply.proposed_action);
 			void refreshSessions();

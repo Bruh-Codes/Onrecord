@@ -14,6 +14,7 @@ class AgentReply(BaseModel):
     answer: str
     cited_facts: list[str]
     proposed_action: dict | None = None
+    used_tools: list[str] = []
 
 
 class AgentSessionSummary(BaseModel):
