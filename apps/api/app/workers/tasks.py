@@ -228,7 +228,17 @@ def s1_ingest(document_id: str) -> dict:
                         "transaction_count": len(interpretation.rows),
                         "findings": list(interpretation.findings),
                     }
-                if interpretation and interpretation.rows:
+                transaction_doc_types = {
+                    DocType.BANK_STATEMENT,
+                    DocType.MOMO_STATEMENT,
+                    DocType.MOMO_MERCHANT_STATEMENT,
+                }
+                if (
+                    interpretation
+                    and interpretation.rows
+                    and doc.doc_type in transaction_doc_types
+                    and interpretation.doc_type in transaction_doc_types
+                ):
                     _persist_transactions(session, doc, processed.text, list(interpretation.rows))
                     doc.status = DocStatus.EXTRACTED
                     _record_evidence_review(doc, review_extracted_document(
@@ -249,7 +259,11 @@ def s1_ingest(document_id: str) -> dict:
                     from app.services.ledger_mapping import get_ledger_mapper
 
                     mapper = get_ledger_mapper()
-                    mapping = mapper.map_tables(processed.tables) if mapper else None
+                    mapping = (
+                        mapper.map_tables(processed.tables)
+                        if mapper and doc.doc_type in transaction_doc_types
+                        else None
+                    )
                     if mapping and mapping.rows:
                         _persist_transactions(session, doc, processed.text, list(mapping.rows))
                         doc.quality_flags["model_ledger_mapping"] = {
@@ -283,6 +297,7 @@ def s1_ingest(document_id: str) -> dict:
                             review_context={
                                 "capture_methods": list(processed.methods),
                                 "interpretation_pending": True,
+                                "raw_capture": True,
                                 "specialized_interpreter": False,
                             },
                         ))

@@ -1,4 +1,7 @@
 from app.services.evidence_review import allow_partial_transaction_use, _sanitize_text, _validated_review
+from types import SimpleNamespace
+
+from app.services.evidence_review import review_extracted_document
 
 
 def test_sanitize_redacts_financial_identifiers_and_amounts():
@@ -41,6 +44,24 @@ def test_allows_mostly_complete_transaction_statement_to_remain_usable_with_warn
 
     assert partial.status == "warning"
     assert partial.scoring_eligible is True
+
+
+def test_raw_capture_is_not_blocked_by_redacted_or_repeated_fields(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.evidence_review.get_settings",
+        lambda: SimpleNamespace(llm_api_key="configured", financial_mapping_model="test-model"),
+    )
+
+    review = review_extracted_document(
+        doc_type="other",
+        page_count=1,
+        extracted_text="Employee | Month | Net Pay\nAma | <date> | <amount>",
+        review_context={"raw_capture": True, "interpretation_pending": True},
+    )
+
+    assert review.status == "clear"
+    assert review.scoring_eligible is True
+    assert review.findings == ()
 
 
 def test_allows_short_statement_when_core_transactions_are_parsed():
