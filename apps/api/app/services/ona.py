@@ -60,6 +60,7 @@ class OnaAnswer:
     output_tokens: int = 0
     error: bool = False
     error_code: str | None = None
+    used_tools: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -496,6 +497,7 @@ async def answer_question(
             error_code="ONA_UNAVAILABLE",
         )
     web_sources: list[dict[str, str]] = []
+    used_tools: list[str] = []
     turn_snapshot = _snapshot_for_turn(message, snapshot)
     allow_tools = True
     try:
@@ -554,6 +556,7 @@ async def answer_question(
                         answer.proposed_action,
                         input_tokens,
                         output_tokens,
+                        used_tools=tuple(dict.fromkeys(used_tools)),
                     )
                 input_items.extend(response_body.get("output") or [])
                 # Tool calls and structured output must be separate requests
@@ -561,6 +564,7 @@ async def answer_question(
                 # tool result as the validated final answer.
                 allow_tools = False
                 for call in calls:
+                    used_tools.append(call["name"])
                     try:
                         arguments = json.loads(call["arguments"] or "{}")
                     except (TypeError, json.JSONDecodeError):
