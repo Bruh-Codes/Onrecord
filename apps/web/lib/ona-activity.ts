@@ -57,6 +57,21 @@ const GENERAL_SIGNALS = [
 	"ghana",
 ];
 
+const EXTERNAL_SIGNALS = [
+	"online",
+	"internet",
+	"according to",
+	"official",
+	"latest",
+	"current",
+	"law",
+	"requirement",
+	"rate",
+	"market",
+	"regulation",
+	"government",
+];
+
 const CASUAL_PHRASES = new Set([
 	"hi",
 	"hello",
@@ -91,7 +106,9 @@ export function asksAboutPlatformData(message: string): boolean {
 export function needsWebSearch(message: string): boolean {
 	const lower = message.toLowerCase().trim();
 	if (!lower || isCasualTurn(message)) return false;
-	if (asksAboutPlatformData(message)) return false;
+	if (asksAboutPlatformData(message)) {
+		return EXTERNAL_SIGNALS.some((signal) => lower.includes(signal));
+	}
 	if (GENERAL_SIGNALS.some((signal) => lower.includes(signal))) return true;
 	return lower.includes("?") || lower.split(/\s+/).length > 10;
 }

@@ -74,6 +74,21 @@ _GENERAL_SIGNALS = (
     "ghana",
 )
 
+_EXTERNAL_SIGNALS = (
+    "online",
+    "internet",
+    "according to",
+    "official",
+    "latest",
+    "current",
+    "law",
+    "requirement",
+    "rate",
+    "market",
+    "regulation",
+    "government",
+)
+
 
 @dataclass(frozen=True)
 class WebSnippet:
@@ -118,7 +133,9 @@ def needs_web_search(message: str) -> bool:
         return False
     platform_present = any(p in lower for p in _PLATFORM_PHRASES)
     if platform_present:
-        return False
+        # Mixed questions can use both verified business facts and external
+        # sources, but ordinary platform questions should not trigger search.
+        return any(signal in lower for signal in _EXTERNAL_SIGNALS)
     if any(g in lower for g in _GENERAL_SIGNALS):
         return True
     return "?" in message or len(lower.split()) > 10
