@@ -18,7 +18,6 @@ import { ToolGroup } from "@/components/ui/tool-group";
 import { transcribeVoice } from "@/lib/api";
 import {
 	activityStatusLabel,
-	detectOnaActivity,
 	type OnaActivity,
 } from "@/lib/ona-activity";
 import { useTheme } from "next-themes";
@@ -370,7 +369,7 @@ export function AgentDock({
 		setHasStartedChat(true);
 		shouldStickToBottom.current = true;
 		forceScrollToBottom.current = true;
-		const activity = detectOnaActivity(nextMessage);
+		const activity: OnaActivity = "thinking";
 		setCurrentActivity(activity);
 		const agentMessageId = ++conversationId.current;
 		activeAgentMessageId.current = agentMessageId;
