@@ -81,7 +81,14 @@ export function GoogleSheetsConnect() {
     if (!response.ok) {
       const error = typeof data.error === "string" ? data.error : data.error?.message;
       if (response.status === 409 || (typeof data.error !== "string" && data.error?.code === "DUPLICATE_DOCUMENT")) {
-        router.push("/documents");
+        const duplicateId = typeof data.error !== "string" ? data.error?.detail?.existing_document_id : undefined;
+        const params = new URLSearchParams({
+          duplicate_document_id: duplicateId ?? "",
+          spreadsheet_id: file.id,
+          spreadsheet_name: file.name,
+          sheet_name: sheetName,
+        });
+        router.push(`/documents?${params.toString()}`);
         return;
       }
       return showError(error ?? "Could not import that sheet.");
