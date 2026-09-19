@@ -39,3 +39,9 @@ class LocalStorageBackend:
         if not target.is_relative_to(root.resolve()) or not target.is_file():
             raise FileNotFoundError(key)
         return target.read_bytes()
+
+    def delete_object(self, key: str) -> None:
+        root = Path(self._settings.local_storage_dir) if self._settings.local_storage_dir else Path("var/storage")
+        target = root.joinpath(key).resolve()
+        if target.is_relative_to(root.resolve()) and target.is_file():
+            target.unlink()

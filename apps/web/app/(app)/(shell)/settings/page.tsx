@@ -86,16 +86,18 @@ export default function SettingsPage() {
 	}
 
 	async function deleteAccount() {
-		if (deleteConfirmation !== "DELETE") return;
+		if (deleteConfirmation !== "DELETE" || !businessId) return;
 		setDeleting(true);
 		setDeleteError(null);
-		const result = await authClient.deleteUser({ callbackURL: "/signup" });
-		if (result.error) {
-			setDeleteError(result.error.message ?? "Couldn’t delete your account.");
+		try {
+			await api.deleteBusiness(businessId);
+			const result = await authClient.deleteUser({ callbackURL: "/signup" });
+			if (result.error) throw new Error(result.error.message ?? "Couldn’t delete your login.");
+			router.replace("/signup");
+		} catch (error) {
+			setDeleteError(error instanceof Error ? error.message : "Couldn’t delete your account.");
 			setDeleting(false);
-			return;
 		}
-		router.replace("/signup");
 	}
 
 	return (
@@ -140,7 +142,7 @@ export default function SettingsPage() {
 				</section>
 				<section className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5 sm:p-6">
 					<h2 className="m-0 mb-1 text-[16px] font-semibold text-destructive">Delete account</h2>
-					<p className="m-0 max-w-[620px] text-[13px] leading-relaxed opacity-75">This permanently deletes your login, sessions, and account credentials. Your business records may remain in the workspace for audit purposes.</p>
+					<p className="m-0 max-w-[620px] text-[13px] leading-relaxed opacity-75">This permanently deletes your login, sessions, business profile, uploaded documents, transactions, and all derived data. This cannot be undone.</p>
 					<PillButton variant="danger" className="mt-5" onClick={() => setShowDeleteConfirmation(true)}>Delete account</PillButton>
 				</section>
 			</> : <section className="rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6"><h2 className="m-0 mb-1 text-[16px] font-semibold">Billing</h2><p className="m-0 text-[13px] opacity-65">Billing and subscription management will be available later.</p></section>}
@@ -148,8 +150,8 @@ export default function SettingsPage() {
 		{showDeleteConfirmation && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 px-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setShowDeleteConfirmation(false); }}>
 			<div role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-[440px] rounded-2xl border border-destructive/25 bg-card p-5 shadow-card">
 				<h2 id="delete-account-title" className="m-0 text-lg font-semibold text-destructive">Delete account?</h2>
-				<p className="mt-2 mb-1 text-sm leading-relaxed">This permanently deletes your login, sessions, and account credentials.</p>
-				<p className="m-0 text-[12.5px] leading-relaxed opacity-65">Your business records may remain in the workspace for audit purposes. This action cannot be undone.</p>
+				<p className="mt-2 mb-1 text-sm leading-relaxed">This permanently deletes your entire account and all business data.</p>
+				<p className="m-0 text-[12.5px] leading-relaxed opacity-65">Your login, sessions, business profile, uploaded files, transactions, analytics, and audit data will be wiped permanently. This action cannot be undone.</p>
 				<label className="mt-5 block text-[13px] font-semibold">Type DELETE to confirm<input autoFocus value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="DELETE" className="mt-1.5 w-full rounded-xl border border-destructive/30 bg-muted px-3.5 py-2.5 text-sm font-normal" /></label>
 				{deleteError && <p className="mt-2 mb-0 text-[12.5px] text-destructive">{deleteError}</p>}
 				<div className="mt-5 flex justify-end gap-2"><PillButton variant="secondary" onClick={() => { setShowDeleteConfirmation(false); setDeleteConfirmation(""); }} disabled={deleting}>Cancel</PillButton><PillButton variant="danger" onClick={deleteAccount} disabled={deleting || deleteConfirmation !== "DELETE"}>{deleting ? "Deleting…" : "Permanently delete"}</PillButton></div>
