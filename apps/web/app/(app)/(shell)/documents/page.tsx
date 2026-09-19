@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { UploadDropzone } from "@/components/documents/UploadDropzone";
+import { GoogleSheetReplacement } from "@/components/documents/GoogleSheetReplacement";
 import { UploadedDocumentsList } from "@/components/documents/UploadedDocumentsList";
 import {
 	useDeleteDocument,
@@ -19,8 +20,17 @@ export default function DocumentsPage() {
 	const [removingId, setRemovingId] = useState<string | null>(null);
 	const [retryingId, setRetryingId] = useState<string | null>(null);
 	const [duplicateDocumentId, setDuplicateDocumentId] = useState<string | null>(null);
+	const [duplicateSheet, setDuplicateSheet] = useState<{ spreadsheetId: string; spreadsheetName: string; sheetName: string } | null>(null);
 	useEffect(() => {
-		setDuplicateDocumentId(new URLSearchParams(window.location.search).get("duplicate_document_id"));
+		const params = new URLSearchParams(window.location.search);
+		const documentId = params.get("duplicate_document_id");
+		const spreadsheetId = params.get("spreadsheet_id");
+		const spreadsheetName = params.get("spreadsheet_name");
+		const sheetName = params.get("sheet_name");
+		setDuplicateDocumentId(documentId);
+		if (documentId && spreadsheetId && spreadsheetName && sheetName) {
+			setDuplicateSheet({ spreadsheetId, spreadsheetName, sheetName });
+		}
 	}, []);
 	async function removeDocument(documentId: string) {
 		setRemovingId(documentId);
@@ -46,6 +56,14 @@ export default function DocumentsPage() {
 				Upload financial documents and we&apos;ll extract the information needed
 				for your readiness profile.
 			</p>
+			{duplicateDocumentId && duplicateSheet && (
+				<GoogleSheetReplacement
+					documentId={duplicateDocumentId}
+					spreadsheetId={duplicateSheet.spreadsheetId}
+					spreadsheetName={duplicateSheet.spreadsheetName}
+					sheetName={duplicateSheet.sheetName}
+				/>
+			)}
 
 			<UploadDropzone
 				businessId={businessId}
