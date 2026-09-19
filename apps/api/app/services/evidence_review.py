@@ -174,12 +174,14 @@ def allow_partial_transaction_use(
     discard every otherwise valid transaction. Balance-based indicators already
     ignore rows without a balance.
     """
-    if review.status != "warning" or row_count < 10:
+    if review.status != "warning" or row_count < 1:
         return review
-    allowed_missing_balances = max(2, row_count // 20)
     allowed_artifacts = max(2, row_count // 10)
-    if rows_missing_balance > allowed_missing_balances or rows_with_description_artifacts > allowed_artifacts:
+    if rows_with_description_artifacts > allowed_artifacts:
         return review
+    # Date, direction, and amount are guaranteed by the parser before a row is
+    # persisted. Running balances and statement metadata are useful evidence,
+    # but they are not required to calculate transaction-based indicators.
     return replace(review, scoring_eligible=True)
 
 

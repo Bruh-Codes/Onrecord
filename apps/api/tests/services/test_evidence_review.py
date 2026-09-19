@@ -41,3 +41,20 @@ def test_allows_mostly_complete_transaction_statement_to_remain_usable_with_warn
 
     assert partial.status == "warning"
     assert partial.scoring_eligible is True
+
+
+def test_allows_short_statement_when_core_transactions_are_parsed():
+    review = _validated_review(
+        {"status": "warning", "risk_level": "medium", "summary": "Optional fields are incomplete", "findings": []},
+        input_hash="abc",
+        model="gpt-5.6-luna",
+    )
+
+    partial = allow_partial_transaction_use(
+        review,
+        row_count=8,
+        rows_missing_balance=8,
+        rows_with_description_artifacts=0,
+    )
+
+    assert partial.scoring_eligible is True
