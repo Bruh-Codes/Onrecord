@@ -217,26 +217,75 @@ def s1_ingest(document_id: str) -> dict:
             ))
         else:
             if result.supported:
-                _persist_raw_capture(session, doc, processed)
-                doc.quality_flags["capture"] = _capture_summary(processed)
-                # Keep unfamiliar but readable datasets usable. The raw table
-                # is preserved with cell provenance, while the AI evidence
-                # pass decides whether the capture is trustworthy enough for
-                # downstream use. Lack of a specialized interpreter is not an
-                # extraction failure.
-                doc.quality_flags["interpretation_pending"] = True
-                doc.status = DocStatus.EXTRACTED
-                _record_evidence_review(doc, review_extracted_document(
-                    doc_type=doc.doc_type.value if doc.doc_type else None,
-                    page_count=doc.page_count,
-                    extracted_text=processed.text,
-                    row_count=sum(table.row_count for table in processed.tables),
-                    review_context={
-                        "capture_methods": list(processed.methods),
-                        "interpretation_pending": True,
-                        "specialized_interpreter": False,
-                    },
-                ))
+                from app.services.universal_extraction import get_universal_extractor
+
+                universal = get_universal_extractor()
+                interpretation = universal.extract(processed.text, processed.tables) if universal else None
+                if interpretation:
+                    doc.quality_flags["universal_extraction"] = {
+                        "doc_type": interpretation.doc_type.value,
+                        "confidence": interpretation.confidence,
+                        "transaction_count": len(interpretation.rows),
+                        "findings": list(interpretation.findings),
+                    }
+                if interpretation and interpretation.rows:
+                    _persist_transactions(session, doc, processed.text, list(interpretation.rows))
+                    doc.status = DocStatus.EXTRACTED
+                    _record_evidence_review(doc, review_extracted_document(
+                        doc_type=doc.doc_type.value if doc.doc_type else None,
+                        page_count=doc.page_count,
+                        extracted_text=processed.text,
+                        row_count=len(interpretation.rows),
+                        review_context={
+                            "capture_methods": list(processed.methods),
+                            "universal_extraction": True,
+                            "mapping_confidence": interpretation.confidence,
+                            "mapping_findings": list(interpretation.findings),
+                        },
+                    ))
+                else:
+                    # Keep the existing table-only mapper as a fallback while the
+                    # universal layer is unavailable or cannot find transactions.
+                    from app.services.ledger_mapping import get_ledger_mapper
+
+                    mapper = get_ledger_mapper()
+                    mapping = mapper.map_tables(processed.tables) if mapper else None
+                    if mapping and mapping.rows:
+                        _persist_transactions(session, doc, processed.text, list(mapping.rows))
+                        doc.quality_flags["model_ledger_mapping"] = {
+                            "confidence": mapping.confidence,
+                            "transaction_count": len(mapping.rows),
+                            "findings": list(mapping.findings),
+                        }
+                        doc.status = DocStatus.EXTRACTED
+                        _record_evidence_review(doc, review_extracted_document(
+                            doc_type=doc.doc_type.value if doc.doc_type else None,
+                            page_count=doc.page_count,
+                            extracted_text=processed.text,
+                            row_count=len(mapping.rows),
+                            review_context={
+                                "capture_methods": list(processed.methods),
+                                "model_ledger_mapping": True,
+                                "mapping_confidence": mapping.confidence,
+                                "mapping_findings": list(mapping.findings),
+                            },
+                        ))
+                    else:
+                        _persist_raw_capture(session, doc, processed)
+                        doc.quality_flags["capture"] = _capture_summary(processed)
+                        doc.quality_flags["interpretation_pending"] = True
+                        doc.status = DocStatus.EXTRACTED
+                        _record_evidence_review(doc, review_extracted_document(
+                            doc_type=doc.doc_type.value if doc.doc_type else None,
+                            page_count=doc.page_count,
+                            extracted_text=processed.text,
+                            row_count=sum(table.row_count for table in processed.tables),
+                            review_context={
+                                "capture_methods": list(processed.methods),
+                                "interpretation_pending": True,
+                                "specialized_interpreter": False,
+                            },
+                        ))
             else:
                 # Unsupported files are not evidence-review cases. Keep the
                 # result clear so the UI can explain that the file was not
