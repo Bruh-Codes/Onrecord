@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckIcon, GoogleLogo } from "@/components/icons";
@@ -12,7 +12,6 @@ function SignupForm() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { toast } = useToast();
-	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [authMode, setAuthMode] = useState<"signup" | "login">(() => searchParams.get("mode") === "login" ? "login" : "signup");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -24,12 +23,6 @@ function SignupForm() {
 		? email.trim() && password.trim() && consented
 		: email.trim() && password.trim();
 	const busy = submitting || googleLoading;
-
-	useEffect(() => {
-		if (!sessionPending && session) {
-			router.replace("/dashboard");
-		}
-	}, [router, session, sessionPending]);
 
 	async function handleSubmit() {
 		if (!ready || busy) return;
