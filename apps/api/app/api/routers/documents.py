@@ -293,7 +293,7 @@ async def list_documents(
 ) -> Page[DocumentSummary]:
     base_query = select(Document).where(Document.business_id == business_id, Document.deleted_at.is_(None))
 
-    total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
+    document_total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
     rows = await session.scalars(
         base_query.order_by(Document.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
@@ -314,15 +314,15 @@ async def list_documents(
             )
         ).all()
     aggregates: dict[uuid.UUID, dict[str, int]] = {}
-    for document_id, direction, count, total in transaction_rows:
+    for document_id, direction, count, amount_total in transaction_rows:
         summary = aggregates.setdefault(document_id, {"transaction_count": 0, "money_in_pesewas": 0, "money_out_pesewas": 0})
         summary["transaction_count"] += int(count)
-        summary["money_in_pesewas" if direction.value == "in" else "money_out_pesewas"] += int(total or 0)
+        summary["money_in_pesewas" if direction.value == "in" else "money_out_pesewas"] += int(amount_total or 0)
     items = [
         DocumentSummary.model_validate(document).model_copy(update=aggregates.get(document.id, {}))
         for document in documents
     ]
-    return Page(items=items, total=total or 0, page=page, page_size=page_size)
+    return Page(items=items, total=document_total or 0, page=page, page_size=page_size)
 
 
 @router.get("/v1/documents/{document_id}", response_model=DocumentDetail)
