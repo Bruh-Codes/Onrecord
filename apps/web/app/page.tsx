@@ -71,7 +71,7 @@ export default async function LandingPage() {
 			<main className="flex-1">
 				<section className="max-w-[720px] mx-auto text-center px-6 pt-12 sm:pt-20 pb-14 sm:pb-20">
 					<h1 className="font-display text-left sm:text-center text-4xl sm:text-[52px] leading-[1.05] m-0 mb-5">
-						When your records are messy, credit is out of reach
+						Turn your business records into a lender-ready financial profile
 					</h1>
 					<p className="text-left sm:text-center text-[15.5px] sm:text-base leading-relaxed opacity-75 m-0 mb-8 max-w-[560px] mx-auto">
 						Onrecord turns a Ghanaian SME&apos;s real records-MoMo statements,
