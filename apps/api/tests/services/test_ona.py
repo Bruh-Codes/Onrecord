@@ -5,7 +5,7 @@ import pytest
 
 from app.config import Settings
 from app.services import ona
-from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _function_calls, _snapshot_for_turn, _validate_answer
+from app.services.ona import CITATION_KEYS, HistoryTurn, _build_input, _clean_repeated_greeting, _function_calls, _snapshot_for_turn, _validate_answer
 from app.services.ona_web import is_casual_turn
 
 
@@ -141,7 +141,7 @@ async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
     calls = []
     requests = []
 
-    async def fake_tool(session, business_id, name, arguments):
+    async def fake_tool(settings, session, business_id, name, arguments):
         calls.append((session, business_id, name, arguments))
         return {"transactions": {"by_category": [{"category_l1": "inventory"}]}}
 
@@ -160,6 +160,11 @@ async def test_ona_executes_a_read_only_tool_before_final_answer(monkeypatch):
     assert "text" not in requests[0]
     assert "tools" not in requests[1]
     assert requests[1]["text"]["format"]["type"] == "json_schema"
+
+
+def test_repeated_ona_greeting_is_removed_after_first_turn():
+    assert _clean_repeated_greeting("Hey Adom! Your cash flow is positive.", has_history=True) == "Your cash flow is positive."
+    assert _clean_repeated_greeting("Hello Adom! Your cash flow is positive.", has_history=False) == "Hello Adom! Your cash flow is positive."
 
 
 @pytest.mark.asyncio

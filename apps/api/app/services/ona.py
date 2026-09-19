@@ -7,6 +7,7 @@ from stored aggregates, indicators, and transactions the platform already holds.
 
 import json
 import logging
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -550,8 +551,9 @@ async def answer_question(
                         allow_tools = False
                         continue
                     answer = _validate_answer(json.loads(_output_text(response_body)))
+                    answer_text = _clean_repeated_greeting(answer.answer, has_history=bool(history))
                     return OnaAnswer(
-                        answer.answer,
+                        answer_text,
                         answer.cited_facts,
                         answer.proposed_action,
                         input_tokens,
@@ -632,6 +634,7 @@ def _build_input(
         turns.append({"role": role, "content": turn.content[:1200]})
     payload: dict[str, Any] = {
         "question": message,
+        "is_first_turn": not bool(history),
         "verified_facts": snapshot,
         "web_sources": web_sources,
     }
@@ -642,6 +645,13 @@ def _build_input(
         }
     )
     return turns
+
+
+def _clean_repeated_greeting(answer: str, *, has_history: bool) -> str:
+    """Keep greetings to the opening turn without changing the answer body."""
+    if not has_history:
+        return answer.strip()
+    return re.sub(r"^\s*(?:hi|hello|hey)(?:\s+there)?(?:[,!\s]+[A-Za-z][^.!?]*)?[.!]?\s*", "", answer, count=1, flags=re.IGNORECASE).strip()
 
 
 def _snapshot_for_turn(message: str, snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -778,11 +788,17 @@ include "web" when you relied on `search_web`. Mixed questions may use both.
 Push back on unsafe requests (fake records, back-dating, score gaming, guaranteed loans).
 Readiness score = file completeness, not loan approval. No personalized legal/tax/investment advice.
 
-Plain language; match the question (English or Ghanaian Pidgin).
+Plain language; match the question (English or Ghanaian Pidgin). Format useful
+answers as Markdown: use a short opening sentence, then headings or bullet
+points for multiple facts, and numbered steps for actions. Keep paragraphs
+short. Show important figures with units and the relevant period. Do not put
+the whole answer into one dense paragraph.
 
 Greetings & small talk (hi, hello, thanks): reply warmly in one or two short sentences.
-Use their name from verified_facts.business if available. Do NOT lead with readiness scores,
-gap lists, or document status unless they ask about their business.
+On the first turn only, you may use their name from verified_facts.business if
+available. On every later turn, do not greet them or repeat their name; answer
+the question directly. Do NOT lead with readiness scores, gap lists, or document
+status unless they ask about their business.
 
 Actions (confirmation required): recompute_readiness when they ask to refresh readiness;
 retry_stuck_documents only if documents.retryable > 0 and they ask to retry uploads.
