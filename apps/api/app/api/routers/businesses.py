@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Claims, require_business_access, verify_token
+from app.api.deps import Claims, require_business_access, require_role, verify_token
 from app.db import get_session
 from app.errors import not_found
 from app.models.business import Business
@@ -11,8 +12,52 @@ from app.models.enums import Role
 from app.models.user import User
 from app.schemas.business import BusinessCreate, BusinessDetail, BusinessPatch
 from app.services.audit import write_audit_event
+from app.services.storage import get_storage_backend
 
 router = APIRouter(prefix="/v1/businesses", tags=["businesses"])
+
+
+@router.delete("/{business_id}", status_code=204)
+async def delete_business(
+    business_id: uuid.UUID,
+    claims: Claims = Depends(require_role(Role.OWNER)),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    if claims.business_id != business_id:
+        raise not_found("BUSINESS_NOT_FOUND", "No business with that id.")
+
+    storage_keys = (await session.execute(
+        text("SELECT storage_key FROM document WHERE business_id = :business_id"),
+        {"business_id": business_id},
+    )).scalars().all()
+    storage = get_storage_backend()
+    for key in storage_keys:
+        try:
+            storage.delete_object(key)
+        except FileNotFoundError:
+            pass
+
+    statements = (
+        "DELETE FROM notification WHERE business_id = :business_id",
+        "DELETE FROM indicator WHERE business_id = :business_id",
+        "DELETE FROM readiness_score WHERE business_id = :business_id",
+        "DELETE FROM declaration WHERE business_id = :business_id",
+        "DELETE FROM checklist_item WHERE business_id = :business_id",
+        "DELETE FROM gap WHERE business_id = :business_id",
+        "DELETE FROM transaction WHERE business_id = :business_id",
+        "DELETE FROM extraction WHERE document_id IN (SELECT id FROM document WHERE business_id = :business_id)",
+        "DELETE FROM document WHERE business_id = :business_id",
+        "DELETE FROM agent_message WHERE session_id IN (SELECT id FROM agent_session WHERE business_id = :business_id)",
+        "DELETE FROM agent_session WHERE business_id = :business_id",
+        "DELETE FROM audit_event WHERE business_id = :business_id",
+        "DELETE FROM account WHERE business_id = :business_id",
+        "DELETE FROM \"user\" WHERE business_id = :business_id",
+        "DELETE FROM business WHERE id = :business_id",
+    )
+    for statement in statements:
+        await session.execute(text(statement), {"business_id": business_id})
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.post("", response_model=BusinessDetail, status_code=201)

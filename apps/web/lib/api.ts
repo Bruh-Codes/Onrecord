@@ -116,6 +116,7 @@ export const api = {
   createBusiness: (body: Record<string, unknown>) => request<Business>("/v1/businesses", { method: "POST", body: JSON.stringify(body) }),
   getBusiness: (id: string) => request<Business>(`/v1/businesses/${id}`),
   patchBusiness: (id: string, body: Record<string, unknown>) => request<Business>(`/v1/businesses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteBusiness: (id: string) => request<void>(`/v1/businesses/${id}`, { method: "DELETE" }),
 
   // ---- documents ----
   createDocument: (businessId: string, body: { filename: string; mime: string; size_bytes: number; sha256: string; replace_document_id?: string }) =>
