@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { getGoogleSheetsAccessToken } from "@/lib/google-sheets-auth";
 import { googleSheetsApi } from "@/lib/google-sheets";
 
-type ImportBody = { spreadsheetId?: string; spreadsheetName?: string; sheetName?: string; businessId?: string };
+type ImportBody = { spreadsheetId?: string; spreadsheetName?: string; sheetName?: string; businessId?: string; replaceDocumentId?: string };
 
 function csvCell(value: unknown) {
   const text = value == null ? "" : String(value);
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
      const create = await fetch(`${backendOrigin}/v1/businesses/${encodeURIComponent(businessId)}/documents`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ filename, mime: "text/csv", size_bytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex") }),
+       body: JSON.stringify({ filename, mime: "text/csv", size_bytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex"), replace_document_id: body.replaceDocumentId }),
      });
      if (!create.ok) {
        const detail = await create.text().catch(() => "");
