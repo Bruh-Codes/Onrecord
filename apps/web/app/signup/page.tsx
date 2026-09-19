@@ -36,16 +36,22 @@ function SignupForm() {
 		setSubmitting(true);
 		setError(null);
 		const name = email.trim().split("@")[0] || "User";
-		const { error: authError } = authMode === "signup"
-			? await authClient.signUp.email({ email, password, name })
-			: await authClient.signIn.email({ email, password });
+		if (authMode === "signup") {
+			sessionStorage.setItem(
+				"onrecord_pending_signup",
+				JSON.stringify({ email: email.trim(), password, name }),
+			);
+			router.push("/setup");
+			return;
+		}
+		const { error: authError } = await authClient.signIn.email({ email, password });
 		if (authError) {
 			setError(authError.message ?? "Something went wrong. Please try again.");
 			setSubmitting(false);
 			return;
 		}
 		const callbackURL = searchParams.get("callbackURL") ?? "/dashboard";
-		router.push(authMode === "signup" ? "/setup" : callbackURL.startsWith("/") ? callbackURL : "/dashboard");
+		router.push(callbackURL.startsWith("/") ? callbackURL : "/dashboard");
 	}
 
 	async function handleGoogleSignIn() {
@@ -108,7 +114,7 @@ function SignupForm() {
 						<button type="button" onClick={() => setAuthMode("login")} disabled={busy} className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${authMode === "login" ? "bg-foreground text-background font-semibold" : "text-foreground"}`}>Log in</button>
 					</div>
 
-					<button
+					{authMode === "login" && <button
 						type="button"
 						onClick={handleGoogleSignIn}
 						disabled={busy}
@@ -116,9 +122,9 @@ function SignupForm() {
 					>
 						<GoogleLogo />
 						{googleLoading ? "Redirecting…" : "Continue with Google"}
-					</button>
+					</button>}
 
-					<div className="flex items-center gap-2.5 mb-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or</span><div className="flex-1 h-px bg-foreground/12" /></div>
+					{authMode === "login" && <div className="flex items-center gap-2.5 mb-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or</span><div className="flex-1 h-px bg-foreground/12" /></div>}
 					<div className="mb-3.5">
 						<label className="block text-xs mb-1.5 text-foreground/70">Email</label>
 						<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} placeholder="you@business.com" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />

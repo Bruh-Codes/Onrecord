@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { linkBusiness } from "@/lib/link-business";
+import { authClient } from "@/lib/auth-client";
 
 const ENTITY_TYPES: { value: string; label: string }[] = [
 	{ value: "sole_prop", label: "Sole proprietorship" },
@@ -18,8 +19,28 @@ export default function SetupPage() {
 	const [entityType, setEntityType] = useState("sole_prop");
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string; name: string } | null>(null);
 
 	const ready = legalName.trim().length > 0;
+
+	useEffect(() => {
+		const raw = sessionStorage.getItem("onrecord_pending_signup");
+		if (!raw) {
+			router.replace("/signup");
+			return;
+		}
+		try {
+			const pending = JSON.parse(raw);
+			if (typeof pending.email === "string" && typeof pending.password === "string" && typeof pending.name === "string") {
+				setPendingSignup(pending);
+				return;
+			}
+		} catch {
+			// Fall through to the signup page for malformed pending state.
+		}
+		sessionStorage.removeItem("onrecord_pending_signup");
+		router.replace("/signup");
+	}, [router]);
 
 	async function handleSubmit() {
 		if (!ready || submitting) return;
@@ -27,16 +48,22 @@ export default function SetupPage() {
 		setError(null);
 
 		try {
+			if (!pendingSignup) return;
+			const { error: authError } = await authClient.signUp.email(pendingSignup);
+			if (authError) throw new Error(authError.message ?? "Could not create your account.");
 			const business = await api.createBusiness({
 				legal_name: legalName.trim(),
 				entity_type: entityType,
 			});
 			await linkBusiness(business.id);
+			sessionStorage.removeItem("onrecord_pending_signup");
 			// The server-side gate in app/(app)/layout.tsx resolves businessId
 			// from the auth_user row itself, so no session refresh is needed —
 			// the owner won't be bounced back here on the next navigation.
 			router.push("/dashboard");
 		} catch (err) {
+			// Do not leave a half-completed signup behind when setup fails after auth.
+			await authClient.deleteUser({ callbackURL: "/signup" }).catch(() => undefined);
 			setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
 			setSubmitting(false);
 		}
