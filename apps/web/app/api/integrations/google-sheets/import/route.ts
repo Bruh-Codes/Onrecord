@@ -57,7 +57,14 @@ export async function POST(request: Request) {
        const detail = await create.text().catch(() => "");
        if (create.status === 409) {
          try {
-           return Response.json(await JSON.parse(detail), { status: 409 });
+           const duplicate = (await JSON.parse(detail)) as { error?: { detail?: { existing_document_id?: string } } };
+           return Response.json({
+             error: {
+               code: "DUPLICATE_DOCUMENT",
+               message: "You have already uploaded this file.",
+               detail: duplicate.error?.detail ?? {},
+             },
+           }, { status: 409 });
          } catch {
            return Response.json({ error: { code: "DUPLICATE_DOCUMENT", message: "You have already imported this sheet." } }, { status: 409 });
          }
