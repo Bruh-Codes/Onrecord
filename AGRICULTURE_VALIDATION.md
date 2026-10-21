@@ -4,6 +4,15 @@ Implementation branch: `feat/agricultural-finance-workspace`, based on
 `develop` at `edc4780`. Work was performed in an isolated Git worktree; the
 original checkout and its deployment environments were not changed.
 
+## GitHub review context
+
+A fresh fetch before publication found GitHub `develop` at `bba3667`, 101 commits
+ahead of the implementation's local base `edc4780`. Read-only merge analysis
+found conflicts. The checks below cover the implementation on its recorded base;
+they do not cover a merge with the newer upstream code. The draft PR requires
+reconciliation and renewed regression testing before merge/deployment. See
+[`docs/agriculture-review/README.md`](./docs/agriculture-review/README.md).
+
 ## Results
 
 | Check | Result |
