@@ -11,6 +11,8 @@ from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
 from app.api.routers.notifications import router as notifications_router
 from app.api.routers.transactions import router as transactions_router
+from app.api.routers.agriculture import router as agriculture_router
+from app.api.routers.farm_options import router as farm_options_router
 from app.config import get_settings
 from app.errors import AppError
 
@@ -46,6 +48,8 @@ app.include_router(me_router)
 app.include_router(accounts_router)
 app.include_router(documents_router)
 app.include_router(transactions_router)
+app.include_router(agriculture_router)
+app.include_router(farm_options_router)
 app.include_router(notifications_router)
 app.include_router(counterparties_router)
 app.include_router(analytics_router)

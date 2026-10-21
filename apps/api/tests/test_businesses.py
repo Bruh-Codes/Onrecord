@@ -5,7 +5,7 @@ from tests.conftest import bearer_header
 
 async def test_create_and_get_business(client):
     owner_id = uuid.uuid4()
-    headers = bearer_header(role="admin", user_id=owner_id)
+    headers = bearer_header(role="owner", user_id=owner_id)
 
     create_resp = await client.post(
         "/v1/businesses",

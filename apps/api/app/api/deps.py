@@ -14,7 +14,8 @@ from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import forbidden, not_found, unauthorized
 from app.models.enums import Role
-from app.services.users import ensure_user, resolve_business_id
+from app.models.access import BusinessAccess
+from app.services.users import ensure_user
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -101,20 +102,16 @@ async def require_business_access(
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
 ) -> Claims:
-    """An owner may access only their own business. A reviewer/admin may access
-    any business for now-the institution-to-business relation isn't modeled
-    yet (out of scope, see apps/api/README.md "Known gaps").
-
-    Ownership is resolved from the Better Auth user row (source of truth) and
-    falls back to the JWT claim-the claim is a cache signed at session start
-    and can be stale for a business created after sign-in (app/services/
-    auth_link.py)."""
-    if claims.role == Role.OWNER:
-        resolved = await resolve_business_id(
-            session, user_id=claims.user_id, token_business_id=claims.business_id
-        )
-        if resolved != business_id:
-            raise forbidden("You don't have access to this business.")
+    """Owners and reviewers need an explicit grant. Platform admins retain
+    their administrative access; a selected business/JWT claim grants nothing."""
+    if claims.role == Role.ADMIN:
+        return claims
+    grant = await session.scalar(select(BusinessAccess).where(
+        BusinessAccess.business_id == business_id,
+        BusinessAccess.user_id == claims.user_id,
+    ))
+    if grant is None or grant.role != claims.role:
+        raise forbidden("You don't have access to this business.")
     return claims
 
 
@@ -133,10 +130,5 @@ async def require_document_access(
     )
     if document is None:
         raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
-    if claims.role == Role.OWNER:
-        resolved = await resolve_business_id(
-            session, user_id=claims.user_id, token_business_id=claims.business_id
-        )
-        if resolved != document.business_id:
-            raise forbidden("You don't have access to this document.")
+    await require_business_access(document.business_id, claims, session)
     return claims, document

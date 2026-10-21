@@ -1,3 +1,5 @@
+import asyncio
+import hashlib
 import re
 import uuid
 from datetime import UTC, datetime
@@ -9,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import Claims, require_business_access, require_document_access, require_role, verify_token
 from app.config import Settings, get_settings
 from app.db import get_session
-from app.errors import file_too_large, not_found
+from app.errors import AppError, file_too_large, not_found
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
 from app.models.scoring import Indicator, ReadinessScore
@@ -27,7 +29,7 @@ from app.schemas.document import (
     EvidenceReviewDecision,
     EvidenceReviewOut,
 )
-from app.models.enums import Role
+from app.models.enums import DocStatus, Role
 from app.services.audit import write_audit_event
 from app.services.storage import StorageBackend, get_storage_backend
 
@@ -206,8 +208,20 @@ async def complete_document_upload(
     document_id: uuid.UUID,
     claims: Claims = Depends(verify_token),
     session: AsyncSession = Depends(get_session),
+    storage: StorageBackend = Depends(get_storage_backend),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
     _, document = await require_document_access(document_id, claims=claims, session=session)
+
+    try:
+        payload = await asyncio.to_thread(storage.read_bytes, document.storage_key)
+    except Exception as exc:
+        raise AppError("UPLOAD_UNAVAILABLE", "Uploaded file could not be read. Retry the upload before completing it.", 422) from exc
+    if not payload or len(payload) > settings.max_document_size_bytes:
+        raise AppError("INVALID_UPLOAD_SIZE", "Upload an allowed, non-empty file.", 422)
+    if hashlib.sha256(payload).hexdigest() != document.sha256:
+        raise AppError("UPLOAD_HASH_MISMATCH", "Uploaded bytes do not match the selected file. Upload it again.", 422)
+    document.quality_flags = {**(document.quality_flags or {}), "upload_confirmed": True}
 
     await write_audit_event(
         session,

@@ -22,8 +22,15 @@ from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, Readi
 from app.models.notification import Notification
 from app.models.transaction import Counterparty, Transaction
 from app.models.user import User
+from app.models.access import BusinessAccess, BusinessTask
+from app.models.agriculture import Enterprise, ProductionCycle, FarmEntry
 
 __all__ = [
+    "Enterprise",
+    "ProductionCycle",
+    "FarmEntry",
+    "BusinessAccess",
+    "BusinessTask",
     "AgentMessage",
     "AgentSession",
     "AuditEvent",

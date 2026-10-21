@@ -164,13 +164,17 @@ canonical fields plus provider-specific extra fields and line-item provenance.
 
 ## Tests
 
+Agricultural workspace setup, migrations and browser checks are documented in
+[`../../AGRICULTURE.md`](../../AGRICULTURE.md).
+
 ```bash
 .venv/Scripts/python -m pytest
 ```
 
-DB-backed tests need a reachable `DATABASE_URL` and skip cleanly with a reason
-if one isn't available. They create and drop their own tables per test-don't
-point `DATABASE_URL` at a database with data you care about.
+DB-backed tests require an explicit `TEST_DATABASE_URL` pointing at a disposable
+Postgres database whose name ends in `_test`. They never inherit a developer or
+production `DATABASE_URL`. Without the test URL they skip; if a configured test
+database is unavailable they fail. They create/drop domain tables per test.
 
 ## Known gaps (flagged during the initial scaffold, not yet resolved)
 
@@ -180,10 +184,11 @@ point `DATABASE_URL` at a database with data you care about.
   integrity, but means a user who never calls `apps/api` has no local row. If a
   reviewer/admin needs provisioning before their first API call, a real sync
   (webhook from Better Auth, most likely) still needs building.
-- **Institution ↔ business scoping**: `require_business_access` lets any
-  reviewer/admin token access any business-the `institution_id` → business
-  relationship isn't modeled yet (it isn't in `specs/00-domain-model.md` either).
-  Needs a decision before real reviewer accounts exist.
+- **Institution ↔ business scoping**: owners and reviewers now require explicit
+  `business_access` grants. Platform admins retain administrative access. An
+  institution/reviewer assignment UI remains future work; no reviewer receives
+  cross-business access just by signing in. See `AGRICULTURE.md` for the safe
+  migration of legacy owner grants.
 - ~~**Document upload** returns a placeholder `upload_url`~~-**resolved**:
   `app/services/storage/` now generates a real presigned PUT URL via
   `boto3` against an S3-compatible store (MinIO in local dev, via

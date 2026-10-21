@@ -26,19 +26,14 @@ import type {
   AppNotification,
 } from "@/lib/api-types";
 
-function useSessionToken(): string | null {
-  const { data: session } = authClient.useSession();
-  return session?.session?.token ?? null;
-}
-
 /** Current authenticated user + business. Resolved from the auth row, not the
  *  stale JWT claim. */
 export function useMe() {
-  const token = useSessionToken();
+  const { data: session } = authClient.useSession();
   const query = useQuery<Me>({
-    queryKey: ["me"],
+    queryKey: ["me", session?.user.id],
     queryFn: api.me,
-    enabled: !!token,
+    enabled: !!session?.user.id,
   });
   return { ...query, businessId: query.data?.business_id ?? null };
 }
@@ -121,6 +116,9 @@ export function useDeleteDocument(businessId: string | null) {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["documents", businessId] }),
+        qc.invalidateQueries({ queryKey: ["farm-report", businessId] }),
+        qc.invalidateQueries({ queryKey: ["farm-entries", businessId] }),
+        qc.invalidateQueries({ queryKey: ["farm-documents", businessId] }),
         qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
         qc.invalidateQueries({ queryKey: ["counterparties", businessId] }),
         qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
@@ -227,6 +225,9 @@ export function useClassifyTransaction(businessId: string | null) {
 			await Promise.all([
 				qc.invalidateQueries({ queryKey: ["transaction-review-queue", businessId] }),
 				qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
+				qc.invalidateQueries({ queryKey: ["farm-report", businessId] }),
+				qc.invalidateQueries({ queryKey: ["farm-entries", businessId] }),
+				qc.invalidateQueries({ queryKey: ["farm-sources", businessId] }),
 				qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
 				qc.invalidateQueries({ queryKey: ["score", businessId] }),
 				qc.invalidateQueries({ queryKey: ["coverage", businessId] }),

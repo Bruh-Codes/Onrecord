@@ -189,7 +189,7 @@ async def waive_gap(
     gap = await session.get(Gap, gap_id)
     if gap is None:
         raise not_found("GAP_NOT_FOUND", "No gap with that id.")
-    require_business_access(gap.business_id, claims)
+    await require_business_access(gap.business_id, claims, session)
 
     before = {"status": gap.status.value}
     gap.status = GapStatus.WAIVED
@@ -222,6 +222,11 @@ async def recompute(
     from app.workers.tasks import recompute as recompute_task
 
     result = recompute_task.delay(str(business_id))
+    from app.models.access import BusinessTask
+    session.add(BusinessTask(task_key=result.id, business_id=business_id))
+    await write_audit_event(session, business_id=business_id, actor=claims.user_id,
+                           action="business.recompute", target=f"task:{result.id}")
+    await session.commit()
     return {"task_id": result.id, "state": "PENDING"}
 
 
@@ -229,7 +234,13 @@ async def recompute(
 async def get_task(
     task_id: str,
     claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
 ) -> dict:
+    from app.models.access import BusinessTask
+    task = await session.scalar(select(BusinessTask).where(BusinessTask.task_key == task_id))
+    if task is None:
+        raise not_found("TASK_NOT_FOUND", "No task with that id.")
+    await require_business_access(task.business_id, claims, session)
     from celery.result import AsyncResult
     from app.workers.celery_app import celery_app
 
