@@ -27,6 +27,7 @@ const NAV_GROUPS = [
 		label: "Workspace",
 		items: [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
+			{ href: "/farm", icon: <OverviewIcon />, label: "Farm finances" },
 			{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
 			{ href: "/readiness", icon: <ReadinessIcon />, label: "Readiness" },
 			{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },

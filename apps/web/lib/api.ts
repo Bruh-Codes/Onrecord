@@ -61,7 +61,7 @@ async function getToken(): Promise<string> {
   return data.token;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getToken();
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,

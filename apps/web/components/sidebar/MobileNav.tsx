@@ -12,6 +12,7 @@ import {
 
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
+	{ href: "/farm", label: "Farm", icon: OverviewIcon },
 	{ href: "/overview", label: "Overview", icon: OverviewIcon },
 	{ href: "/readiness", label: "Readiness", icon: ReadinessIcon },
 	{ href: "/documents", label: "Documents", icon: DocumentsIcon },
@@ -30,7 +31,7 @@ export function MobileNav() {
 			style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
 		>
 			{ITEMS.map(({ href, label, icon: Icon }) => {
-				const active = pathname === href;
+				const active = pathname === href || pathname.startsWith(`${href}/`);
 				return (
 					<Link
 						key={href}
