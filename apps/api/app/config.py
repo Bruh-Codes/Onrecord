@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
     brave_search_api_key: str = ""
 
+    # The AI document reader and Ona's tool loop run on Groq when
+    # LLM_PROVIDER=groq and GROQ_API_KEY is set, otherwise on Claude when
+    # ANTHROPIC_API_KEY is set (see ai_provider). Groq has no PDF input: PDFs
+    # are read from their text layer and scanned pages and photos go to the
+    # vision model, at most 3 images per request.
+    groq_extraction_model: str = "openai/gpt-oss-120b"
+    groq_vision_model: str = "qwen/qwen3.8-27b"
+    groq_ona_model: str = "openai/gpt-oss-120b"
+
     # Claude reads uploaded documents (PDF pages and images directly, other
     # formats from their normalized capture) and powers Ona. Without a key
     # the pipeline falls back to the parser-first path above.
@@ -38,6 +47,19 @@ class Settings(BaseSettings):
     # Statements whose balances reconcile are accepted without a manual
     # review step; everything else waits for the owner to confirm the rows.
     ai_ingest_auto_confirm_reconciled: bool = True
+
+    @property
+    def ai_provider(self) -> Literal["groq", "anthropic"] | None:
+        if self.llm_provider == "groq" and self.groq_api_key:
+            return "groq"
+        if self.anthropic_api_key:
+            return "anthropic"
+        return None
+
+    @property
+    def groq_api_url(self) -> str:
+        base_url = self.llm_base_url if self.llm_provider == "groq" and self.llm_base_url else "https://api.groq.com/openai/v1"
+        return f"{base_url.rstrip('/')}/chat/completions"
 
     @property
     def llm_api_key(self) -> str:

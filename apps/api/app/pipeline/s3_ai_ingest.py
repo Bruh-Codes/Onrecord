@@ -29,7 +29,7 @@ from app.pipeline.s3_ai_normalise import (
 from app.services.document_reader import DocumentReading
 from app.services.evidence_review import EvidenceFinding, EvidenceReview
 
-EXTRACTOR = "claude:document_reader_v1"
+EXTRACTOR = "ai:document_reader_v1"
 OWNER_CORRECTION = "owner:review_correction_v1"
 FIELD_PREFIX = "ai_transactions["
 MIN_AUTO_CONFIRM_CONFIDENCE = 0.7
