@@ -151,3 +151,28 @@ async def test_worker_reads_pasted_sms_with_the_ai_reader(client, db_ready, monk
     # A single balance can't be checked against anything, so the owner reviews it.
     assert rows["state"] == "needs_review"
     assert len(rows["rows"]) == 1
+
+
+async def test_same_value_rows_with_different_references_are_kept(client, db_ready, monkeypatch):
+    from dataclasses import replace
+
+    from app.workers.tasks import recompute
+
+    monkeypatch.setattr(recompute, "delay", lambda *_: None)
+    _, business_id, document_id = await _document(client, b"same-value")
+    rows = [
+        _row("100.00", "in", "100.00", "A1"), _row("100.00", "out", "0.00", "A2"),
+        _row("100.00", "in", "100.00", "A3"), _row("40.00", "out", "60.00", "A4"),
+    ]
+    reading = replace(_reading(rows), summary="Statement for 0244123456.", findings=("Account 1234567890 is listed.",),
+                      account_label="0244123456")
+    assert await _stage(db_ready, document_id, reading) is True
+
+    transactions = await _transactions(db_ready, business_id)
+    assert sorted(t.provider_reference for t in transactions) == ["A1", "A2", "A3", "A4"]
+    session_factory = async_sessionmaker(db_ready, expire_on_commit=False)
+    async with session_factory() as session:
+        meta = (await session.get(Document, uuid.UUID(document_id))).quality_flags["ai_ingest"]
+    assert meta["summary"] == "Statement for •••456."
+    assert meta["findings"] == ["Account •••890 is listed."]
+    assert meta["account_label"] == "•••3456"
