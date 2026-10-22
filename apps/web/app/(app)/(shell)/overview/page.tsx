@@ -29,12 +29,12 @@ type OverviewMode =
 type SourceScope = "statements" | "invoices" | "other";
 
 const MODES: { value: OverviewMode; label: string }[] = [
-	{ value: "executive", label: "Executive overview" },
-	{ value: "transactions", label: "Transactions" },
-	{ value: "revenue", label: "Revenue" },
-	{ value: "profitability", label: "Profitability" },
+	{ value: "executive", label: "Summary" },
+	{ value: "transactions", label: "Sales activity" },
+	{ value: "revenue", label: "Sales" },
+	{ value: "profitability", label: "Costs" },
 	{ value: "cashflow", label: "Cash flow" },
-	{ value: "coverage", label: "Coverage" },
+	{ value: "coverage", label: "Record gaps" },
 ];
 
 const PERIODS = [
@@ -44,7 +44,7 @@ const PERIODS = [
 ];
 
 const SOURCE_SCOPES: { value: SourceScope; label: string }[] = [
-	{ value: "statements", label: "Statements" },
+	{ value: "statements", label: "Bank & MoMo statements" },
 	{ value: "invoices", label: "Invoices" },
 	{ value: "other", label: "Other documents" },
 ];
@@ -142,7 +142,6 @@ export default function OverviewPage() {
 		"Selected period";
 	const coverageAvailable =
 		(coverage.data?.continuous_months ?? 0) > 0 ||
-		(gaps.data ?? []).some((gap) => gap.status === "open") ||
 		(gaps.data ?? []).some((gap) => gap.status === "open");
 	const modeOptions = MODES.filter(
 		(item) => !(item.value === "coverage" && !coverageAvailable),
@@ -193,10 +192,12 @@ export default function OverviewPage() {
 			<div className="flex flex-wrap items-start justify-between gap-5 mb-10">
 				<div>
 					<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">
-						Your readiness overview
+						Business health
 					</h1>
-					<p className="text-sm opacity-65 m-0">
-						Updated whenever new documents come in.
+					<p className="text-sm opacity-65 m-0 max-w-[620px]">
+						The numbers a lender works out from your records: how steady your
+						sales are, what share goes to costs, and whether your account runs
+						dry. Updated whenever new records come in.
 					</p>
 				</div>
 				{sourceSelect}
@@ -212,7 +213,7 @@ export default function OverviewPage() {
 			{showCash && (
 				<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
 					{mode === "executive"
-						? "Transactions & trends"
+						? "Sales & cash at a glance"
 						: `${modeLabel} insights`}
 				</div>
 			)}
@@ -241,7 +242,7 @@ export default function OverviewPage() {
 								href="/reviewer"
 								className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-foreground underline decoration-ink/30 underline-offset-4 hover:decoration-ink"
 							>
-								Review unclassified transactions{" "}
+								Sort uncategorised transactions{" "}
 								<span aria-hidden="true">→</span>
 							</Link>
 						)}
@@ -249,15 +250,15 @@ export default function OverviewPage() {
 					<div>
 						<div className="mb-4">{periodSelect}</div>
 						<TrendChart
-							title={`Revenue, ${periodLabel.toLowerCase()}`}
+							title={`Sales, ${periodLabel.toLowerCase()}`}
 							totalLabel={formatGhs(revenueTotal)}
 							series={selectedRevenuePoints}
 							color="var(--foreground)"
-							idleCaption="No revenue recorded in window"
+							idleCaption="No sales recorded in this period"
 						/>
 					</div>
 					<TrendChart
-						title={`Operating cashflow, ${periodLabel.toLowerCase()}`}
+						title={`Cash left from operations, ${periodLabel.toLowerCase()}`}
 						totalLabel={formatGhs(seriesTotal(selectedCashflowSeries))}
 						series={selectedCashflowPoints}
 						color="var(--muted-foreground)"
@@ -276,17 +277,17 @@ export default function OverviewPage() {
 			{showCash && mode === "transactions" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
-						label="Transaction value"
+						label="Total money moved"
 						value={transactionTotal}
 						detail={periodLabel}
 					/>
 					<MetricStat
-						label="Average ticket"
+						label="Average sale"
 						value={avgTicket}
-						detail="Revenue transactions"
+						detail="Typical payment you receive"
 					/>
 					<MetricStat
-						label="Active trading days"
+						label="Days with sales"
 						value={activeTradingDays}
 						unit="count"
 						detail={periodLabel}
@@ -307,20 +308,20 @@ export default function OverviewPage() {
 			{showCash && mode === "revenue" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
-						label="Revenue"
+						label="Sales"
 						value={revenueTotal}
 						detail={periodLabel}
 					/>
 					<MetricStat
-						label="Revenue growth"
+						label="Sales growth"
 						value={revenueGrowth}
 						unit="ratio"
-						detail="Latest 3 months vs prior 3 months"
+						detail="Last 3 months compared with the 3 before"
 					/>
 					<MetricStat
-						label="Average ticket"
+						label="Average sale"
 						value={avgTicket}
-						detail="Revenue transactions"
+						detail="Typical payment you receive"
 					/>
 				</div>
 			)}
@@ -328,28 +329,28 @@ export default function OverviewPage() {
 			{showCash && mode === "profitability" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
-						label="Revenue"
+						label="Sales"
 						value={revenueTotal}
 						detail={periodLabel}
 					/>
 					<MetricStat
-						label="Operating expense ratio"
+						label="Costs as share of sales"
 						value={
 							opexRatio?.status === "insufficient_data"
 								? null
 								: (opexRatio?.v ?? null)
 						}
 						unit="ratio"
-						detail="Operating expenses / revenue"
+						detail="Running costs for every GH¢1 of sales"
 					/>
 					<MetricStat
-						label="Unclassified value"
+						label="Not yet categorised"
 						value={
 							unclassified?.status === "insufficient_data"
 								? null
 								: transactionTotal * (unclassified?.v ?? 0)
 						}
-						detail="Needs categorisation"
+						detail="Sort these so lenders see true costs"
 					/>
 				</div>
 			)}
@@ -357,20 +358,20 @@ export default function OverviewPage() {
 			{showCash && mode === "cashflow" && (
 				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
 					<MetricStat
-						label="Operating cashflow"
+						label="Cash left from operations"
 						value={seriesTotal(selectedCashflowSeries)}
 						detail={periodLabel}
 					/>
 					<MetricStat
-						label="Net cashflow"
+						label="Money in minus money out"
 						value={seriesTotal(selectedNetCashflow)}
 						detail={periodLabel}
 					/>
 					<MetricStat
-						label="Negative balance days"
+						label="Days the account was empty or overdrawn"
 						value={negativeBalanceDays}
 						unit="count"
-						detail="Within analysis window"
+						detail="Lenders prefer this close to zero"
 					/>
 				</div>
 			)}
@@ -396,7 +397,7 @@ export default function OverviewPage() {
 				<>
 					<div className="h-px bg-border mb-10" />
 					<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
-						Gaps &amp; coverage
+						Gaps in your records
 					</div>
 					<GapsAndCoverage
 						gaps={(gaps.data ?? []).filter((g) => g.status === "open")}

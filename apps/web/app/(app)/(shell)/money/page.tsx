@@ -55,6 +55,9 @@ export default function MoneyPage() {
 	const totalOut = periods.reduce((sum, p) => sum + p.money_out_pesewas, 0);
 	const count = periods.reduce((sum, p) => sum + p.transactions, 0);
 	const net = totalIn - totalOut;
+	const uncategorised = [...data.categories.money_in, ...data.categories.money_out]
+		.filter((c) => c.category === "unclassified")
+		.reduce((sum, c) => sum + c.transactions, 0);
 	const span = periods.length
 		? periods.length === 1
 			? monthLabel(periods[0].period, true)
@@ -136,6 +139,20 @@ export default function MoneyPage() {
 						key: c.category, label: categoryLabel(c.category), amount_pesewas: c.amount_pesewas, share: c.share,
 					}))}
 				/>
+			</div>
+
+			{uncategorised > 0 && (
+				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/60 px-4 py-3 text-[13px]">
+					<span>
+						{uncategorised === 1 ? "1 transaction isn't" : `${uncategorised} transactions aren't`} sorted into sales or costs yet. Sorting them makes your figures more accurate for a lender.
+					</span>
+					<Link href="/reviewer" className="font-semibold underline underline-offset-2">Sort now</Link>
+				</div>
+			)}
+
+			<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-[13px]">
+				<span>Need to show these figures to a bank, MFI or co-op?</span>
+				<Link href="/lender-summary" className="font-semibold underline underline-offset-2">Open lender summary</Link>
 			</div>
 
 			<div className="mt-4">
