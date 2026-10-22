@@ -66,8 +66,8 @@ export function AgentDockHost() {
 			const selectedTool = reply.used_tools.at(-1);
 			if (selectedTool) {
 				setWorkingActivity(
-					selectedTool === "search_web" ? "searching" :
-					selectedTool === "recompute_readiness" || selectedTool === "retry_stuck_documents"
+					selectedTool === "search_web" || selectedTool === "web_search" ? "searching" :
+					selectedTool === "propose_action" || selectedTool === "recompute_readiness" || selectedTool === "retry_stuck_documents"
 						? "running_action"
 						: "checking_data",
 				);
