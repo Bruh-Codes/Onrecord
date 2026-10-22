@@ -81,6 +81,7 @@ export default function DocumentsPage() {
 						Your uploads
 					</div>
 					<UploadedDocumentsList
+						businessId={businessId}
 						documents={documents.data?.items ?? null}
 						loading={documents.isLoading}
 						error={documents.isError ? "Couldn't load your documents." : null}

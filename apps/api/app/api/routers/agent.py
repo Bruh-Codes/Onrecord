@@ -183,8 +183,8 @@ async def ask_ona(
         session.add(CostEvent(
             business_id=business_id,
             kind="llm",
-            provider=settings.llm_provider,
-            model=settings.agent_model,
+            provider="anthropic" if (answer.model or "").startswith("claude") else settings.llm_provider,
+            model=answer.model or settings.agent_model,
             units=answer.input_tokens + answer.output_tokens,
             cost_pesewas=0,
             at=datetime.now(UTC),

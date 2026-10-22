@@ -56,6 +56,8 @@ export function UploadDropzone({
 	const upload = useUploadDocument(businessId ?? "");
 	const [uploads, setUploads] = useState<UploadState[]>([]);
 	const [batchIds, setBatchIds] = useState<string[]>([]);
+	const [pasteOpen, setPasteOpen] = useState(false);
+	const [pastedText, setPastedText] = useState("");
 	const uploadReady = Boolean(businessId) && !businessLoading && !businessError;
 	const batchUploads = useMemo(
 		() => uploads.filter((uploadState) => batchIds.includes(uploadState.id)),
@@ -96,6 +98,29 @@ export function UploadDropzone({
 
 		return () => window.clearTimeout(timer);
 	}, [batchUploadsComplete, router]);
+
+	function startUploads(files: File[]) {
+		const nextUploads = files.map((file) => ({
+			id: crypto.randomUUID(),
+			name: file.name,
+			status: "uploading" as const,
+			file,
+		}));
+		setBatchIds(nextUploads.map((uploadState) => uploadState.id));
+		setUploads((prev) => [...nextUploads, ...prev]);
+		nextUploads.forEach(({ file, id }) => {
+			void uploadOne(file, id);
+		});
+	}
+
+	function submitPastedText() {
+		const text = pastedText.trim();
+		if (!text) return;
+		const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+		startUploads([new File([text], `pasted-text-${stamp}.txt`, { type: "text/plain" })]);
+		setPastedText("");
+		setPasteOpen(false);
+	}
 
 	async function uploadOne(file: File, id: string) {
 		if (!businessId) return;
@@ -189,19 +214,7 @@ export function UploadDropzone({
 					className="absolute  inset-0 h-full w-full cursor-pointer opacity-0 disabled:pointer-events-none"
 					onChange={(e) => {
 						const files = e.target.files;
-						if (files) {
-							const nextUploads = Array.from(files).map((file) => ({
-								id: crypto.randomUUID(),
-								name: file.name,
-								status: "uploading" as const,
-								file,
-							}));
-							setBatchIds(nextUploads.map((uploadState) => uploadState.id));
-							setUploads((prev) => [...nextUploads, ...prev]);
-							nextUploads.forEach(({ file, id }) => {
-								void uploadOne(file, id);
-							});
-						}
+						if (files) startUploads(Array.from(files));
 						e.target.value = "";
 					}}
 				/>
@@ -210,13 +223,46 @@ export function UploadDropzone({
 					{businessError
 						? "Upload unavailable-your business profile could not be loaded"
 						: uploadReady
-							? "Upload any file-statement, receipt, or a photo of a ledger page"
+							? "Upload anything: a MoMo or bank statement, a screenshot, a receipt photo, a spreadsheet"
 							: "Preparing your secure upload"}
 				</span>
 			</label>
-			<div className="mt-2 px-1 text-[12px] text-foreground/55">
-				Supported formats: PDF, images, CSV/TSV/XML, XLS/XLSX/ODS, DOCX
+			<div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[12px] text-foreground/55">
+				<span>Any layout works: PDF, photos, screenshots, Excel, CSV, Word. We read it and you check the rows.</span>
+				<button
+					type="button"
+					disabled={!uploadReady}
+					onClick={() => setPasteOpen((open) => !open)}
+					className="bg-transparent border-none p-0 text-[12.5px] font-semibold text-foreground underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{pasteOpen ? "Close" : "Paste SMS or text instead"}
+				</button>
 			</div>
+			{pasteOpen && (
+				<div className="mt-3 rounded-2xl border border-border bg-card p-3">
+					<label htmlFor="paste-text" className="block text-[12.5px] font-semibold mb-1.5">
+						Paste MoMo SMS alerts, a WhatsApp message, or notes from your cash book
+					</label>
+					<textarea
+						id="paste-text"
+						value={pastedText}
+						onChange={(event) => setPastedText(event.target.value)}
+						rows={6}
+						placeholder={"Payment received for GHS 250.00 from KOFI ASANTE. Current Balance: GHS 1,040.00 ..."}
+						className="w-full resize-y rounded-xl border border-border bg-transparent p-2.5 text-[13px] leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+					/>
+					<div className="mt-2 flex justify-end">
+						<button
+							type="button"
+							onClick={submitPastedText}
+							disabled={!pastedText.trim() || !uploadReady}
+							className="rounded-full bg-foreground px-4 py-2 text-[13px] text-background cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Read this text
+						</button>
+					</div>
+				</div>
+			)}
 			{businessError && (
 				<button
 					type="button"
