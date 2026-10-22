@@ -1,7 +1,9 @@
-"""Claude-based reading of arbitrary financial documents.
+"""LLM reading of arbitrary financial documents.
 
-One reader replaces the per-format statement parsers: PDF pages and images
-go to Claude as-is (so layout, stamps and screenshots keep their meaning), and
+One reader replaces the per-format statement parsers. With Claude, PDF pages
+and images go to the model as-is (so layout, stamps and screenshots keep their
+meaning); with Groq (document_reader_groq.py) PDFs go as their text layer and
+scanned pages and images go to a vision model. In both cases
 spreadsheets, CSV, XML, Word files and pasted text go as normalized rows that
 each carry a source id. The model transcribes what it sees; it never does the
 arithmetic. Amounts come back exactly as printed and are converted to pesewas
@@ -34,7 +36,7 @@ _IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"
 
 
 class DocumentReaderError(Exception):
-    """Claude could not produce a usable reading (refusal, API error, bad output)."""
+    """The model could not produce a usable reading (refusal, API error, bad output)."""
 
 
 @dataclass(frozen=True)
@@ -81,18 +83,31 @@ class _Chunk:
 
 
 class DocumentReader:
+    """Splits a document into chunks, reads them in parallel and merges the parts."""
+
+    model: str
+    max_parallel_chunks = MAX_PARALLEL_CHUNKS
+
+    def read(self, payload: bytes, filename: str, processed: ProcessedDocument | None) -> DocumentReading:
+        chunks = self.build_chunks(payload, filename, processed)
+        if not chunks:
+            raise DocumentReaderError("The document has no readable content.")
+        with ThreadPoolExecutor(max_workers=self.max_parallel_chunks) as pool:
+            parts = list(pool.map(lambda pair: self._read_chunk(pair[1], pair[0] + 1, len(chunks)), enumerate(chunks)))
+        return merge_readings(parts, self.model)
+
+    def build_chunks(self, payload: bytes, filename: str, processed: ProcessedDocument | None) -> list[_Chunk]:
+        return build_chunks(payload, filename, processed)
+
+    def _read_chunk(self, chunk: _Chunk, index: int, total: int) -> DocumentReading:
+        raise NotImplementedError
+
+
+class ClaudeDocumentReader(DocumentReader):
     def __init__(self, client: anthropic.Anthropic, model: str, effort: str):
         self.client = client
         self.model = model
         self.effort = effort
-
-    def read(self, payload: bytes, filename: str, processed: ProcessedDocument | None) -> DocumentReading:
-        chunks = build_chunks(payload, filename, processed)
-        if not chunks:
-            raise DocumentReaderError("The document has no readable content.")
-        with ThreadPoolExecutor(max_workers=MAX_PARALLEL_CHUNKS) as pool:
-            parts = list(pool.map(lambda pair: self._read_chunk(pair[1], pair[0] + 1, len(chunks)), enumerate(chunks)))
-        return merge_readings(parts, self.model)
 
     def _read_chunk(self, chunk: _Chunk, index: int, total: int) -> DocumentReading:
         position = f"This is part {index} of {total}{f' ({chunk.label})' if chunk.label else ''}."
@@ -132,11 +147,15 @@ class DocumentReader:
 
 
 def get_document_reader() -> DocumentReader | None:
+    settings = get_settings()
+    if settings.ai_provider == "groq":
+        from app.services.document_reader_groq import GroqDocumentReader
+
+        return GroqDocumentReader.from_settings(settings)
     client = get_claude_client()
     if client is None:
         return None
-    settings = get_settings()
-    return DocumentReader(client, settings.claude_extraction_model, settings.claude_extraction_effort)
+    return ClaudeDocumentReader(client, settings.claude_extraction_model, settings.claude_extraction_effort)
 
 
 def build_chunks(payload: bytes, filename: str, processed: ProcessedDocument | None) -> list[_Chunk]:
@@ -146,16 +165,7 @@ def build_chunks(payload: bytes, filename: str, processed: ProcessedDocument | N
     if suffix in _IMAGE_TYPES:
         data = base64.standard_b64encode(payload).decode("ascii")
         return [_Chunk([{"type": "image", "source": {"type": "base64", "media_type": _IMAGE_TYPES[suffix], "data": data}}])]
-    sources = _sources(processed) if processed else _text_sources(payload)
-    return [
-        _Chunk(
-            [{"type": "text", "text": "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)}],
-            label=f"rows {start + 1}-{start + len(part)} of {len(sources)}",
-            source_pages={item["source_id"]: item.get("page", 1) for item in part},
-        )
-        for start in range(0, len(sources), SOURCES_PER_CHUNK)
-        if (part := sources[start : start + SOURCES_PER_CHUNK])
-    ]
+    return source_chunks(_sources(processed) if processed else _text_sources(payload))
 
 
 def _pdf_chunks(payload: bytes) -> list[_Chunk]:
@@ -204,11 +214,23 @@ def _text_sources(payload: bytes) -> list[dict]:
     return _line_sources(payload.decode("utf-8", errors="replace"))
 
 
-def _line_sources(text: str) -> list[dict]:
+def _line_sources(text: str, page: int = 1, prefix: str = "text") -> list[dict]:
     return [
-        {"source_id": f"text:{index}", "page": 1, "text": line.strip()[:1000]}
+        {"source_id": f"{prefix}:{index}", "page": page, "text": line.strip()[:1000]}
         for index, line in enumerate(text.splitlines())
         if line.strip()
+    ]
+
+
+def source_chunks(sources: list[dict]) -> list[_Chunk]:
+    return [
+        _Chunk(
+            [{"type": "text", "text": "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)}],
+            label=f"rows {start + 1}-{start + len(part)} of {len(sources)}",
+            source_pages={item["source_id"]: item.get("page", 1) for item in part},
+        )
+        for start in range(0, len(sources), SOURCES_PER_CHUNK)
+        if (part := sources[start : start + SOURCES_PER_CHUNK])
     ]
 
 

@@ -494,7 +494,14 @@ async def answer_question(
     snapshot: dict[str, Any],
     history: Sequence[HistoryTurn] = (),
 ) -> OnaAnswer:
-    if settings.anthropic_api_key:
+    if settings.ai_provider == "groq":
+        from app.services.ona_groq import answer_with_groq
+
+        return await answer_with_groq(
+            settings=settings, session=session, business_id=business_id,
+            message=message, snapshot=snapshot, history=history,
+        )
+    if settings.ai_provider == "anthropic":
         from app.services.ona_claude import answer_with_claude
 
         return await answer_with_claude(

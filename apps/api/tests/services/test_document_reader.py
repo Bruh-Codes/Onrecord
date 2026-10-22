@@ -7,7 +7,7 @@ from pypdf import PdfWriter
 
 from app.services.document_processing import DocumentCell, DocumentTable, ProcessedDocument
 from app.services.document_reader import (
-    DocumentReader,
+    ClaudeDocumentReader,
     DocumentReaderError,
     build_chunks,
     merge_readings,
@@ -117,7 +117,7 @@ def test_reader_sends_structured_output_request_and_parses_answer():
         stop_reason="end_turn", model="claude-opus-5-5",
         content=[SimpleNamespace(type="thinking"), SimpleNamespace(type="text", text=json.dumps(_payload()))],
     )
-    reading = DocumentReader(_client(message, calls), "claude-opus-5-5", "medium").read(_pdf(1), "s.pdf", None)
+    reading = ClaudeDocumentReader(_client(message, calls), "claude-opus-5-5", "medium").read(_pdf(1), "s.pdf", None)
     assert reading.rows[0].amount == "10.00"
     assert calls[0]["output_config"]["format"]["type"] == "json_schema"
     assert calls[0]["fallbacks"] == "default"
@@ -126,4 +126,4 @@ def test_reader_sends_structured_output_request_and_parses_answer():
 def test_reader_raises_on_refusal():
     message = SimpleNamespace(stop_reason="refusal", model="m", content=[])
     with pytest.raises(DocumentReaderError):
-        DocumentReader(_client(message, []), "m", "medium").read(_pdf(1), "s.pdf", None)
+        ClaudeDocumentReader(_client(message, []), "m", "medium").read(_pdf(1), "s.pdf", None)
