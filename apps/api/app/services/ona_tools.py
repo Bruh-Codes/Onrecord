@@ -6,6 +6,7 @@ as integer pesewas and as a display string the model can repeat verbatim.
 """
 
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
@@ -154,8 +155,15 @@ def _active(business_id: UUID) -> list:
     return [Transaction.business_id == business_id, Document.deleted_at.is_(None)]
 
 
-def _not_internal():
-    return or_(Transaction.flags["internal_transfer"].astext.is_(None), Transaction.flags["internal_transfer"].astext != "true")
+EXCLUDED_FLAGS = ("duplicate", "internal_transfer", "fx", "reversal")
+
+
+def _analysed() -> list:
+    """Same exclusions as the readiness analytics (s7_analyse.filter_transactions)."""
+    return [
+        or_(Transaction.flags[flag].astext.is_(None), Transaction.flags[flag].astext != "true")
+        for flag in EXCLUDED_FLAGS
+    ]
 
 
 def _in_range(start: date | None, end: date | None) -> list:
@@ -181,7 +189,7 @@ async def cash_flow(session: AsyncSession, business_id: UUID, args: dict) -> dic
     bucket = func.date_trunc(unit, Transaction.occurred_on).label("bucket")
     rows = (await session.execute(
         _base(bucket, _sum(Direction.IN), _sum(Direction.OUT), func.count())
-        .where(*_active(business_id), _not_internal(), *_in_range(start, end))
+        .where(*_active(business_id), *_analysed(), *_in_range(start, end))
         .group_by(bucket).order_by(bucket)
     )).all()
     periods, previous_net = [], None
@@ -203,7 +211,7 @@ async def cash_flow(session: AsyncSession, business_id: UUID, args: dict) -> dic
         "totals": {"money_in": ghs(total_in), "money_out": ghs(total_out), "net": ghs(total_in - total_out)},
         "best_period": max(periods, key=lambda p: p["net_pesewas"])["period"] if periods else None,
         "worst_period": min(periods, key=lambda p: p["net_pesewas"])["period"] if periods else None,
-        "note": "Transfers between the business's own accounts are excluded.",
+        "note": "Transfers between the business's own accounts, duplicates, FX and reversals are excluded.",
     }
 
 
@@ -212,7 +220,7 @@ async def top_counterparties(session: AsyncSession, business_id: UUID, args: dic
     start, end = _parse_date(args.get("start_date")), _parse_date(args.get("end_date"))
     limit = min(max(int(args.get("limit") or 10), 1), 20)
     name = func.coalesce(Transaction.flags["counterparty"].astext, Transaction.description, "Unnamed").label("name")
-    filters = [*_active(business_id), _not_internal(), Transaction.direction == direction, *_in_range(start, end)]
+    filters = [*_active(business_id), *_analysed(), Transaction.direction == direction, *_in_range(start, end)]
     total = int(await session.scalar(_base(func.coalesce(func.sum(Transaction.amount_pesewas), 0)).where(*filters)) or 0)
     rows = (await session.execute(
         _base(name, func.count(), func.sum(Transaction.amount_pesewas), func.max(Transaction.occurred_on))
@@ -235,7 +243,7 @@ async def category_breakdown(session: AsyncSession, business_id: UUID, args: dic
     category = func.coalesce(Transaction.category_l1, "unclassified").label("category")
     rows = (await session.execute(
         _base(Transaction.direction, category, func.count(), func.sum(Transaction.amount_pesewas))
-        .where(*_active(business_id), *_in_range(start, end))
+        .where(*_active(business_id), *_analysed(), *_in_range(start, end))
         .group_by(Transaction.direction, category).order_by(func.sum(Transaction.amount_pesewas).desc())
     )).all()
     result: dict[str, Any] = {"money_in": [], "money_out": []}
@@ -273,8 +281,9 @@ def transaction_filters(business_id: UUID, args: dict) -> list:
     for key, op in (("min_amount_ghs", "ge"), ("max_amount_ghs", "le")):
         value = args.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
+            pesewas = int((Decimal(str(value)) * 100).to_integral_value(ROUND_HALF_UP))
             column = Transaction.amount_pesewas
-            filters.append(column >= int(value * 100) if op == "ge" else column <= int(value * 100))
+            filters.append(column >= pesewas if op == "ge" else column <= pesewas)
     return filters
 
 
@@ -332,13 +341,13 @@ async def compare_periods(session: AsyncSession, business_id: UUID, args: dict) 
     for start, end in ranges:
         money_in, money_out, count = (await session.execute(
             _base(_sum(Direction.IN), _sum(Direction.OUT), func.count())
-            .where(*_active(business_id), _not_internal(), *_in_range(start, end))
+            .where(*_active(business_id), *_analysed(), *_in_range(start, end))
         )).one()
         summaries.append((int(money_in), int(money_out), int(count)))
         category = func.coalesce(Transaction.category_l1, "unclassified")
         rows = (await session.execute(
             _base(Transaction.direction, category, func.sum(Transaction.amount_pesewas))
-            .where(*_active(business_id), *_in_range(start, end)).group_by(Transaction.direction, category)
+            .where(*_active(business_id), *_analysed(), *_in_range(start, end)).group_by(Transaction.direction, category)
         )).all()
         categories.append({(direction.value, label): int(amount) for direction, label, amount in rows})
 

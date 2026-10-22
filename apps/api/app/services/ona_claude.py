@@ -58,7 +58,9 @@ async def answer_with_claude(
             "user_location": {"type": "approximate", "country": "GH", "city": "Accra", "timezone": "Africa/Accra"},
         })
     messages = _history_messages(history, message)
-    evidence = [snapshot_json, message, *(turn.content for turn in history)]
+    # The owner's own words are not evidence: a figure they typed must still be
+    # backed by the snapshot or a tool result before Ona repeats it.
+    evidence = [snapshot_json, *(turn.content for turn in history if turn.role == "agent")]
     used_tools: list[str] = []
     proposed: str | None = None
     tokens = [0, 0]

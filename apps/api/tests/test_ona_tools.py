@@ -1,9 +1,15 @@
 import uuid
 
-from sqlalchemy.ext.asyncio import async_sessionmaker
-
 from app.services.document_reader import DocumentReading, ReadRow
-from app.services.ona_tools import cash_flow, category_breakdown, compare_periods, ghs, search_transactions, top_counterparties
+from app.services.ona_tools import (
+    cash_flow,
+    category_breakdown,
+    compare_periods,
+    ghs,
+    search_transactions,
+    top_counterparties,
+)
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from tests.test_document_review import _document, _stage
 
@@ -97,3 +103,28 @@ async def test_money_endpoints_match_ona_tools(client, db_ready, monkeypatch):
     assert page["matches"] == 2 and page["money_out_pesewas"] == 45000
     assert len(page["items"]) == 1 and page["items"][0]["counterparty"] == "AGRO INPUTS"
     assert page["items"][0]["document_name"] == "momo.pdf"
+
+
+async def test_tools_skip_rows_the_analytics_exclude(client, db_ready, monkeypatch):
+    from app.models.transaction import Transaction
+    from sqlalchemy import update
+
+    business_id, sessions = await _seed(client, db_ready, monkeypatch)
+    async with sessions() as session:
+        await session.execute(
+            update(Transaction)
+            .where(Transaction.business_id == business_id, Transaction.amount_pesewas == 25000)
+            .values(flags=Transaction.flags.op("||")({"duplicate": True}))
+        )
+        await session.commit()
+
+        flow = await cash_flow(session, business_id, {"group_by": "month", "start_date": None, "end_date": None})
+        assert flow["totals"]["money_in"] == "GH¢1,500.00"
+        categories = await category_breakdown(session, business_id, {"start_date": "2026-02-01", "end_date": None})
+        assert categories["total_in"] == "GH¢500.00"
+
+        found = await search_transactions(session, business_id, {
+            "query": None, "direction": None, "category": None, "start_date": None, "end_date": None,
+            "min_amount_ghs": 300.0, "max_amount_ghs": 300.0, "sort": "largest", "limit": 10,
+        })
+        assert found["matches"] == 1 and found["transactions"][0]["amount"] == "GH¢300.00"

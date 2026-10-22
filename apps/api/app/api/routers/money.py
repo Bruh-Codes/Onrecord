@@ -15,7 +15,12 @@ from app.api.deps import Claims, require_business_access
 from app.db import get_session
 from app.models.document import Document
 from app.models.transaction import Transaction
-from app.services.ona_tools import cash_flow, category_breakdown, find_transactions, top_counterparties
+from app.services.ona_tools import (
+    cash_flow,
+    category_breakdown,
+    find_transactions,
+    top_counterparties,
+)
 
 router = APIRouter(tags=["money"])
 
