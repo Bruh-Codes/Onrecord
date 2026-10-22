@@ -18,7 +18,14 @@ from app.models.business import Account
 from app.models.document import Document, Extraction
 from app.models.enums import AccountKind, CategorySource, DocStatus, DocType, Provider
 from app.models.transaction import Transaction
-from app.pipeline.s3_ai_normalise import NormalizedRow, Reconciliation, normalize_rows, reconcile, signed_balance
+from app.pipeline.s3_ai_normalise import (
+    NormalizedRow,
+    Reconciliation,
+    mask_identifiers,
+    normalize_rows,
+    reconcile,
+    signed_balance,
+)
 from app.services.document_reader import DocumentReading
 from app.services.evidence_review import EvidenceFinding, EvidenceReview
 
@@ -73,15 +80,15 @@ def stage_reading(session: Session, doc: Document, reading: DocumentReading) -> 
         "state": "needs_review" if rows and not auto_confirm else ("confirmed" if rows else "no_transactions"),
         "model": reading.model,
         "confidence": reading.confidence,
-        "summary": reading.summary,
-        "findings": list(reading.findings),
+        "summary": mask_identifiers(reading.summary),
+        "findings": [mask_identifiers(note) for note in reading.findings],
         "reconciliation": reconciliation.as_json(),
         "row_count": len(rows),
         "rejected_rows": rejected,
         "truncated": reading.truncated,
         "chunks": reading.chunks,
         "provider": reading.provider,
-        "account_label": reading.account_label,
+        "account_label": _masked_label(reading.account_label),
         "currency": reading.currency,
         "opening_balance_pesewas": signed_balance(reading.opening_balance),
         "closing_balance_pesewas": signed_balance(reading.closing_balance),
@@ -128,6 +135,12 @@ def commit_staged_rows(session: Session, doc: Document, *, confirmed_by: uuid.UU
     return {"transactions_created": created, "duplicates_skipped": duplicates}
 
 
+def _masked_label(label: str | None) -> str | None:
+    """Keep the last 4 characters of an account label (all _account_for needs)."""
+    chars = "".join(ch for ch in str(label or "") if ch.isalnum())
+    return f"•••{chars[-4:]}" if len(chars) > 4 else label
+
+
 def _row_fields(value: dict) -> dict:
     return {key: value[key] for key in NormalizedRow.__dataclass_fields__}
 
@@ -140,7 +153,8 @@ def _insert_transactions(
     confirmed_by: uuid.UUID | None,
 ) -> tuple[int, int]:
     existing = session.execute(
-        select(Transaction.provider_reference, Transaction.occurred_on, Transaction.direction,
+        select(Transaction.provider_reference, Transaction.flags["reference"].astext.label("flag_reference"),
+               Transaction.occurred_on, Transaction.direction,
                Transaction.amount_pesewas, Transaction.balance_after_pesewas,
                Document.deleted_at.is_(None).label("active"))
         .join(Document, Transaction.document_id == Document.id)
@@ -151,15 +165,19 @@ def _insert_transactions(
     # provider_reference is unique per account even for soft-deleted
     # documents, so a re-upload keeps colliding references in flags only.
     taken_references = {row.provider_reference for row in existing if row.provider_reference}
-    fingerprints = {
-        (row.occurred_on, row.direction.value, row.amount_pesewas, row.balance_after_pesewas)
-        for row in active if row.balance_after_pesewas is not None
-    }
+    # Fingerprint -> references seen with it (None when a row had none). Two
+    # rows with different references are distinct even if the rest matches.
+    fingerprints: dict[tuple, set[str | None]] = {}
+    for row in active:
+        if row.balance_after_pesewas is not None:
+            key = (row.occurred_on, row.direction.value, row.amount_pesewas, row.balance_after_pesewas)
+            fingerprints.setdefault(key, set()).add(row.provider_reference or row.flag_reference)
     created = duplicates = 0
     for extraction, row in rows:
         fingerprint = (row.occurred_on, row.direction, row.amount_pesewas, row.balance_after_pesewas)
+        seen = fingerprints.get(fingerprint) if row.balance_after_pesewas is not None else None
         if (row.reference and row.reference in references) or (
-            row.balance_after_pesewas is not None and fingerprint in fingerprints
+            seen is not None and (not row.reference or None in seen)
         ):
             # Overlapping statements (MTN caps each at 90 days) repeat rows.
             duplicates += 1
@@ -169,7 +187,7 @@ def _insert_transactions(
             references.add(row.reference)
             taken_references.add(row.reference)
         if row.balance_after_pesewas is not None:
-            fingerprints.add(fingerprint)
+            fingerprints.setdefault(fingerprint, set()).add(row.reference or None)
         session.add(Transaction(
             business_id=doc.business_id,
             account_id=account.id,
@@ -243,7 +261,7 @@ def provider_from_text(value: str | None) -> Provider:
 def ai_evidence_review(
     reconciliation: Reconciliation, reading: DocumentReading, rejected: int, *, owner_confirmed: bool
 ) -> EvidenceReview:
-    findings = [EvidenceFinding("READER_NOTE", "low", note, "document") for note in reading.findings[:10]]
+    findings = [EvidenceFinding("READER_NOTE", "low", mask_identifiers(note), "document") for note in reading.findings[:10]]
     if rejected:
         findings.append(EvidenceFinding("ROWS_UNREADABLE", "medium", f"{rejected} row(s) could not be read cleanly.", "extraction"))
     if reading.truncated:
