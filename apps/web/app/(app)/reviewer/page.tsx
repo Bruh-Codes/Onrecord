@@ -33,26 +33,26 @@ export default function ReviewerQueuePage() {
 	};
 
 	return (
-		<div className="px-10 py-8 pb-16 max-w-[1200px] mx-auto">
+		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1200px] mx-auto">
 			<Link
-				href="/overview"
+				href="/money"
 				className="text-[13px] inline-flex items-center gap-1 mb-3.5"
 			>
 				<BackArrowIcon />
-				Back to overview
+				Back to money
 			</Link>
 			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">
-				Classification queue
+				Sort transactions
 			</div>
 
-			<h1 className="text-[30px] m-0 mb-1.5">
-				Resolve unclassified transactions
+			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">
+				What was this money for?
 			</h1>
 			<p className="text-sm opacity-75 m-0 mb-6.5">
-				{openCount} unresolved transactions in the current analysis window need
-				a category before they can improve revenue, expense, or cashflow
-				insights. Internal transfers, duplicates, FX, and reversals are
-				excluded.
+				{openCount} transaction{openCount === 1 ? "" : "s"} we couldn&apos;t sort
+				on our own. Tell us whether each one was a sale, a cost, a loan or
+				something else, so lenders see your true sales and costs. Transfers
+				between your own accounts are already left out.
 			</p>
 
 			{queue.isLoading ? (
@@ -68,26 +68,22 @@ export default function ReviewerQueuePage() {
 			{!queue.isLoading && !queue.isError && items.length === 0 ? (
 				<div className="rounded-[20px] bg-muted p-8 text-center">
 					<div className="text-lg font-semibold mb-1">
-						No pending classification decisions
+						Nothing to sort right now
 					</div>
 					<div className="text-sm text-foreground/60 mb-4">
-						New statement uploads will appear here when the model cannot make a
-						confident decision. Transactions deliberately left unclassified
-						remain visible in your insights.
+						When a new statement has transactions we can&apos;t place, they
+						will show up here.
 					</div>
 					<Link
-						href="/overview"
+						href="/money"
 						className="inline-flex rounded-full bg-foreground px-4 py-2 text-sm text-background"
 					>
-						Return to overview
+						Back to money
 					</Link>
 				</div>
 			) : null}
 			{selectedItem ? (
-				<div
-					className="grid gap-6 items-start"
-					style={{ gridTemplateColumns: "1.3fr 1fr" }}
-				>
+				<div className="grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
 					<div>
 						<ReviewTable
 							items={items}
@@ -96,7 +92,7 @@ export default function ReviewerQueuePage() {
 						/>
 						{saved && (
 							<div className="mt-3 text-xs text-positive">
-								Saved. The queue and overview are refreshing.
+								Saved. Your money and health pages are updating.
 							</div>
 						)}
 					</div>

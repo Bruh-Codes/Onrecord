@@ -183,3 +183,21 @@
     transform: translateY(0);
   }
 }
+
+/* The lender summary is printed or saved as PDF: always print on white. */
+@media print {
+  :root,
+  .dark {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #141414;
+    --card: #ffffff;
+    --card-foreground: #141414;
+    --muted: #f2f2f0;
+    --border: rgba(20, 20, 20, 0.18);
+    --destructive: #a13327;
+  }
+  body {
+    background: #ffffff;
+  }
+}

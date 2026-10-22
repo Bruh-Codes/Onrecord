@@ -12,7 +12,7 @@ export function ReviewTable({
 	onSelect: (id: string) => void;
 }) {
   return (
-    <div className="bg-muted rounded-[20px] overflow-hidden">
+    <div className="bg-muted rounded-[20px] overflow-x-auto">
       <table className="w-full border-collapse text-[13.5px]">
         <thead>
           <tr>
