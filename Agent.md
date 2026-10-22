@@ -148,7 +148,7 @@ a transaction without provenance is a bug.
 | Database         | Postgres 16 + pgvector                                                                                                                                                                                                                                                                                                                                                                                           |
 | Object store     | S3-compatible (R2/MinIO) behind a storage interface                                                                                                                                                                                                                                                                                                                                                              |
 | OCR              | Document AI primary, PaddleOCR fallback, behind an OCR interface                                                                                                                                                                                                                                                                                                                                                 |
-| LLM              | OpenAI, behind an LLM interface                                                                                                                                                                                                                                                                                                                                                                                  |
+| LLM              | Claude (Anthropic SDK) for document reading and Ona; OpenAI/Groq Responses API kept as the fallback path                                                                                                                                                                                                                                                                                                                                                                                  |
 | PDF output       | WeasyPrint                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **Auth**         | **Better Auth**, mounted in `apps/web` (Next.js route handlers), Postgres-backed via its adapter-same Postgres instance as the rest of the system, not a separate user store. `apps/api` does not issue its own credentials; it verifies the session/JWT Better Auth issues (Better Auth's JWT plugin) on incoming requests. Owner and reviewer/admin are both Better Auth users, distinguished by a role field. |
 | Deploy           | Docker Compose. No Kubernetes.                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -214,8 +214,10 @@ without stating the case first.
   never sent to the browser, stored in the database, or written to logs.
 - Send the minimum sanitized payload needed for a task. Redact MSISDNs, account
   numbers, document identifiers, and long numeric strings before model calls.
-  Do not send raw document bytes unless a separately approved visual review
-  stage requires them.
+  The one approved exception is the document reader
+  (`app/services/document_reader.py`): it sends the uploaded PDF or image to
+  Claude because layout is the meaning for screenshots and scanned statements.
+  Its output is masked (`mask_identifiers`) before anything is stored.
 - Use strict structured model output, `store: false`, timeouts, bounded retries,
   and fail-closed review status. A model timeout or malformed response creates a
   `pending` review case; it never silently marks evidence as trusted.
@@ -236,7 +238,15 @@ without stating the case first.
 
 ## 8. Pipeline stages and review states
 
-The implemented processing path is:
+When `ANTHROPIC_API_KEY` is set, transaction documents (statements in any
+layout, screenshots, receipts, cash books, spreadsheets, pasted SMS) go through
+`upload → Claude reads the file → amounts parsed to pesewas and balances
+reconciled in code → staged extraction rows → auto-confirm if balances
+reconcile, otherwise owner review → transactions`. The model only transcribes;
+`app/pipeline/s3_ai_normalise.py` owns every number (INV-1, INV-6). Financial
+statements and invoices keep their dedicated parsers.
+
+Without a Claude key, the processing path is:
 
 `upload → Docling extraction → document classification → deterministic facts →
 AI evidence review → recompute → insights + readiness score → human review`

@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
     brave_search_api_key: str = ""
 
+    # Claude reads uploaded documents (PDF pages and images directly, other
+    # formats from their normalized capture) and powers Ona. Without a key
+    # the pipeline falls back to the parser-first path above.
+    anthropic_api_key: str = ""
+    claude_extraction_model: str = "claude-opus-5-5"
+    claude_extraction_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    claude_ona_model: str = "claude-opus-5-5"
+    # Statements whose balances reconcile are accepted without a manual
+    # review step; everything else waits for the owner to confirm the rows.
+    ai_ingest_auto_confirm_reconciled: bool = True
+
     @property
     def llm_api_key(self) -> str:
         return self.groq_api_key if self.llm_provider == "groq" else self.openai_api_key
