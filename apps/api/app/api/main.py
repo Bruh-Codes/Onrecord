@@ -10,6 +10,7 @@ from app.api.routers.document_review import router as document_review_router
 from app.api.routers.documents import router as documents_router
 from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
+from app.api.routers.money import router as money_router
 from app.api.routers.notifications import router as notifications_router
 from app.api.routers.transactions import router as transactions_router
 from app.api.routers.voice import router as voice_router
@@ -53,6 +54,7 @@ app.include_router(transactions_router)
 app.include_router(voice_router)
 app.include_router(notifications_router)
 app.include_router(analytics_router)
+app.include_router(money_router)
 app.include_router(internal_storage_router)
 
 

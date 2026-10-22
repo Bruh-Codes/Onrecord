@@ -1,9 +1,15 @@
 import uuid
 
-from sqlalchemy.ext.asyncio import async_sessionmaker
-
 from app.services.document_reader import DocumentReading, ReadRow
-from app.services.ona_tools import cash_flow, category_breakdown, compare_periods, ghs, search_transactions, top_counterparties
+from app.services.ona_tools import (
+    cash_flow,
+    category_breakdown,
+    compare_periods,
+    ghs,
+    search_transactions,
+    top_counterparties,
+)
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from tests.test_document_review import _document, _stage
 
@@ -78,10 +84,30 @@ async def test_tools_answer_from_stored_transactions(client, db_ready, monkeypat
         assert compared["change"]["net"] == "-GH¢100.00"
 
 
-async def test_tools_skip_rows_the_analytics_exclude(client, db_ready, monkeypatch):
-    from sqlalchemy import update
+async def test_money_endpoints_match_ona_tools(client, db_ready, monkeypatch):
+    from tests.conftest import bearer_header
 
+    business_id, _ = await _seed(client, db_ready, monkeypatch)
+    # _seed's owner is not returned; an admin can read any business.
+    headers = bearer_header(role="admin", user_id=uuid.uuid4())
+    summary = (await client.get(f"/v1/businesses/{business_id}/money/summary", headers=headers)).json()
+    assert summary["earliest_on"] == "2026-01-05" and summary["latest_on"] == "2026-02-25"
+    assert summary["cash_flow"]["totals"]["net"] == "GH¢1,300.00"
+    assert summary["top_suppliers"]["counterparties"][0]["name"] == "AGRO INPUTS"
+    assert summary["documents_awaiting_review"] == 0
+
+    page = (await client.get(
+        f"/v1/businesses/{business_id}/money/transactions",
+        params={"direction": "out", "limit": 1, "sort": "largest"}, headers=headers,
+    )).json()
+    assert page["matches"] == 2 and page["money_out_pesewas"] == 45000
+    assert len(page["items"]) == 1 and page["items"][0]["counterparty"] == "AGRO INPUTS"
+    assert page["items"][0]["document_name"] == "momo.pdf"
+
+
+async def test_tools_skip_rows_the_analytics_exclude(client, db_ready, monkeypatch):
     from app.models.transaction import Transaction
+    from sqlalchemy import update
 
     business_id, sessions = await _seed(client, db_ready, monkeypatch)
     async with sessions() as session:

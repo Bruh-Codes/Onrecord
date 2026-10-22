@@ -55,7 +55,7 @@ export default function HomePage() {
 				Welcome back{ownerFirstName ? `, ${ownerFirstName}` : ""}!
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6.5">
-				Review your <Link href="/overview" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>readiness overview</Link>, close the{" "}
+				See your <Link href="/money" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>money in &amp; out</Link>, review your <Link href="/overview" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>readiness overview</Link>, close the{" "}
 				<Link href="/nearly-ready" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>open gaps</Link>, or add documents:{" "}
 				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>upload a file</Link> or{" "}
 				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>enter figures manually</Link>.

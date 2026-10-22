@@ -259,7 +259,8 @@ async def category_breakdown(session: AsyncSession, business_id: UUID, args: dic
     return result
 
 
-async def search_transactions(session: AsyncSession, business_id: UUID, args: dict) -> dict:
+def transaction_filters(business_id: UUID, args: dict) -> list:
+    """Filters shared by Ona's search tool and the money page's transaction list."""
     filters = [*_active(business_id)]
     query = args.get("query")
     if isinstance(query, str) and query.strip():
@@ -283,21 +284,35 @@ async def search_transactions(session: AsyncSession, business_id: UUID, args: di
             pesewas = int((Decimal(str(value)) * 100).to_integral_value(ROUND_HALF_UP))
             column = Transaction.amount_pesewas
             filters.append(column >= pesewas if op == "ge" else column <= pesewas)
-    summary = (await session.execute(
+    return filters
+
+
+async def find_transactions(
+    session: AsyncSession, business_id: UUID, args: dict, *, offset: int = 0, limit: int = 25,
+) -> tuple[dict, list[Transaction]]:
+    filters = transaction_filters(business_id, args)
+    count, money_in, money_out = (await session.execute(
         _base(func.count(), _sum(Direction.IN), _sum(Direction.OUT)).where(and_(*filters))
     )).one()
     order = {
-        "oldest": Transaction.occurred_on.asc(),
-        "largest": Transaction.amount_pesewas.desc(),
-    }.get(args.get("sort"), Transaction.occurred_on.desc())
-    limit = min(max(int(args.get("limit") or 25), 1), MAX_ROWS)
+        "oldest": (Transaction.occurred_on.asc(), Transaction.id.asc()),
+        "largest": (Transaction.amount_pesewas.desc(), Transaction.id.asc()),
+    }.get(args.get("sort"), (Transaction.occurred_on.desc(), Transaction.id.desc()))
     rows = (await session.scalars(
-        select(Transaction).join(Document, Transaction.document_id == Document.id).where(and_(*filters)).order_by(order).limit(limit)
+        select(Transaction).join(Document, Transaction.document_id == Document.id)
+        .where(and_(*filters)).order_by(*order).offset(max(offset, 0)).limit(limit)
     )).all()
+    totals = {"matches": int(count), "money_in_pesewas": int(money_in), "money_out_pesewas": int(money_out)}
+    return totals, list(rows)
+
+
+async def search_transactions(session: AsyncSession, business_id: UUID, args: dict) -> dict:
+    limit = min(max(int(args.get("limit") or 25), 1), MAX_ROWS)
+    totals, rows = await find_transactions(session, business_id, args, limit=limit)
     return {
-        "matches": int(summary[0]),
-        "money_in_total": ghs(summary[1]),
-        "money_out_total": ghs(summary[2]),
+        "matches": totals["matches"],
+        "money_in_total": ghs(totals["money_in_pesewas"]),
+        "money_out_total": ghs(totals["money_out_pesewas"]),
         "showing": len(rows),
         "transactions": [
             {
