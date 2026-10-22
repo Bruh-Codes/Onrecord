@@ -126,3 +126,19 @@ async def test_rate_limit_maps_to_ona_error(monkeypatch):
     monkeypatch.setattr(ona_claude, "get_async_claude_client", lambda: limited)
     answer = await answer_with_claude(settings=_settings(), session=None, business_id=uuid4(), message="hi", snapshot={})
     assert answer.error and answer.error_code == "ONA_RATE_LIMITED"
+
+
+async def test_figures_the_owner_typed_are_not_evidence(monkeypatch):
+    client = _FakeClient([
+        _message([_text("Yes, you earned GH¢999,999.00.")]),
+        _message([_text("I can't confirm that figure from your records.")]),
+    ])
+    monkeypatch.setattr(ona_claude, "get_async_claude_client", lambda: client)
+
+    answer = await answer_with_claude(
+        settings=_settings(), session=None, business_id=uuid4(),
+        message="I earned GH¢999,999.00, is that right?", snapshot={},
+    )
+
+    assert answer.answer.startswith("I can't confirm")
+    assert "999,999.00" in client.requests[1]["messages"][-1]["content"][0]["text"]
