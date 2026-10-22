@@ -23,27 +23,6 @@ export function DocumentRowSkeleton() {
 	);
 }
 
-export function CounterpartyRowSkeleton() {
-	return (
-		<div
-			aria-hidden="true"
-			className="flex items-start gap-3 py-4 border-b border-border"
-		>
-			<div className="flex-1 min-w-0 space-y-2">
-				<div className="flex items-center gap-2">
-					<Skeleton className="h-4 w-1/3" />
-					<Skeleton className="h-2.5 w-12" />
-				</div>
-				<Skeleton className="h-3 w-1/2" />
-			</div>
-			<div className="text-right shrink-0 space-y-2">
-				<Skeleton className="h-4 w-16 ml-auto" />
-				<Skeleton className="h-6 w-20 rounded-full ml-auto" />
-			</div>
-		</div>
-	);
-}
-
 export function GapRowSkeleton() {
 	return (
 		<div aria-hidden="true" className="py-4 border-b border-border">

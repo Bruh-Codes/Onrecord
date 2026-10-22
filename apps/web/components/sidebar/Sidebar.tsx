@@ -5,10 +5,10 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
 	AppsIcon,
-	CounterpartiesIcon,
 	DocumentsIcon,
 	GapsIcon,
 	HomeIcon,
+	MoneyIcon,
 	OverviewIcon,
 	ReadinessIcon,
 	SettingsIcon,
@@ -16,7 +16,7 @@ import {
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
-import { useTheme } from "@/lib/theme";
+import { useTheme } from "next-themes";
 
 const MAX_WIDTH = 230;
 const COLLAPSED_WIDTH = 60;
@@ -27,6 +27,7 @@ const NAV_GROUPS = [
 		label: "Workspace",
 		items: [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
+			{ href: "/money", icon: <MoneyIcon />, label: "Money" },
 			{ href: "/farm", icon: <OverviewIcon />, label: "Farm finances" },
 			{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
 			{ href: "/readiness", icon: <ReadinessIcon />, label: "Readiness" },
@@ -36,11 +37,6 @@ const NAV_GROUPS = [
 	{
 		label: "Manage",
 		items: [
-			{
-				href: "/counterparties",
-				icon: <CounterpartiesIcon />,
-				label: "Counterparties",
-			},
 			{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
 			{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
 		],
@@ -59,14 +55,10 @@ function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 }
 
 export function Sidebar() {
-	const { theme } = useTheme();
-	const [collapsed, setCollapsed] = useState(() => {
-		if (typeof window !== "undefined") {
-			const saved = localStorage.getItem("sidebar-collapsed");
-			if (saved !== null) return JSON.parse(saved);
-		}
-		return true;
-	});
+	const { resolvedTheme } = useTheme();
+	const theme = resolvedTheme === "dark" ? "dark" : "light";
+	const [collapsed, setCollapsed] = useState(true);
+	const [storageReady, setStorageReady] = useState(false);
 	const [width, setWidth] = useState(MAX_WIDTH);
 	const [dragging, setDragging] = useState(false);
 	const drag = useRef({
@@ -78,8 +70,18 @@ export function Sidebar() {
 	const effective = collapsed ? COLLAPSED_WIDTH : width;
 
 	useEffect(() => {
+		const saved = localStorage.getItem("sidebar-collapsed");
+		if (saved === "false") {
+			setCollapsed(false);
+			setWidth(MAX_WIDTH);
+		}
+		setStorageReady(true);
+	}, []);
+
+	useEffect(() => {
+		if (!storageReady) return;
 		localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
-	}, [collapsed]);
+	}, [collapsed, storageReady]);
 
 	useEffect(() => {
 		if (!dragging) return;

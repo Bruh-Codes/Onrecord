@@ -9,7 +9,6 @@
 import type {
   Business,
   ChecklistItem,
-  Counterparty,
   Coverage,
   Document,
   Gap,
@@ -21,6 +20,9 @@ import type {
   TransactionReviewItem,
   UploadTarget,
   AppNotification,
+  AgentReply,
+  AgentSessionDetail,
+  AgentSessionSummary,
 } from "./api-types";
 
 const API_BASE_URL =
@@ -42,6 +44,22 @@ export class ApiError extends Error {
     this.status = status;
     this.detail = detail;
   }
+}
+
+export async function transcribeVoice(audio: Blob): Promise<string> {
+  const form = new FormData();
+  form.append("audio", audio, "recording.webm");
+  const response = await fetchWithTimeout("/api/voice/transcribe", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new ApiError(response.status, "VOICE_TRANSCRIPTION_FAILED", body.error?.message ?? response.statusText);
+  }
+  const result = (await response.json()) as { text?: string };
+  if (!result.text?.trim()) throw new ApiError(422, "VOICE_EMPTY", "No speech was detected.");
+  return result.text;
 }
 
 async function getToken(): Promise<string> {
@@ -98,6 +116,7 @@ export const api = {
   createBusiness: (body: Record<string, unknown>) => request<Business>("/v1/businesses", { method: "POST", body: JSON.stringify(body) }),
   getBusiness: (id: string) => request<Business>(`/v1/businesses/${id}`),
   patchBusiness: (id: string, body: Record<string, unknown>) => request<Business>(`/v1/businesses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteBusiness: (id: string) => request<void>(`/v1/businesses/${id}`, { method: "DELETE" }),
 
   // ---- documents ----
   createDocument: (businessId: string, body: { filename: string; mime: string; size_bytes: number; sha256: string; replace_document_id?: string }) =>
@@ -128,14 +147,6 @@ export const api = {
   patchTransaction: (transactionId: string, body: { category_l1?: string; category_l2?: string | null; flags?: Record<string, unknown> }) =>
     request<Transaction>(`/v1/transactions/${transactionId}`, { method: "PATCH", body: JSON.stringify(body) }),
 
-  // ---- counterparties ----
-  listCounterparties: (businessId: string, params?: Record<string, string | number>) => {
-    const qs = new URLSearchParams(
-      Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])
-    ).toString();
-    return request<{ items: Counterparty[]; total: number }>(`/v1/businesses/${businessId}/counterparties${qs ? `?${qs}` : ""}`);
-  },
-
   // ---- analytics ----
   getCoverage: (businessId: string) => request<Coverage>(`/v1/businesses/${businessId}/coverage`),
   listIndicators: (businessId: string) => request<Indicator[]>(`/v1/businesses/${businessId}/indicators`),
@@ -157,6 +168,18 @@ export const api = {
     request<AppNotification>(`/v1/notifications/${notificationId}/read`, { method: "POST" }),
   markAllNotificationsRead: (businessId: string) =>
     request<{ updated: number }>(`/v1/businesses/${businessId}/notifications/read-all`, { method: "POST" }),
+
+  // ---- Ona (read-only financial-readiness assistant) ----
+  askOna: (businessId: string, body: { message: string; session_id?: string }) =>
+    request<AgentReply>(`/v1/businesses/${businessId}/agent/messages`, { method: "POST", body: JSON.stringify(body) }),
+  confirmOnaAction: (businessId: string, proposalId: string) =>
+    request<AgentReply>(`/v1/businesses/${businessId}/agent/actions/${proposalId}/confirm`, { method: "POST" }),
+  listOnaSessions: (businessId: string) =>
+    request<{ items: AgentSessionSummary[] }>(`/v1/businesses/${businessId}/agent/sessions`),
+  getOnaSession: (businessId: string, sessionId: string) =>
+    request<AgentSessionDetail>(`/v1/businesses/${businessId}/agent/sessions/${sessionId}`),
+  deleteOnaSession: (businessId: string, sessionId: string) =>
+    request<void>(`/v1/businesses/${businessId}/agent/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
 /** PUT file bytes to a presigned upload URL. A relative URL means the

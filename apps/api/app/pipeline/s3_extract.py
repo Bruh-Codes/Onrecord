@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
+from app.services.document_processing import DocumentTable
+
 
 @dataclass(frozen=True)
 class ParsedRow:
@@ -40,8 +42,15 @@ _DATE_RE = re.compile(
 _AMOUNT_RE = re.compile(r"[-+]?\(?\s*(?:GH[¢c]|GHS|₵)?\s*[-+]?\d[\d,]*(?:\.\d{1,2})?\s*\)?", re.IGNORECASE)
 
 
-def parse_statement(text: str) -> tuple[list[ParsedRow], str | None]:
-    """Parse markdown tables with date/description/debit/credit columns."""
+def parse_statement(
+    text: str,
+    tables: tuple[DocumentTable, ...] | list[DocumentTable] = (),
+) -> tuple[list[ParsedRow], str | None]:
+    """Parse transactions from normalized tables, markdown, or text."""
+    if tables:
+        table_rows = [row for table in tables for row in _parse_document_table(table)]
+        if table_rows:
+            return table_rows, None
     lines = [line.strip() for line in text.splitlines() if "|" in line]
     rows: list[ParsedRow] = []
     for index, line in enumerate(lines):
@@ -49,12 +58,136 @@ def parse_statement(text: str) -> tuple[list[ParsedRow], str | None]:
         if not cells or _is_separator(cells) or not any(_looks_like_date(cell) for cell in cells):
             continue
         header = _nearest_header(lines, index)
-        parsed = _parse_row(cells, header)
+        parsed = _parse_row(cells, header, page=1)
         if parsed is not None:
             rows.append(parsed)
     if rows:
         return rows, None
+    plain_rows = _parse_plain_text_statement(text)
+    if plain_rows:
+        return plain_rows, None
+    # Try more aggressive pattern matching as fallback
+    fallback_rows = _parse_fallback_statement(text)
+    if fallback_rows:
+        return fallback_rows, None
     return [], "No unambiguous transaction table was found"
+
+
+def _parse_plain_text_statement(text: str) -> list[ParsedRow]:
+    """Recover simple PDF text-layer statements when table delimiters are lost."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    date_indexes = [index for index, line in enumerate(lines) if _looks_like_date(line)]
+    
+    # Be more flexible - try with even a single date if we have amounts
+    if len(date_indexes) < 1:
+        return []
+    
+    rows: list[ParsedRow] = []
+    for position, start in enumerate(date_indexes):
+        end = date_indexes[position + 1] if position + 1 < len(date_indexes) else len(lines)
+        block = lines[start:end]
+        occurred_on = _parse_date(block[0])
+        if occurred_on is None:
+            continue
+        description_lines = [line for line in block[1:] if not _amount_value(line)]
+        description = _clean_description(" ".join(description_lines))
+        amounts = [_amount_value(line) for line in block[1:]]
+        amounts = [amount for amount in amounts if amount is not None]
+        # Opening/closing balance rows are not transactions.
+        if not amounts or re.search(r"opening balance|closing balance", description, re.I):
+            continue
+        balance = amounts[-1]
+        movement = abs(amounts[-2] - amounts[-1]) if len(amounts) >= 2 else amounts[0]
+        if movement <= 0:
+            continue
+        direction = "out" if re.search(r"debit|purchase|withdraw|cash out|charge|levy|payment", description, re.I) else "in"
+        category_l1, category_l2, confidence = categorize_transaction(description, None, direction)
+        rows.append(ParsedRow(
+            occurred_on,
+            description or "Statement transaction",
+            direction,
+            movement,
+            balance,
+            category_l1=category_l1,
+            category_l2=category_l2,
+            category_confidence=confidence,
+            category_source="rule" if category_l1 else None,
+        ))
+    return rows
+
+
+def _parse_fallback_statement(text: str) -> list[ParsedRow]:
+    """Aggressive fallback for messy OCR output - look for date-amount patterns anywhere."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    rows: list[ParsedRow] = []
+    
+    # Look for lines that contain both a date and an amount
+    for line in lines:
+        # Find dates in the line
+        date_match = _DATE_RE.search(line)
+        if not date_match:
+            continue
+            
+        occurred_on = _parse_date(date_match.group(1))
+        if occurred_on is None:
+            continue
+            
+        # Find amounts in the line
+        amount_matches = _AMOUNT_RE.findall(line)
+        if not amount_matches:
+            continue
+            
+        # Extract amounts from matches
+        amounts = []
+        for match in amount_matches:
+            raw = match.replace(",", "").replace("GH¢", "").replace("GHS", "").replace("₵", "").replace("$", "")
+            try:
+                amount = Decimal(raw.lstrip("+"))
+                if amount >= 0:
+                    amounts.append(int(amount * 100))
+            except (InvalidOperation, ValueError):
+                continue
+                
+        if not amounts:
+            continue
+            
+        # Use the largest amount as the transaction amount
+        amount = max(amounts)
+        
+        # Try to determine direction from context
+        description = re.sub(r'\s+', ' ', _DATE_RE.sub('', line)).strip()
+        description = re.sub(r'\$?\d[\d,]*\.?\d*', '', description).strip()
+        description = _clean_description(description)
+        
+        # Skip if description is too short
+        if len(description) < 3:
+            continue
+            
+        # Skip summary/account balance lines by looking for common summary patterns
+        if re.search(r'balance|total|summary|account summary|money in|money out|period|statement', description, re.I):
+            continue
+            
+        # Skip if description contains only numbers or special characters (poor OCR)
+        if not re.search(r'[a-zA-Z]', description):
+            continue
+            
+        direction = "out" if re.search(r"debit|purchase|withdraw|cash out|charge|levy|payment|bill", description, re.I) else "in"
+        
+        category_l1, category_l2, confidence = categorize_transaction(description, None, direction)
+        rows.append(ParsedRow(
+            occurred_on,
+            description or "Statement transaction",
+            direction,
+            amount,
+            None,  # No balance available in fallback mode
+            category_l1=category_l1,
+            category_l2=category_l2,
+            category_confidence=confidence,
+            category_source="rule" if category_l1 else None,
+            quality_flags=("fallback_extraction",),
+        ))
+        
+    return rows
 
 
 def _cells(line: str) -> list[str]:
@@ -72,15 +205,45 @@ def _nearest_header(lines: list[str], index: int) -> list[str]:
     for candidate in reversed(lines[:index]):
         cells = _cells(candidate)
         lowered = [cell.lower() for cell in cells]
-        has_date = any("date" in cell for cell in lowered)
-        has_amount = any(any(word in cell for word in ("amount", "debit", "credit", "withdraw", "deposit")) for cell in lowered)
-        has_balance = any("balance" in cell or "bal before" in cell or "bal after" in cell for cell in lowered)
-        if has_date and has_amount and has_balance:
+        has_date = any(_is_date_header(cell) for cell in lowered)
+        has_amount = any(any(word in cell for word in ("amount", "debit", "credit", "withdraw", "deposit", "value", "paid", "dr", "cr")) for cell in lowered)
+        if has_date and has_amount:
             return [c.lower() for c in cells]
     return []
 
 
-def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
+def _parse_document_table(table: DocumentTable) -> list[ParsedRow]:
+    grid: dict[int, dict[int, str]] = {}
+    for cell in table.cells:
+        grid.setdefault(cell.row, {})[cell.column] = cell.text
+    rows = [[values.get(column, "") for column in range(table.column_count)] for _, values in sorted(grid.items())]
+    if not rows:
+        return []
+    header_index = next((index for index, row in enumerate(rows) if _looks_like_header(row)), None)
+    header = [value.lower() for value in rows[header_index]] if header_index is not None else []
+    start = header_index + 1 if header_index is not None else 0
+    output: list[ParsedRow] = []
+    for row in rows[start:]:
+        if not any(_looks_like_date(value) for value in row):
+            continue
+        parsed = _parse_row(row, header, page=table.page)
+        if parsed is not None:
+            output.append(parsed)
+    return output
+
+
+def _looks_like_header(cells: list[str]) -> bool:
+    lowered = [cell.lower() for cell in cells]
+    return (
+        any(_is_date_header(cell) for cell in lowered)
+        and any(
+            any(marker in cell for marker in ("description", "narration", "details", "amount", "debit", "credit", "balance", "value", "type", "dr", "cr"))
+            for cell in lowered
+        )
+    )
+
+
+def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedRow | None:
     date_index = next((index for index, cell in enumerate(cells) if _looks_like_date(cell)), None)
     if date_index is None:
         return None
@@ -92,9 +255,11 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
     description = _clean_description(raw_description)
     if not description:
         description = cells[1] if len(cells) > 1 else ""
+    if re.search(r"\b(?:opening|closing)\s+balance\b", description, re.I):
+        return None
 
-    debit = _amount_for_headers(cells, header, ("debit", "withdraw", "outflow", "paid"))
-    credit = _amount_for_headers(cells, header, ("credit", "deposit", "inflow", "received"))
+    debit = _amount_for_headers(cells, header, ("debit", "withdraw", "outflow", "paid", " dr", "dr ", "dr", "out"))
+    credit = _amount_for_headers(cells, header, ("credit", "deposit", "inflow", "received", " cr", "cr ", "cr", "in"))
     amount_column = _amount_for_headers(cells, header, ("amount", "value", "total"))
     transaction_type = _header_value(cells, header, ("trans. type", "transaction type", "type"))
     balance_before = _amount_for_headers(cells, header, ("bal before", "balance before", "opening balance"))
@@ -108,12 +273,12 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         candidates = [value for value in candidates if value is not None]
         if amount_column is not None and amount_column > 0:
             amount = amount_column
-            direction = _direction(transaction_type or description, balance_before, balance_after)
+            direction = "out" if _is_negative_amount(" ".join(cells)) else _direction(transaction_type or description, balance_before, balance_after)
         elif not candidates:
             return None
         else:
             amount = candidates[0]
-            direction = "out" if re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", description, re.I) else "in"
+            direction = "out" if _is_negative_amount(" ".join(cells)) or re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", f"{description} {transaction_type or ''}", re.I) else "in"
 
     balance = balance_after or _last_amount_for_headers(cells, header, ("balance", "running"))
     # MoMo exports contain many numeric identifiers (account, phone, F_ID).
@@ -142,6 +307,7 @@ def _parse_row(cells: list[str], header: list[str]) -> ParsedRow | None:
         direction,
         amount,
         balance,
+        page=page,
         category_l1=category_l1,
         category_l2=category_l2,
         category_confidence=confidence,
@@ -213,7 +379,9 @@ def _header_value(cells: list[str], header: list[str], names: tuple[str, ...]) -
 def _direction(value: str, balance_before: int | None, balance_after: int | None) -> str:
     if re.search(r"debit|payment|purchase|withdraw|cash[ -]?out|airtime|bill|fee", value, re.I):
         return "out"
-    if re.search(r"credit|deposit|cash[ -]?in|receive|refund", value, re.I):
+    if re.search(r"refund|reversal", value, re.I):
+        return "out"
+    if re.search(r"credit|deposit|cash[ -]?in|receive|sale|settlement|payout", value, re.I):
         return "in"
     if balance_before is not None and balance_after is not None:
         return "out" if balance_after < balance_before else "in"
@@ -221,6 +389,8 @@ def _direction(value: str, balance_before: int | None, balance_after: int | None
 
 
 def _amount_value(value: str) -> int | None:
+    if _DATE_RE.search(value):
+        return None
     match = _AMOUNT_RE.search(value.replace(" ", ""))
     if match is None:
         return None
@@ -234,6 +404,14 @@ def _amount_value(value: str) -> int | None:
     if amount < 0 or amount.as_tuple().exponent < -2:
         return None
     return int(amount * 100) if not negative else int(abs(amount) * 100)
+
+
+def _is_negative_amount(value: str) -> bool:
+    return bool(re.search(r"(?:^|\s)-\s*(?:[A-Z]{0,4}\s*)?\d|\(\s*(?:[A-Z]{0,4}\s*)?\d", value, re.I))
+
+
+def _is_date_header(value: str) -> bool:
+    return bool(re.search(r"date|posted|settled|authorized|occurred|timestamp|\btime\b|trans", value, re.I))
 
 
 def _looks_like_date(value: str) -> bool:

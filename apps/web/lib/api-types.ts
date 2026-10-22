@@ -129,10 +129,41 @@ export type Document = {
 	period_start: string | null;
 	period_end: string | null;
 	status: DocumentStatus;
-	quality_flags: Record<string, unknown>;
-	created_at: string;
+  quality_flags: Record<string, unknown>;
+  created_at: string;
+  transaction_count?: number;
+  money_in_pesewas?: number;
+  money_out_pesewas?: number;
 	page_count?: number | null;
 	financial_statements?: FinancialStatement[];
+};
+
+export type AgentReply = {
+	session_id: string;
+	answer: string;
+	cited_facts: string[];
+	proposed_action: { id: string; label: string } | null;
+	used_tools: string[];
+};
+
+export type AgentSessionSummary = {
+	id: string;
+	opened_at: string;
+	preview: string;
+	message_count: number;
+};
+
+export type AgentSessionMessage = {
+	id: string;
+	role: "owner" | "agent";
+	content: string;
+	created_at: string;
+};
+
+export type AgentSessionDetail = {
+	id: string;
+	opened_at: string;
+	messages: AgentSessionMessage[];
 };
 
 export type AppNotification = {
@@ -211,28 +242,6 @@ export type UploadTarget = {
 	upload_expires_at: string;
 };
 
-export type CounterpartyKind =
-	| "unknown"
-	| "customer"
-	| "supplier"
-	| "staff"
-	| "tax"
-	| "lender"
-	| "self";
-
-export type Counterparty = {
-	id: string;
-	business_id: string;
-	canonical_name: string;
-	display_suffix: string | null;
-	kind: CounterpartyKind;
-	first_seen: string | null;
-	last_seen: string | null;
-	txn_count: number;
-	total_in_pesewas: number;
-	total_out_pesewas: number;
-};
-
 export type Transaction = {
 	id: string;
 	occurred_on: string;
@@ -241,7 +250,6 @@ export type Transaction = {
 	fee_pesewas: number;
 	levy_pesewas: number;
 	balance_after_pesewas: number | null;
-	counterparty_raw: string | null;
 	category_l1: string | null;
 	category_l2: string | null;
 	category_source: string | null;

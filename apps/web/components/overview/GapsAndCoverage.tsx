@@ -1,33 +1,22 @@
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import Link from "next/link";
-import type { Coverage, Counterparty, Gap } from "@/lib/api-types";
-import { formatGhs, formatRatio } from "@/lib/format";
+import type { Coverage, Gap } from "@/lib/api-types";
+import { formatRatio } from "@/lib/format";
 
 export function GapsAndCoverage({
 	gaps,
 	coverage,
 	allGapCount,
-	counterparties,
 	unclassifiedRatio,
 }: {
 	gaps: Gap[];
 	coverage: Coverage | undefined;
 	allGapCount: number;
-	counterparties: Counterparty[];
 	unclassifiedRatio: number | null;
 }) {
-	const top = [...counterparties]
-		.sort(
-			(a, b) =>
-				b.total_in_pesewas +
-				b.total_out_pesewas -
-				(a.total_in_pesewas + a.total_out_pesewas),
-		)
-		.slice(0, 2);
-
 	return (
-		<div className="grid gap-[52px] grid-cols-1 lg:grid-cols-[1.3fr_1fr_1fr]">
+		<div className="grid gap-[52px] grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
 			<div>
 				<div className="text-sm font-semibold mb-1">Credit readiness gaps</div>
 				<div className="text-xs opacity-60 mb-2.5">
@@ -81,39 +70,6 @@ export function GapsAndCoverage({
 					viewBoxWidth={220}
 					height={70}
 				/>
-			</div>
-			<div>
-				<div className="text-sm font-semibold mb-3">
-					Top counterparties by value
-				</div>
-				{top.map((c) => {
-					const value = c.total_in_pesewas + c.total_out_pesewas;
-					return (
-						<div key={c.id} className="mb-3">
-							<div className="text-[13.5px] font-semibold">
-								{c.canonical_name}
-							</div>
-							<div className="text-[11.5px] opacity-60">
-								{c.kind === "unknown" ? "unclassified" : c.kind} · {c.txn_count}{" "}
-								transaction{c.txn_count === 1 ? "" : "s"}
-							</div>
-							<div className="text-[13px] font-semibold mt-0.5">
-								{formatGhs(value)}
-							</div>
-						</div>
-					);
-				})}
-				{top.length === 0 && (
-					<div className="text-[13px] opacity-60">No counterparties yet.</div>
-				)}
-				{top.length > 0 && (
-					<Link
-						href="/counterparties"
-						className="text-[13px] inline-block mt-3.5"
-					>
-						View all counterparties
-					</Link>
-				)}
 			</div>
 		</div>
 	);

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import re
 import uuid
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
@@ -14,6 +15,7 @@ from app.db import get_session
 from app.errors import AppError, file_too_large, not_found
 from app.errors import duplicate_document as duplicate_document_error
 from app.models.document import Document, Extraction
+from app.models.transaction import Transaction
 from app.models.scoring import Indicator, ReadinessScore
 from app.schemas.common import Page
 from app.schemas.document import (
@@ -34,14 +36,41 @@ from app.services.audit import write_audit_event
 from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
+logger = logging.getLogger(__name__)
+
+
+def _queue_ingest(document_id: uuid.UUID) -> None:
+	from app.workers.tasks import s1_ingest
+
+	try:
+		s1_ingest.delay(str(document_id))
+	except Exception as error:
+		logger.exception("Unable to queue document processing", extra={"document_id": str(document_id)})
+		raise AppError(
+			"PROCESSING_UNAVAILABLE",
+			"Document processing is temporarily unavailable. Please try again shortly.",
+			503,
+		) from error
 
 _SUPPORTED_MIMES = {
     "application/pdf",
     "image/jpeg",
     "image/png",
     "image/heic",
+    "image/webp",
     "text/csv",
+    "text/tab-separated-values",
+    "text/plain",
+    "application/xml",
+    "text/xml",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+_SUPPORTED_EXTENSIONS = {
+    ".pdf", ".jpg", ".jpeg", ".png", ".heic", ".webp", ".csv", ".tsv", ".txt",
+    ".xlsx", ".xlsm", ".xls", ".ods", ".docx", ".xml",
 }
 
 
@@ -147,7 +176,9 @@ async def create_document(
     settings: Settings = Depends(get_settings),
     storage: StorageBackend = Depends(get_storage_backend),
 ) -> DocumentUploadTarget:
-    if body.mime not in _SUPPORTED_MIMES:
+    extension = body.filename.lower().rsplit(".", maxsplit=1)
+    suffix = f".{extension[-1]}" if len(extension) == 2 else ""
+    if body.mime not in _SUPPORTED_MIMES and suffix not in _SUPPORTED_EXTENSIONS:
         from app.errors import unsupported_mime
 
         raise unsupported_mime(body.mime)
@@ -234,9 +265,7 @@ async def complete_document_upload(
 
     # Enqueue only after the document and its audit event are committed so the
     # worker cannot race the transaction and observe a missing document.
-    from app.workers.tasks import s1_ingest
-
-    s1_ingest.delay(str(document.id))
+    _queue_ingest(document.id)
     return {"status": document.status.value}
 
 
@@ -264,9 +293,7 @@ async def retry_document_processing(
     )
     await session.commit()
 
-    from app.workers.tasks import s1_ingest
-
-    s1_ingest.delay(str(document.id))
+    _queue_ingest(document.id)
     return {"status": document.status.value, "requeued": True}
 
 
@@ -280,12 +307,36 @@ async def list_documents(
 ) -> Page[DocumentSummary]:
     base_query = select(Document).where(Document.business_id == business_id, Document.deleted_at.is_(None))
 
-    total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
+    document_total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
     rows = await session.scalars(
         base_query.order_by(Document.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
-    items = [DocumentSummary.model_validate(row) for row in rows]
-    return Page(items=items, total=total or 0, page=page, page_size=page_size)
+    documents = list(rows)
+    document_ids = [document.id for document in documents]
+    transaction_rows = []
+    if document_ids:
+        transaction_rows = (
+            await session.execute(
+                select(
+                    Transaction.document_id,
+                    Transaction.direction,
+                    func.count(),
+                    func.coalesce(func.sum(Transaction.amount_pesewas), 0),
+                )
+                .where(Transaction.document_id.in_(document_ids))
+                .group_by(Transaction.document_id, Transaction.direction)
+            )
+        ).all()
+    aggregates: dict[uuid.UUID, dict[str, int]] = {}
+    for document_id, direction, count, amount_total in transaction_rows:
+        summary = aggregates.setdefault(document_id, {"transaction_count": 0, "money_in_pesewas": 0, "money_out_pesewas": 0})
+        summary["transaction_count"] += int(count)
+        summary["money_in_pesewas" if direction.value == "in" else "money_out_pesewas"] += int(amount_total or 0)
+    items = [
+        DocumentSummary.model_validate(document).model_copy(update=aggregates.get(document.id, {}))
+        for document in documents
+    ]
+    return Page(items=items, total=document_total or 0, page=page, page_size=page_size)
 
 
 @router.get("/v1/documents/{document_id}", response_model=DocumentDetail)

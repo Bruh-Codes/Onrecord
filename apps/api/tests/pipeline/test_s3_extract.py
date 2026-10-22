@@ -1,4 +1,5 @@
 from app.pipeline.s3_extract import parse_statement
+from app.services.document_processing import DocumentCell, DocumentTable
 
 
 def test_parse_statement_table_with_debit_credit_and_balance():
@@ -19,6 +20,34 @@ def test_parse_statement_table_with_debit_credit_and_balance():
     assert rows[1].direction == "out"
     assert rows[1].amount_pesewas == 30_050
     assert rows[1].balance_after_pesewas == 94_950
+
+
+def test_parse_xlsx_style_table_after_account_summary():
+    values = [
+        ["Account Summary", "", "", "", "", ""],
+        ["Opening Balance:", "5200", "", "", "", ""],
+        ["Closing Balance:", "9480", "", "", "", ""],
+        ["", "", "", "", "", ""],
+        ["Date", "Description", "Reference / Remarks", "Debit (-)", "Credit (+)", "Balance"],
+        ["01-Sep-2026", "Opening Balance", "", "", "", "5200"],
+        ["04-Sep-2026", "POS/MAXMART/ACCRA", "Visa Debit Card Purchase", "450", "", "5950"],
+        ["07-Sep-2026", "MMT/MTN MoMo/024XXXXX", "Mobile Money Wallet Cashout", "2000", "", "10150"],
+    ]
+    cells = tuple(
+        DocumentCell(row, column, value, 1, None)
+        for row, values_row in enumerate(values)
+        for column, value in enumerate(values_row)
+    )
+    table = DocumentTable(page=1, row_count=len(values), column_count=6, cells=cells)
+
+    rows, error = parse_statement("", [table])
+
+    assert error is None
+    assert len(rows) == 2
+    assert [(row.direction, row.amount_pesewas, row.balance_after_pesewas) for row in rows] == [
+        ("out", 45_000, 595_000),
+        ("out", 200_000, 1_015_000),
+    ]
 
 
 def test_rule_categorises_common_operating_outflows():

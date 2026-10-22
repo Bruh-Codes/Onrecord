@@ -221,7 +221,7 @@ export function FarmEntryForm({
 						{sourceRows.map((row) => (
 							<option value={row.id} key={row.id}>
 								{row.occurred_on} · {farmMoney(row.amount_pesewas)} ·{" "}
-								{row.counterparty_raw ?? row.category_l1}
+								{row.category_l1 ?? row.direction}
 							</option>
 						))}
 					</select>

@@ -15,15 +15,26 @@ work are summarized below and tracked in `../../ROADMAP.md`.
 
 ### Current processing status
 
-The Celery task `ingest_document.s1` reads uploads with Docling and stores its
-lossless `DoclingDocument` JSON. Bank/MoMo tables follow the transaction parser.
-Financial statements retain every printed line item and period value in a
-dynamic statement shape, with page/bounding-box provenance; unfamiliar labels
-are not dropped. Accounting equations are checked deterministically. An
-optional OpenAI pass may classify statement type, sections, hierarchy, totals,
-and canonical concepts, but receives no amounts and cannot change extracted
-values. Ambiguous documents remain
-classified rather than being given invented values.
+The Celery task `ingest_document.s1` first runs the provider-neutral
+`DocumentProcessor`. CSV/TSV/TXT and XLSX/XLSM files are normalized natively;
+PDFs, images, and office documents use Docling as a layout adapter. Both paths
+produce the same lossless text/table representation, while the original
+Docling/layout JSON or workbook rows remain stored for provenance. Bank/MoMo
+tables then follow the transaction parser. Financial statements retain every
+printed line item and period value in a dynamic statement shape, with
+page/bounding-box provenance; unfamiliar labels are not dropped. When a
+specialized parser cannot confidently understand a financial record, the
+normalized rows/text are still captured and flagged for review instead of
+being discarded or turned into invented values. Accounting equations are
+checked deterministically. An optional OpenAI pass may classify statement type,
+sections, hierarchy, totals, and canonical concepts, but receives no amounts
+and cannot change extracted values. Ambiguous documents remain reviewable
+instead of being given invented values.
+
+See [`../../PIPELINE.md#document-capture-and-classification-set-and-forget`](../../PIPELINE.md#document-capture-and-classification-set-and-forget)
+for the end-to-end capture/classification diagram, format routing table, and
+non-financial rejection behaviour. S2 classification uses heuristics first, then
+an optional LLM pass (`s2_classify_ai.py`) when confidence is below 0.90.
 
 In Railway, API and worker must use the same S3-compatible `STORAGE_*` settings;
 local-disk storage is not shared between services. Keep the worker at
@@ -49,6 +60,48 @@ responses are left unclassified. It never receives transaction amounts,
 balances, dates, or account identifiers, and it cannot alter extracted facts.
 Re-running recompute after enabling an LLM provider applies the model to
 existing unresolved transactions as well as newly ingested documents.
+
+### Ona (owner assistant)
+
+Ona is the read-only chat assistant in the web app (`AgentDock`). It answers
+questions about the signed-in owner's business using a server-built snapshot
+(readiness, gaps, documents, transactions, indicators, and related aggregates)
+and, for general SME/finance topics, **server-side web search** before the LLM
+call. Groq models (including `openai/gpt-oss-120b`) do not browse the web
+themselves; configure a search API key for production-quality answers.
+
+Implementation: `app/services/ona.py`, `app/services/ona_web.py`, routes in
+`app/api/routers/agent.py`.
+
+```
+POST /v1/businesses/{business_id}/agent/messages
+     {message, session_id?} → {session_id, answer, cited_facts, proposed_action?}
+
+POST /v1/businesses/{business_id}/agent/actions/{proposal_id}/confirm
+     → runs owner-confirmed recompute or document retry
+```
+
+**Environment (API service only — never expose in `apps/web`):**
+
+| Variable | Required | Purpose |
+| -------- | -------- | ------- |
+| `LLM_PROVIDER` | yes | `openai` or `groq` |
+| `OPENAI_API_KEY` | if openai | Pipeline + Ona when provider is OpenAI |
+| `GROQ_API_KEY` | if groq | Pipeline + Ona when provider is Groq |
+| `FINANCIAL_MAPPING_MODEL` | yes | Default model for pipeline semantic passes |
+| `ONA_MODEL` | no | Ona model; defaults to `FINANCIAL_MAPPING_MODEL`. Groq: `openai/gpt-oss-120b` |
+| `ONA_MAX_QUESTIONS_PER_HOUR` | no | Per-user rate limit (default `20`) |
+| `ONA_WEB_SEARCH_ENABLED` | no | Enable pre-LLM web fetch (default `true`) |
+| `ONA_MAX_WEB_RESULTS` | no | Max snippets per turn (default `5`) |
+| `TAVILY_API_KEY` | recommended | Primary web search provider for Ona |
+| `BRAVE_SEARCH_API_KEY` | optional | Alternative to Tavily |
+| `LLM_BASE_URL` | no | Override Responses API base URL |
+
+If web search is enabled but no Tavily/Brave key is set, Ona falls back to
+DuckDuckGo (limited). When search returns nothing, Ona is instructed not to
+invent rates, laws, or dates.
+
+Copy `apps/api/env.example` to `apps/api/.env` for a complete local template.
 
 ### Evidence review and scoring eligibility
 
@@ -113,7 +166,12 @@ LLM_PROVIDER=openai                   # openai (default) or groq
 OPENAI_API_KEY=                       # used when LLM_PROVIDER=openai
 GROQ_API_KEY=                         # used when LLM_PROVIDER=groq
 FINANCIAL_MAPPING_MODEL=gpt-5.6-luna  # select a model compatible with the provider
+ONA_MODEL=openai/gpt-oss-120b         # optional; Ona assistant (Groq example)
+ONA_WEB_SEARCH_ENABLED=true
+TAVILY_API_KEY=                       # recommended for Ona web answers on Groq
 ```
+
+See `apps/api/env.example` for all Ona and search variables.
 
 Or skip all of this and run `docker compose up` from the repo root instead —
 see the root [`README.md`](../../README.md) "Docker Compose"-which

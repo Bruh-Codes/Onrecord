@@ -134,13 +134,11 @@
     @apply bg-background text-foreground;
     margin: 0;
     font-family: var(--body-font);
-    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
   a {
     color: var(--foreground);
     text-decoration: none;
-    transition: color 0.15s ease;
   }
 
   a:hover {

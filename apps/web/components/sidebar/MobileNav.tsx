@@ -6,12 +6,14 @@ import {
 	DocumentsIcon,
 	GapsIcon,
 	HomeIcon,
+	MoneyIcon,
 	OverviewIcon,
 	ReadinessIcon,
 } from "@/components/icons";
 
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
+	{ href: "/money", label: "Money", icon: MoneyIcon },
 	{ href: "/farm", label: "Farm", icon: OverviewIcon },
 	{ href: "/overview", label: "Overview", icon: OverviewIcon },
 	{ href: "/readiness", label: "Readiness", icon: ReadinessIcon },
@@ -20,7 +22,7 @@ const ITEMS = [
 ];
 
 // Bottom tab bar for the owner journey on narrow viewports-Sidebar.tsx
-// covers the same routes (plus Counterparties/Apps/Reviewer) on md+.
+// covers the same owner routes on md+.
 // specs/10-web.md: owner routes are mobile-first, min 44px tap targets.
 export function MobileNav() {
 	const pathname = usePathname();

@@ -77,8 +77,7 @@ export default function NearlyReadyPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5 text-[13.5px] mb-2">
-                  <span className="text-foreground">✓</span>Classifying a counterparty clears many transactions at
-                  once
+                  <span className="text-foreground">✓</span>Answering open questions clarifies your business records
                 </div>
                 <div className="flex items-center gap-2.5 text-[13.5px] mb-4.5">
                   <span className="text-foreground">✓</span>Unlocks the documentation and legibility pillars

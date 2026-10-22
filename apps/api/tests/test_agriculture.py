@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.config import Settings, get_settings
 from app.models import Account, AuditEvent, Document, Extraction, Transaction
+from app.models.access import BusinessAccess
+from app.models.agriculture import Enterprise, FarmEntry
 from app.models.enums import AccountKind, CategorySource, Direction, DocStatus, Provider
 from tests.conftest import bearer_header
 
@@ -218,3 +220,15 @@ async def test_evidence_requires_completed_bytes_and_disappears_on_document_dele
     report = (await client.get(f"/v1/businesses/{bid}/farm/report", headers=headers)).json()
     assert report["totals"]["expenditures_pesewas"] == 101
     assert report["totals"]["without_evidence"] == 1
+
+
+async def test_account_deletion_removes_farm_records(client, db_ready):
+    uid, headers, bid = await business(client)
+    eid = await enterprise(client, headers, bid)
+    await post_entry(client, headers, bid, entry(eid))
+    await post_entry(client, headers, bid, entry())
+    owner = bearer_header(role="owner", user_id=uid, business_id=uuid.UUID(bid))
+    assert (await client.delete(f"/v1/businesses/{bid}", headers=owner)).status_code == 204
+    async with async_sessionmaker(db_ready)() as session:
+        for model in (FarmEntry, Enterprise, BusinessAccess):
+            assert await session.scalar(select(func.count()).select_from(model).where(model.business_id == uuid.UUID(bid))) == 0

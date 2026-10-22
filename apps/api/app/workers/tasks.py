@@ -16,8 +16,9 @@ from app.models.document import Document, Extraction
 from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
 from app.pipeline.s3_extract import ParsedRow, parse_statement
-from app.pipeline.s3_financial_statement import FinancialField, parse_financial_statement, summarize_financial_fields
-from app.pipeline.s3_invoice import ParsedInvoice, extract_invoice
+from app.pipeline.s3_financial_statement import parse_financial_statement, summarize_financial_fields
+from app.pipeline.s3_invoice import extract_invoice
+from app.pipeline.persist_extractions import persist_financial_fields, persist_invoice, transaction_quality
 from app.services.notifications import sync_business_notifications
 from app.workers.celery_app import celery_app
 
@@ -43,8 +44,9 @@ def s1_ingest(document_id: str) -> dict:
     """Read, classify, and extract a supported financial statement."""
     from app.db import engine_sync
     from app.pipeline.s2_classify import classify_document
-    from app.services.document_processing import DoclingProcessor
+    from app.services.document_processing import DocumentProcessor
     from app.services.evidence_review import allow_partial_transaction_use, review_extracted_document
+    from app.services.document_reader import get_document_reader
     from app.services.financial_mapping import get_structure_mapper
     from app.services.storage import get_storage_backend
 
@@ -57,13 +59,26 @@ def s1_ingest(document_id: str) -> dict:
         if doc.status != DocStatus.RECEIVED:
             return {"status": doc.status.value, "document_id": str(doc.id)}
 
+        reader = get_document_reader()
         try:
             payload = get_storage_backend().read_bytes(doc.storage_key)
+            processed = None
             with TemporaryDirectory() as directory:
                 source = Path(directory, _safe_filename(doc.storage_key))
                 source.write_bytes(payload)
-                processed = DoclingProcessor().process(source)
-            result = classify_document(processed.text, doc.storage_key)
+                try:
+                    processed = DocumentProcessor().process(source)
+                except Exception:
+                    # Claude reads PDFs and images itself, so a capture
+                    # failure only blocks the document when no reader exists.
+                    if reader is None:
+                        raise
+                    logger.warning("Capture failed for document_id=%s; using the AI reader only", document_id)
+            result = (
+                classify_document(processed.text, doc.storage_key, has_tables=bool(processed.tables))
+                if processed is not None
+                else None
+            )
         except Exception as exc:
             # Keep the document bytes and extracted content out of logs, but
             # retain the traceback needed to distinguish storage, model, and
@@ -72,6 +87,22 @@ def s1_ingest(document_id: str) -> dict:
             doc.status = DocStatus.FAILED
             doc.quality_flags = {**(doc.quality_flags or {}), "processing_error": type(exc).__name__}
             session.commit()
+            sync_business_notifications(session, doc.business_id)
+            session.commit()
+            return {"status": doc.status.value, "document_id": str(doc.id)}
+
+        if reader is not None and not _has_specialised_parser(result):
+            from app.pipeline.s3_ai_ingest_task import try_ai_ingest
+
+            if try_ai_ingest(session, doc, reader, payload, processed):
+                sync_business_notifications(session, doc.business_id)
+                session.commit()
+                if doc.status == DocStatus.EXTRACTED:
+                    recompute.delay(str(doc.business_id))
+                return {"status": doc.status.value, "document_id": str(doc.id), "reader": "claude"}
+        if processed is None or result is None:
+            doc.status = DocStatus.FAILED
+            doc.quality_flags = {**(doc.quality_flags or {}), "processing_error": "capture_failed"}
             sync_business_notifications(session, doc.business_id)
             session.commit()
             return {"status": doc.status.value, "document_id": str(doc.id)}
@@ -85,8 +116,14 @@ def s1_ingest(document_id: str) -> dict:
         doc.period_end = result.period_end
         doc.quality_flags = {
             **(doc.quality_flags or {}),
-            "processor": "docling",
+            # Keep the original scalar flag for existing consumers and add
+            # the full adapter chain for the new capture architecture.
+            "processor": processed.methods[0] if processed.methods else "unknown",
+            "processor_methods": list(processed.methods),
+            "processor_warnings": list(processed.warnings),
             "classification_reason": result.reason,
+            "classification_classifier": result.classifier,
+            "classification_category": result.category,
             "supported": result.supported,
         }
         if result.supported and doc.doc_type in {
@@ -94,10 +131,12 @@ def s1_ingest(document_id: str) -> dict:
             DocType.MOMO_STATEMENT,
             DocType.MOMO_MERCHANT_STATEMENT,
         }:
-            parsed_rows, extraction_error = parse_statement(processed.text)
+            parsed_rows, extraction_error = parse_statement(processed.text, processed.tables)
             if extraction_error:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = extraction_error
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
@@ -110,20 +149,20 @@ def s1_ingest(document_id: str) -> dict:
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_rows": 0}
             _persist_transactions(session, doc, processed.text, parsed_rows)
             doc.status = DocStatus.EXTRACTED
-            transaction_quality = _transaction_quality(parsed_rows)
-            doc.quality_flags["transaction_quality"] = transaction_quality
+            quality = transaction_quality(parsed_rows)
+            doc.quality_flags["transaction_quality"] = quality
             review = review_extracted_document(
                 doc_type=doc.doc_type.value if doc.doc_type else None,
                 page_count=doc.page_count,
                 extracted_text=processed.text,
                 row_count=len(parsed_rows),
-                review_context=transaction_quality,
+                review_context=quality,
             )
             _record_evidence_review(doc, allow_partial_transaction_use(
                 review,
                 row_count=len(parsed_rows),
-                rows_missing_balance=transaction_quality["rows_missing_balance"],
-                rows_with_description_artifacts=transaction_quality["rows_with_description_artifacts"],
+                rows_missing_balance=quality["rows_missing_balance"],
+                rows_with_description_artifacts=quality["rows_with_description_artifacts"],
             ))
         elif result.supported and doc.doc_type == DocType.FINANCIAL_STATEMENT:
             fields, extraction_error = parse_financial_statement(
@@ -132,8 +171,10 @@ def s1_ingest(document_id: str) -> dict:
                 structure_mapper=get_structure_mapper(),
             )
             if extraction_error:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = extraction_error
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value if doc.doc_type else None,
                     page_count=doc.page_count,
@@ -144,7 +185,7 @@ def s1_ingest(document_id: str) -> dict:
                 sync_business_notifications(session, doc.business_id)
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
-            _persist_financial_fields(session, doc, fields)
+            persist_financial_fields(session, doc, fields)
             summaries = summarize_financial_fields(processed.text, fields)
             doc.quality_flags["financial_statements"] = [asdict(summary) for summary in summaries]
             doc.quality_flags["financial_statement_values"] = len(fields)
@@ -172,8 +213,10 @@ def s1_ingest(document_id: str) -> dict:
         elif result.supported and doc.doc_type in {DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED}:
             invoice = extract_invoice(processed)
             if invoice is None:
-                doc.status = DocStatus.CLASSIFIED
+                _persist_raw_capture(session, doc, processed)
+                doc.status = DocStatus.EXTRACTED
                 doc.quality_flags["extraction_error"] = "Invoice model extraction was unavailable or invalid."
+                doc.quality_flags["capture"] = _capture_summary(processed)
                 _record_evidence_review(doc, review_extracted_document(
                     doc_type=doc.doc_type.value,
                     page_count=doc.page_count,
@@ -184,7 +227,7 @@ def s1_ingest(document_id: str) -> dict:
                 sync_business_notifications(session, doc.business_id)
                 session.commit()
                 return {"status": doc.status.value, "document_id": str(doc.id), "extracted_fields": 0}
-            _persist_invoice(session, doc, invoice)
+            persist_invoice(session, doc, invoice)
             doc.quality_flags["invoice"] = {
                 "canonical_fields": {field.key: field.value for field in invoice.fields},
                 "extra_fields": invoice.extra_fields,
@@ -205,13 +248,90 @@ def s1_ingest(document_id: str) -> dict:
             ))
         else:
             if result.supported:
-                doc.status = DocStatus.CLASSIFIED
-                _record_evidence_review(doc, review_extracted_document(
-                    doc_type=doc.doc_type.value if doc.doc_type else None,
-                    page_count=doc.page_count,
-                    extracted_text=processed.text,
-                    extraction_error="Document type is not supported for evidence scoring.",
-                ))
+                from app.services.universal_extraction import get_universal_extractor
+
+                universal = get_universal_extractor()
+                interpretation = universal.extract(processed.text, processed.tables) if universal else None
+                if interpretation:
+                    doc.quality_flags["universal_extraction"] = {
+                        "doc_type": interpretation.doc_type.value,
+                        "confidence": interpretation.confidence,
+                        "transaction_count": len(interpretation.rows),
+                        "findings": list(interpretation.findings),
+                    }
+                transaction_doc_types = {
+                    DocType.BANK_STATEMENT,
+                    DocType.MOMO_STATEMENT,
+                    DocType.MOMO_MERCHANT_STATEMENT,
+                }
+                if (
+                    interpretation
+                    and interpretation.rows
+                    and doc.doc_type in transaction_doc_types
+                    and interpretation.doc_type in transaction_doc_types
+                ):
+                    _persist_transactions(session, doc, processed.text, list(interpretation.rows))
+                    doc.status = DocStatus.EXTRACTED
+                    _record_evidence_review(doc, review_extracted_document(
+                        doc_type=doc.doc_type.value if doc.doc_type else None,
+                        page_count=doc.page_count,
+                        extracted_text=processed.text,
+                        row_count=len(interpretation.rows),
+                        review_context={
+                            "capture_methods": list(processed.methods),
+                            "universal_extraction": True,
+                            "mapping_confidence": interpretation.confidence,
+                            "mapping_findings": list(interpretation.findings),
+                        },
+                    ))
+                else:
+                    # Keep the existing table-only mapper as a fallback while the
+                    # universal layer is unavailable or cannot find transactions.
+                    from app.services.ledger_mapping import get_ledger_mapper
+
+                    mapper = get_ledger_mapper()
+                    mapping = (
+                        mapper.map_tables(processed.tables)
+                        if mapper and doc.doc_type in transaction_doc_types
+                        else None
+                    )
+                    if mapping and mapping.rows:
+                        _persist_transactions(session, doc, processed.text, list(mapping.rows))
+                        doc.quality_flags["model_ledger_mapping"] = {
+                            "confidence": mapping.confidence,
+                            "transaction_count": len(mapping.rows),
+                            "findings": list(mapping.findings),
+                        }
+                        doc.status = DocStatus.EXTRACTED
+                        _record_evidence_review(doc, review_extracted_document(
+                            doc_type=doc.doc_type.value if doc.doc_type else None,
+                            page_count=doc.page_count,
+                            extracted_text=processed.text,
+                            row_count=len(mapping.rows),
+                            review_context={
+                                "capture_methods": list(processed.methods),
+                                "model_ledger_mapping": True,
+                                "mapping_confidence": mapping.confidence,
+                                "mapping_findings": list(mapping.findings),
+                            },
+                        ))
+                    else:
+                        _persist_raw_capture(session, doc, processed)
+                        doc.quality_flags["capture"] = _capture_summary(processed)
+                        doc.quality_flags["interpretation_pending"] = True
+                        doc.status = DocStatus.EXTRACTED
+                        _record_evidence_review(doc, review_extracted_document(
+                            doc_type=doc.doc_type.value if doc.doc_type else None,
+                            page_count=doc.page_count,
+                            extracted_text=processed.text,
+                            row_count=sum(table.row_count for table in processed.tables),
+                            review_context={
+                                "capture_methods": list(processed.methods),
+                                "interpretation_pending": True,
+                                "raw_capture": True,
+                                "specialized_interpreter": False,
+                            },
+                        ))
             else:
                 # Unsupported files are not evidence-review cases. Keep the
                 # result clear so the UI can explain that the file was not
@@ -226,6 +346,50 @@ def s1_ingest(document_id: str) -> dict:
         if doc.status == DocStatus.EXTRACTED:
             recompute.delay(str(doc.business_id))
         return {"status": doc.status.value, "document_id": str(doc.id), "supported": result.supported}
+
+
+def _has_specialised_parser(result) -> bool:
+    """Financial statements and invoices keep their dedicated extractors."""
+    return bool(result and result.supported and result.doc_type in {
+        DocType.FINANCIAL_STATEMENT, DocType.INVOICE_ISSUED, DocType.INVOICE_RECEIVED,
+    })
+
+
+def _capture_summary(processed) -> dict[str, object]:
+    return {
+        "methods": list(processed.methods),
+        "table_count": len(processed.tables),
+        "row_count": sum(table.row_count for table in processed.tables),
+        "text_char_count": len(processed.text),
+        "warnings": list(processed.warnings),
+    }
+
+
+def _persist_raw_capture(session: Session, doc: Document, processed) -> None:
+    """Persist the normalized source even when semantic extraction is unsure."""
+    for table_index, table in enumerate(processed.tables):
+        by_row: dict[int, dict[int, str]] = {}
+        for cell in table.cells:
+            by_row.setdefault(cell.row, {})[cell.column] = cell.text
+        for row_index, values in sorted(by_row.items()):
+            cells = [values.get(column, "") for column in range(table.column_count)]
+            session.add(Extraction(
+                document_id=doc.id,
+                page=table.page,
+                field_path=f"raw.tables[{table_index}].rows[{row_index}]",
+                value_json={"cells": cells, "page": table.page, "table_index": table_index, "row_index": row_index},
+                extractor="capture:normalized_table_v1",
+                confidence=1.0,
+            ))
+    if not processed.tables and processed.text.strip():
+        session.add(Extraction(
+            document_id=doc.id,
+            page=1,
+            field_path="raw.text",
+            value_json={"text": processed.text},
+            extractor="capture:normalized_text_v1",
+            confidence=1.0,
+        ))
 
 def _record_evidence_review(doc: Document, review) -> None:
     flags = {**(doc.quality_flags or {})}
@@ -290,7 +454,7 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 direction=row.direction,
                 amount_pesewas=row.amount_pesewas,
                 balance_after_pesewas=row.balance_after_pesewas,
-                counterparty_raw=row.description or None,
+                description=row.description or None,
                 category_l1=row.category_l1,
                 category_l2=row.category_l2,
                 category_confidence=row.category_confidence,
@@ -302,81 +466,6 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 provenance={"extraction_ids": [str(extraction.id)]},
             )
         )
-
-
-def _persist_financial_fields(session: Session, doc: Document, fields: list[FinancialField]) -> None:
-    period_indexes: dict[tuple[int, str], int] = {}
-    for field in fields:
-        period_key = (field.statement_index, field.period)
-        if period_key not in period_indexes:
-            period_indexes[period_key] = len([key for key in period_indexes if key[0] == field.statement_index])
-        session.add(
-            Extraction(
-                document_id=doc.id,
-                page=field.page,
-                field_path=(
-                    f"financial_statements[{field.statement_index}].line_items[{field.line_index}]"
-                    f".values[{period_indexes[period_key]}]"
-                ),
-                value_json={
-                    "source_id": field.source_id,
-                    "label": field.label,
-                    "section": field.section,
-                    "parent_line_index": field.parent_line_index,
-                    "depth": field.depth,
-                    "is_total": field.is_total,
-                    "statement_type": field.statement_type,
-                    "period": field.period,
-                    "value_pesewas": field.value_pesewas,
-                    "raw_value": field.raw_value,
-                    "kind": "extracted",
-                    "canonical_concept": field.canonical_concept,
-                    "mapping_confidence": field.mapping_confidence,
-                    "mapping_method": field.mapping_method,
-                    "structure_confidence": field.structure_confidence,
-                    "structure_method": field.structure_method,
-                },
-                bbox=field.bbox,
-                extractor="parser:docling_financial_table_v2",
-                confidence=0.85,
-            )
-        )
-
-
-def _transaction_quality(rows: list[ParsedRow]) -> dict[str, int]:
-    return {
-        "rows_total": len(rows),
-        "rows_missing_balance": sum("balance_missing" in row.quality_flags for row in rows),
-        "rows_with_description_artifacts": sum("description_artifact" in row.quality_flags for row in rows),
-        "rows_with_truncated_descriptions": sum("description_truncated" in row.quality_flags for row in rows),
-    }
-
-
-def _persist_invoice(session: Session, doc: Document, invoice: ParsedInvoice) -> None:
-    for field in invoice.fields:
-        session.add(Extraction(
-            document_id=doc.id,
-            page=field.page,
-            field_path=f"invoice.{field.key}",
-            value_json={"value": field.value, "raw_value": field.raw_value, "source_label": field.source_label},
-            extractor="parser:docling_invoice_dynamic_v1",
-            confidence=field.confidence,
-        ))
-    for index, item in enumerate(invoice.line_items):
-        session.add(Extraction(
-            document_id=doc.id,
-            page=item.page,
-            field_path=f"invoice.line_items[{index}]",
-            value_json={
-                "description": item.description,
-                "quantity": item.quantity,
-                "unit_price_pesewas": item.unit_price_pesewas,
-                "line_total_pesewas": item.line_total_pesewas,
-                "raw": item.raw,
-            },
-            extractor="parser:docling_invoice_dynamic_v1",
-            confidence=0.80,
-        ))
 
 
 def _account_identifier(text: str, doc: Document) -> str:

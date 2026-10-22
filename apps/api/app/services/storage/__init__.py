@@ -19,6 +19,10 @@ class StorageBackend(Protocol):
         """Read an uploaded object for background processing."""
         ...
 
+    def delete_object(self, key: str) -> None:
+        """Permanently delete an uploaded object."""
+        ...
+
 
 def get_storage_backend() -> StorageBackend:
     """S3/MinIO by default; falls back to the local-dev receiver when no

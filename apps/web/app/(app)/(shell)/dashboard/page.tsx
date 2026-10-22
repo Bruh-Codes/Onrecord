@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { TodayStats } from "@/components/home/TodayStats";
+import { GoogleSheetsConnect } from "@/components/integrations/GoogleSheetsConnect";
 import { useAppState } from "@/lib/app-state";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -18,6 +20,7 @@ export default function HomePage() {
 	const { data: session } = authClient.useSession();
 	const ownerFirstName = session?.user?.name?.split(" ")[0];
 	const { businessId } = useMe();
+	const [googleSheetsConnected, setGoogleSheetsConnected] = useState(false);
 	const score = useScore(businessId);
 	const coverage = useCoverage(businessId);
 	const gaps = useGaps(businessId);
@@ -25,6 +28,20 @@ export default function HomePage() {
 	// Until the first document exists, keep the home state safe for a fresh account.
 	// This also avoids showing seeded actions if the documents request is unavailable.
 	const isNewUser = !documents.data || documents.data.total === 0;
+
+	useEffect(() => {
+		let active = true;
+		void fetch("/api/integrations/google-sheets/status")
+			.then(async (response) => {
+				if (!response.ok) return;
+				const data = (await response.json()) as { connected?: boolean };
+				if (active) setGoogleSheetsConnected(Boolean(data.connected));
+			})
+			.catch(() => undefined);
+		return () => {
+			active = false;
+		};
+	}, []);
 
 	return (
 		<div className="px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
@@ -38,10 +55,10 @@ export default function HomePage() {
 				Welcome back{ownerFirstName ? `, ${ownerFirstName}` : ""}!
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6.5">
-				Review your <Link href="/overview" className="font-semibold text-white">readiness overview</Link>, close the{" "}
-				<Link href="/nearly-ready" className="font-semibold text-white">open gaps</Link>, or add documents:{" "}
-				<Link href="/documents" className="font-semibold text-white">upload a file</Link> or{" "}
-				<Link href="/documents" className="font-semibold text-white">enter figures manually</Link>.
+				See your <Link href="/money" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>money in &amp; out</Link>, review your <Link href="/overview" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>readiness overview</Link>, close the{" "}
+				<Link href="/nearly-ready" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>open gaps</Link>, or add documents:{" "}
+				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>upload a file</Link> or{" "}
+				<Link href="/documents" className="font-semibold underline underline-offset-2" style={{ color: "var(--primary)" }}>enter figures manually</Link>.
 			</p>
 
 			<Link href="/farm" className="block rounded-2xl border border-border bg-card p-5 mb-6">
@@ -49,7 +66,10 @@ export default function HomePage() {
 				<span className="block text-sm text-muted-foreground mt-1">Record farm income and costs, compare enterprises, and prepare a financial report.</span>
 			</Link>
 
-			<GetStartedCard hasData={!isNewUser} />
+			<GetStartedCard
+				hasData={!isNewUser}
+				googleSheets={googleSheetsConnected ? <GoogleSheetsConnect /> : undefined}
+			/>
 
 			<TodayStats
 				coverage={coverage.data}

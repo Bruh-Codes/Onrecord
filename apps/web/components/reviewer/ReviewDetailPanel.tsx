@@ -34,7 +34,6 @@ export function ReviewDetailPanel({
 				Classify transaction
 			</div>
 			<div className="rounded-2xl bg-muted p-4 mb-4">
-				<div className="text-[13px] font-semibold mb-1">{item.counterparty_raw || "Unidentified transaction"}</div>
 				<div className="text-xs text-foreground/60">{item.occurred_on} · {item.direction === "in" ? "Inflow" : "Outflow"} · {item.document_filename}</div>
 				{item.document_type && <div className="mt-1 text-[11px] text-foreground/45">Source type: {item.document_type.replaceAll("_", " ")}</div>}
 				<div className="font-display text-2xl mt-3">{formatGhs(item.amount_pesewas)}</div>

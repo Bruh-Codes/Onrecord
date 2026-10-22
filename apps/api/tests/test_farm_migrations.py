@@ -28,7 +28,7 @@ def test_farm_migrations_preserve_legacy_records(monkeypatch):
     monkeypatch.setattr("app.config.get_settings", lambda: settings)
     config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
     config.set_main_option("script_location", str(Path(__file__).parents[1] / "alembic"))
-    command.upgrade(config, "f1a7b9c3d5e7")
+    command.upgrade(config, "a2b4c6d8e0f1")
     bid, uid, audit = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     with engine.begin() as connection:
         connection.execute(text('INSERT INTO business (id, legal_name, entity_type) VALUES (:id, :name, :type)'), {"id": bid, "name": "Legacy farm sentinel", "type": "SOLE_PROP"})

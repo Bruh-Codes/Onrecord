@@ -1,11 +1,9 @@
 import {
 	CASH_BUFFER_DAYS_BY_RESOLVED_COUNT,
-	DEMO_TRANSACTIONS,
 	SCORE_BY_RESOLVED_COUNT,
 	UNCLASSIFIED_VALUE_BY_RESOLVED_COUNT,
 } from "./mock-data";
 import type {
-	Counterparty,
 	DocumentItem,
 	Gap,
 	ReviewItem,
@@ -57,14 +55,6 @@ const ALL_GAPS: Gap[] = [
 		detail: "MoMo history missing 3 Feb – 3 May.",
 		canAskAssistant: false,
 		canUpload: true,
-	},
-	{
-		key: "adomVentures",
-		severity: "major",
-		title: "Unclassified counterparty: Adom Ventures",
-		detail: "GH¢12,400 across 34 transactions, last 6 months.",
-		canAskAssistant: true,
-		canUpload: false,
 	},
 	{
 		key: "oneOff",
@@ -131,60 +121,6 @@ export function getDocumentItems(state: AppState): DocumentItem[] {
 	];
 }
 
-export function getCounterparties(state: AppState): Counterparty[] {
-	return [
-		{
-			name: "Adom Ventures",
-			txns: "34 transactions",
-			value: "GH¢12,400",
-			classified: state.resolved.adomVentures,
-			role: state.resolved.adomVentures
-				? (state.adomRole ?? "")
-				: "Unclassified",
-			needsAction: !state.resolved.adomVentures,
-			demoTxns: DEMO_TRANSACTIONS["Adom Ventures"],
-		},
-		{
-			name: "Nana Yeboah",
-			txns: "1 transaction",
-			value: "GH¢18,000",
-			classified: state.resolved.oneOff,
-			role: state.resolved.oneOff
-				? (state.oneOffRole ?? "")
-				: "Unclassified one-off",
-			needsAction: !state.resolved.oneOff,
-			demoTxns: DEMO_TRANSACTIONS["Nana Yeboah"],
-		},
-		{
-			name: "Kofi Mensah Enterprise",
-			txns: "21 transactions",
-			value: "GH¢9,800",
-			classified: true,
-			role: "Customer",
-			needsAction: false,
-			demoTxns: [],
-		},
-		{
-			name: "ECG (Electricity Company of Ghana)",
-			txns: "12 transactions",
-			value: "GH¢2,640",
-			classified: true,
-			role: "Utility / opex",
-			needsAction: false,
-			demoTxns: [],
-		},
-		{
-			name: "GRA",
-			txns: "6 transactions",
-			value: "GH¢4,150",
-			classified: true,
-			role: "Tax",
-			needsAction: false,
-			demoTxns: [],
-		},
-	];
-}
-
 const REVIEW_BASE: {
 	id: number;
 	doc: string;
@@ -224,7 +160,7 @@ const REVIEW_BASE: {
 	{
 		id: 4,
 		doc: "GCB statement-Jan 2026.pdf",
-		field: "counterparty_raw",
+		field: "transaction_reference",
 		confidencePct: 70,
 		note: "Resolved by reviewer on prior pass.",
 		value: "KOFI MENSAH ENT",

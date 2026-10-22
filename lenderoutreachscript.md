@@ -45,21 +45,27 @@
 
 **Watch for:** This is where trust is won or lost. If they light up here, T4 is your strongest signal. If they say "our team/all this is our value," capture that.
 
-### Step 4 — Work through the T-questions (10 min)
-Use the scorecard in `lendervalidationexperiment.md` §3. Ask explicitly, get a **yes/no plus the reason**:
+### Step 4 — Understand the real application process (5 min)
+Do not pitch the product yet. The purpose is to learn where SME loan applications stall, fail, and create manual work. Ask these five questions:
 
-- **T1:** "Off the record — would your officers ever *use* a file from a third-party tool like this as useful input?"
-- **T2:** "Do you accept a MoMo-only file, or do you always need bank statements?"
-- **T3:** "Would balance-checked, provenance-backed numbers genuinely cut your verification time?"
-- **T4:** "Is fraud-screening like this something you'd value or pay for?"
-- **T5:** "If yes — would you pay a per-file fee, or a seat subscription? Roughly what could that be worth?"
-- **T6:** "What's your read on a 'credit readiness score' — useful, risky, or a regulatory red flag?" (Get their *real* institutional take.)
-- **T8 (the hard truth):** "Would your team accept this file as-is, or still demand original statements from the source?"
-- **T9:** "If this existed and was solid, would you seriously consider routing ~20 SMEs through a real pilot?"
+1. "When an SME first applies for a loan, what documents and information do you require before assessment can begin?"
+2. "Which of those requirements do applicants most often fail to provide correctly or completely?"
+3. "When an application has missing, unclear, or inconsistent information, what happens next — and who spends time resolving it?"
+4. "What usually causes an SME loan application to be delayed or rejected, apart from the applicant's ability to repay?"
+5. "If you could remove one frustrating manual step from reviewing SME applications, what would it be?"
 
-### Step 5 — Probe the two hard truths (don't skip)
-1. **Override trust:** "If our file flagged a transaction as suspect, would your team trust that, or investigate from scratch anyway?"
-2. **Liability:** "Real talk — if a file we processed turned out to be fraudulent, who would you expect to own that risk — us or you?"
+Ask one follow-up only, when appropriate:
+
+> "Can you walk me through the most recent example?"
+
+This turns a policy answer (for example, "we need statements") into operational evidence (for example, "we spend two days reconciling MoMo screenshots"). Listen for incomplete records, re-keying, reconciliations, suspicious documents, repeated applicant follow-ups, and unclear business cash flow.
+
+### Step 5 — Show the concept only after the pain is clear
+If they describe a problem your concept could address, show the relevant part of the mock file and ask:
+
+> "Would this have helped in that case?"
+
+Avoid opening with AI, scores, pricing, balance-checking, or fraud screening. Their description of a recent, costly problem is stronger validation than a hypothetical promise to use or pay for a tool.
 
 ### Step 6 — Close (1 min)
 > "This has been genuinely useful — thank you. Two quick asks: First, is there anyone else in your institution or network you'd recommend we speak to? Second, if this existed in ~[timeframe], would you be open to us circling back? We'll make sure to share our findings — it's only fair since you helped shape them."
@@ -80,9 +86,13 @@ Use the scorecard in `lendervalidationexperiment.md` §3. Ask explicitly, get a 
 
 ## Part 4 — Same-day logging (the discipline)
 
-Within **2 hours** of each meeting, log into the scorecard (`lendervalidationexperiment.md` §7 for the green/yellow/red signals):
+Within **2 hours** of each meeting, log:
 
-- T1–T9 answers (yes/no + 1-line reason)
+- The documents and information they require
+- The requirements applicants most often provide poorly, incorrectly, or not at all
+- What happens when there is a gap, who handles it, and the approximate time involved
+- Their stated reasons for delays and rejections
+- The one manual step they would remove
 - Any **specific pain quote** ("we spend a day per file re-keying") — these are gold for the final pitch
 - Any **objection verbatim** (these are what we must design around)
 - A 1-line overall read: green / yellow / red

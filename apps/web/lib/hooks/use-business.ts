@@ -20,7 +20,6 @@ import type {
   Indicator,
   Me,
   ReadinessScore,
-  Counterparty,
   Transaction,
   TransactionReviewItem,
   AppNotification,
@@ -87,14 +86,6 @@ export function useGaps(businessId: string | null) {
   });
 }
 
-export function useCounterparties(businessId: string | null) {
-  return useQuery<{ items: Counterparty[]; total: number }>({
-    queryKey: ["counterparties", businessId],
-    queryFn: () => api.listCounterparties(businessId!),
-    enabled: !!businessId,
-  });
-}
-
 export function useDocuments(businessId: string | null) {
   return useQuery<{ items: Document[]; total: number }>({
     queryKey: ["documents", businessId],
@@ -120,7 +111,6 @@ export function useDeleteDocument(businessId: string | null) {
         qc.invalidateQueries({ queryKey: ["farm-entries", businessId] }),
         qc.invalidateQueries({ queryKey: ["farm-documents", businessId] }),
         qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
-        qc.invalidateQueries({ queryKey: ["counterparties", businessId] }),
         qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
         qc.invalidateQueries({ queryKey: ["score", businessId] }),
         qc.invalidateQueries({ queryKey: ["coverage", businessId] }),

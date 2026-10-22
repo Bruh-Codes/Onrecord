@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-09-15",
+  "seed": 20260915,
+  "synthetic": true,
+  "purpose": "Parser and financial-data detection test fixtures",
+  "file_count": 20,
+  "formats": {
+    ".xml": 4,
+    ".pdf": 4,
+    ".heic": 4,
+    ".csv": 4,
+    ".xlsx": 4
+  },
+  "heic_codec_note": "True HEIC when pillow-heif is installed; otherwise .heic files contain OCR-friendly JPEG fallback bytes so generation still completes offline.",
+  "files": [
+    {
+      "path": "fixtures\\xml\\01_northstar_bank_statement.xml",
+      "format": "XML",
+      "shape": "Northstar bank XML export with nested transactions"
+    },
+    {
+      "path": "fixtures\\xml\\02_payflow_payout_report.xml",
+      "format": "XML",
+      "shape": "PayFlow payout XML with fee and net fields"
+    },
+    {
+      "path": "fixtures\\xml\\03_ledger_trial_balance.xml",
+      "format": "XML",
+      "shape": "Cedar Analytics general-ledger trial balance"
+    },
+    {
+      "path": "fixtures\\xml\\04_checkout_activity.xml",
+      "format": "XML",
+      "shape": "Checkout activity XML with sales and refunds"
+    },
+    {
+      "path": "fixtures\\pdf\\01_northstar_checking.pdf",
+      "format": "PDF",
+      "shape": "Landscape bank statement with running balances"
+    },
+    {
+      "path": "fixtures\\pdf\\02_cedar_income_statement.pdf",
+      "format": "PDF",
+      "shape": "Income statement with grouped sections"
+    },
+    {
+      "path": "fixtures\\pdf\\03_harbor_brokerage.pdf",
+      "format": "PDF",
+      "shape": "Brokerage statement with holdings and market values"
+    },
+    {
+      "path": "fixtures\\pdf\\04_pine_payroll_report.pdf",
+      "format": "PDF",
+      "shape": "Payroll funding report with employee and tax totals"
+    },
+    {
+      "path": "fixtures\\csv\\01_bank_transactions.csv",
+      "format": "CSV",
+      "shape": "Bank transaction export with posted dates and signed amounts"
+    },
+    {
+      "path": "fixtures\\csv\\02_card_activity.csv",
+      "format": "CSV",
+      "shape": "Card processor export with ISO timestamps and categories"
+    },
+    {
+      "path": "fixtures\\csv\\03_invoice_aging.csv",
+      "format": "CSV",
+      "shape": "Accounts-receivable aging with bucketed balances"
+    },
+    {
+      "path": "fixtures\\csv\\04_cash_flow.csv",
+      "format": "CSV",
+      "shape": "Monthly cash-flow export with signed activity columns"
+    },
+    {
+      "path": "fixtures\\xlsx\\01_cedar_profit_and_loss.xlsx",
+      "format": "XLSX",
+      "shape": "Profit and Loss workbook with a distinct financial layout"
+    },
+    {
+      "path": "fixtures\\xlsx\\02_harbor_balance_sheet.xlsx",
+      "format": "XLSX",
+      "shape": "Balance Sheet workbook with a distinct financial layout"
+    },
+    {
+      "path": "fixtures\\xlsx\\03_budget_vs_actual.xlsx",
+      "format": "XLSX",
+      "shape": "Budget vs Actual workbook with a distinct financial layout"
+    },
+    {
+      "path": "fixtures\\xlsx\\04_transaction_register.xlsx",
+      "format": "XLSX",
+      "shape": "Transaction Register workbook with a distinct financial layout"
+    },
+    {
+      "path": "fixtures\\heic\\01_mobile_bank_capture.heic",
+      "format": "HEIC",
+      "shape": "Mobile-style image capture of a Northstar Bank statement"
+    },
+    {
+      "path": "fixtures\\heic\\02_receipt_batch_capture.heic",
+      "format": "HEIC",
+      "shape": "Mobile-style image capture of a Harbor Card statement"
+    },
+    {
+      "path": "fixtures\\heic\\03_brokerage_snapshot.heic",
+      "format": "HEIC",
+      "shape": "Mobile-style image capture of a Harbor Brokerage statement"
+    },
+    {
+      "path": "fixtures\\heic\\04_payroll_remittance.heic",
+      "format": "HEIC",
+      "shape": "Mobile-style image capture of a Pine & Co. statement"
+    }
+  ]
+}

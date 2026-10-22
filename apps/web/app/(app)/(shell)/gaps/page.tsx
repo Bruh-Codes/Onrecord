@@ -28,7 +28,7 @@ export default function GapsPage() {
 {loading ? <div aria-busy="true" aria-label="Loading gaps" className="mb-6"><Skeleton className="h-4 w-3/4 mb-5" /><GapRowSkeleton /><GapRowSkeleton /><GapRowSkeleton /></div> : <p className="text-sm opacity-70 m-0 mb-6">
 				{loading
 					? "Loading…"
-					: `${openGaps.length} open-resolve them here, in Documents, in Counterparties, or by talking to the assistant.`}
+					: `${openGaps.length} open-resolve them here, in Documents, or by talking to the assistant.`}
 			</p>}
 
 			{!loading && openGaps.map((gap) => (

@@ -14,8 +14,6 @@ import type { GapKey, ReviewStatus, RulePackName } from "./types";
 type AppActions = {
 	resolveGap: (key: GapKey) => void;
 	undoGap: (key: GapKey) => void;
-	classifyAdom: (role: string) => void;
-	undoAdom: () => void;
 	classifyOneOff: (role: string) => void;
 	undoOneOff: () => void;
 	toggleDraftMode: () => void;
@@ -39,18 +37,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 				setState((s) => ({ ...s, resolved: { ...s.resolved, [key]: true } })),
 			undoGap: (key) =>
 				setState((s) => ({ ...s, resolved: { ...s.resolved, [key]: false } })),
-			classifyAdom: (role) =>
-				setState((s) => ({
-					...s,
-					adomRole: role,
-					resolved: { ...s.resolved, adomVentures: true },
-				})),
-			undoAdom: () =>
-				setState((s) => ({
-					...s,
-					adomRole: null,
-					resolved: { ...s.resolved, adomVentures: false },
-				})),
 			classifyOneOff: (role) =>
 				setState((s) => ({
 					...s,

@@ -56,14 +56,14 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     # categorization stage was wired into the worker. Human and owner labels
     # always win and are never overwritten by rules.
     for txn in txns:
-        if re.search(r"\binternal\b", txn.counterparty_raw or "", re.I):
+        if re.search(r"\binternal\b", txn.description or "", re.I):
             txn.flags = {**(txn.flags or {}), "internal_transfer": True}
         if txn.category_source in {CategorySource.HUMAN, CategorySource.OWNER_STATED}:
             continue
         if txn.category_l1 not in (None, "unknown"):
             continue
         category_l1, category_l2, confidence = categorize_transaction(
-            txn.counterparty_raw or "", None, txn.direction.value
+            txn.description or "", None, txn.direction.value
         )
         if category_l1 is not None:
             txn.category_l1 = category_l1
@@ -152,7 +152,7 @@ def _apply_model_categories(txns: list[Transaction]) -> None:
     for txn in txns:
         if (txn.flags or {}).get("internal_transfer") or txn.category_l1 not in (None, "unknown"):
             continue
-        label = " ".join((txn.counterparty_raw or "Unidentified transaction").split())[:300]
+        label = " ".join((txn.description or "Unidentified transaction").split())[:300]
         grouped.setdefault(label, []).append(txn)
 
     labels = list(grouped.items())

@@ -111,12 +111,16 @@ PDF, JPEG, PNG, HEIC, CSV, XLSX. Max 25 MB per file, 50 files per batch.
 
 ### Current implementation note
 
-`app/workers/tasks.py` runs Docling before classification. Docling supplies OCR,
-layout, and table-aware Markdown; `app/pipeline/s2_classify.py` applies
-explainable keyword and filename rules. MoMo exports whose OCR header is unclear
-are recognized when the filename contains `momo` plus `statement`, `report`,
-`transaction`, or `tx` (for example `MomoStatementReport.pdf`). The
-vision-classification fallback described below is not wired yet.
+`app/workers/tasks.py` runs the provider-neutral `DocumentProcessor` before
+classification. CSV/XLSX/XML use native structured readers; PDFs, images, and
+office documents use Docling. Both paths normalize into the same text/table
+shape. `app/pipeline/s2_classify.py` applies explainable keyword and filename
+rules first, then optionally calls `app/pipeline/s2_classify_ai.py` when
+heuristic confidence is below 0.90 or the document is ambiguous. MoMo exports
+whose OCR header is unclear are recognized when the filename contains `momo`
+plus `statement`, `report`, `transaction`, or `tx` (for example
+`MomoStatementReport.pdf`). Page-image vision classification remains future work;
+the current AI pass uses extracted text and tables.
 
 Determines `doc_type`, `issuer`, `period_start`, `period_end`.
 
@@ -133,8 +137,9 @@ Determines `doc_type`, `issuer`, `period_start`, `period_end`.
 
 If pass 1 yields `doc_type_confidence >= 0.90`, stop.
 
-**Pass 2-vision classification.**
-Single call with the first page render. Structured output:
+**Pass 2-LLM classification (optional, when configured).**
+Runs when pass 1 confidence is below 0.90 or the file is ambiguous. Uses
+extracted text and table headers (not page images in the current MVP). Structured output:
 
 ```python
 class ClassificationResult(BaseModel):

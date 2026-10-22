@@ -1,0 +1,5 @@
+id,merchant_name,merchant_category,authorized_at,settled_at,currency,amount,status
+ch_10000,Cloudline Hosting,Software,2026-08-01T10:30:00-04:00,2026-08-02,USD,240.00,settled
+ch_10001,Metro Fuel,Automotive,2026-08-02T10:30:00-04:00,2026-08-03,USD,86.42,settled
+ch_10002,Oak Street Cafe,Meals,2026-08-03T10:30:00-04:00,2026-08-04,USD,42.75,settled
+ch_10003,Northstar Office,Office supplies,2026-08-04T10:30:00-04:00,2026-08-05,USD,318.09,settled

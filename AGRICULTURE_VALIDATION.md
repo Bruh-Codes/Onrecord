@@ -1,44 +1,83 @@
-# Agricultural workspace validation — 21 October 2026
+# Agricultural workspace validation — 22 October 2026
 
-Implementation branch: `feat/agricultural-finance-workspace`, based on
-`develop` at `edc4780`. Work was performed in an isolated Git worktree; the
-original checkout and its deployment environments were not changed.
+Implementation branch: `feat/agricultural-finance-workspace`, originally built
+on `develop` at `edc4780`, now merged with GitHub `develop` at `311dba9`
+(including #111 AI document ingestion, #112 Ona on Claude and #113 Money).
 
-## GitHub review context
+## Upstream integration
 
-A fresh fetch before publication found GitHub `develop` at `bba3667`, 101 commits
-ahead of the implementation's local base `edc4780`. Read-only merge analysis
-found conflicts. The checks below cover the implementation on its recorded base;
-they do not cover a merge with the newer upstream code. The draft PR requires
-reconciliation and renewed regression testing before merge/deployment. See
-[`docs/agriculture-review/README.md`](./docs/agriculture-review/README.md).
+Merging `develop` produced seven conflicts: `.env.example`, `api/main.py`,
+`routers/businesses.py`, the dashboard page, `AgentDockHost.tsx`, `Sidebar.tsx`
+and `MobileNav.tsx`. All `develop` behavior was kept, including the Google
+Sheets import (`app/api/integrations/google-sheets/*`, `components/integrations/*`,
+`lib/google-sheets*.ts`), the Money page, document review and Ona on Claude.
+Farm additions were layered on top:
 
-## Results
+- Routers: `develop`'s money/voice routers plus the agriculture/farm-options routers.
+- Navigation: Money and Farm both appear; the mobile bar now has seven tabs
+  (about 53px each at 375px, above the 44px minimum).
+- Dashboard: the farm workspace card sits above `develop`'s Get Started card
+  with its Google Sheets slot.
+- Ona: `develop`'s Claude dock is unchanged except that it is hidden on `/farm`
+  (it is not yet grounded in the farm ledger) and excluded from farm printouts.
+
+Integration fixes required by the combined code:
+
+- **Migration order.** `a126001` and `develop`'s `a2b4c6d8e0f1` both descended
+  from `f1a7b9c3d5e7`, giving two Alembic heads. `a126001` now descends from
+  `a2b4c6d8e0f1`; there is a single head (`a126002`). The migration
+  preservation test now seeds legacy data at `a2b4c6d8e0f1`.
+- **Account deletion.** `develop`'s complete account deletion did not know about
+  farm tables. It now removes `farm_entry`, `farm_cycle`, `farm_enterprise`,
+  `business_task` and `business_access` rows before the rows they reference,
+  and it requires an explicit OWNER grant instead of the JWT business claim,
+  consistent with this branch's access model. A regression test covers deleting
+  an account with farm records.
+- **Access grants in new tests.** `develop`'s document-review, Ona-tools and
+  fn-data tests created businesses as an admin and relied on the owner's JWT
+  claim. Under this branch's explicit grants, they now create the business as
+  the owner, matching how existing tests were adapted.
+- **Counterparty removal.** `develop` removed `counterparty_raw` from the
+  transaction API; the farm source-transaction picker now labels rows by
+  category, falling back to direction.
+
+## Results on the combined version
 
 | Check | Result |
 | --- | --- |
-| Complete existing + agricultural pytest suite, Python 3.12, Postgres 16 | **81 passed**, 1 skipped |
-| Separate migration-preservation test on an empty Postgres database | **1 passed** |
-| Alembic upgrade through both new revisions, repeated upgrade, metadata comparison | Passed; no schema drift |
+| Complete backend pytest suite, Python 3.12, Postgres 16, Redis | **162 passed**, 2 failed (see below) |
+| Migration preservation test on a separate empty Postgres database | **1 passed** |
+| `alembic heads` | Single head, `a126002` |
 | Bun money-entry/display tests | **2 passed**, 14 assertions |
-| Full frontend ESLint | Passed |
 | TypeScript `tsc --noEmit --incremental false` | Passed |
-| Next.js production build, `bun run build --webpack` | Passed, including all five farm routes |
-| Chromium, real Better Auth signup/session/JWKS + API + Postgres | Passed |
-| All five fictional businesses and poultry category differences in Chromium | Passed |
-| Add GHS 0.29 expense, edit to GHS 0.49, consistent insights/report | Passed; Yaw surplus became GHS 13,749.51 |
-| Printable PDF | 3 pages; edited amount, transaction references and disclosures present |
-| 390px mobile viewport | No horizontal page overflow; screenshot inspected |
-| `git diff --check`; new code modules under 500 lines | Passed |
+| Next.js production build, `bun run build --webpack` | Passed: five farm routes, Google Sheets API routes and `/money` |
+| Frontend ESLint | 6 errors, 1 warning, **all pre-existing on `develop`** (see below) |
+| Chromium browser smoke, screenshots and sample PDF | **Not re-run** on the combined version |
 
-The ordinary pytest run skips only the migration test when its separate empty
-database URL is absent. That test was run separately and passed. Both upgrades
-also succeeded from an empty database used for the browser test.
+Notes on the non-passing rows:
 
-The default Turbopack build was blocked by this execution environment's local
-compiler-port restriction, including an escalated attempt. The supported
-Webpack production build passed. No default build/deployment setting was changed
-to work around this environment-specific restriction.
+- `test_farm_migrations.py` fails by design inside the ordinary suite once its
+  database has been migrated; it refuses non-empty databases. Run on its own
+  against a fresh empty database, it passes.
+- `test_fn_data_upload.py` also fails on unmodified `develop` (`311dba9`) at the
+  same step: the local upload URL returns 404. It is not introduced by this branch.
+- ESLint on unmodified `develop` reports 9 problems (8 errors). The combined
+  version reports 7 (6 errors), all in files owned by `develop`
+  (`documents/page.tsx`, `setup/page.tsx`, `AgentDockHost.tsx`,
+  `GoogleSheetReplacement.tsx`, `Sidebar.tsx`, `agent-dock.tsx`); farm code
+  adds none.
+- The build needs `DATABASE_URL` set to collect Better Auth page data; it was
+  run with a disposable test database URL and placeholder auth secret.
+
+The screenshots and sample PDF in `docs/agriculture-review/` predate the
+merge. They do not show `develop`'s Money navigation item.
+
+## Earlier results on the original base (`edc4780`)
+
+Chromium with real Better Auth signup/session/JWKS, all five fictional profiles,
+the GHS 0.29 → 0.49 edit flowing to insights and the report (Yaw surplus GHS
+13,749.51), a 3-page printable PDF and a 390px viewport with no horizontal
+overflow all passed on the original base. They were not repeated after the merge.
 
 ## Covered acceptance behavior
 

@@ -60,6 +60,10 @@ export function TransactionValueBreakdown({
           </>
         ) : null}
       </div>
+      <div className="flex items-baseline justify-between gap-3 mb-3.5">
+        <span className="text-xs uppercase tracking-wider text-foreground/50">Grand total</span>
+        <span className="font-display text-xl">{formatGhs(transactionTotal)}</span>
+      </div>
       <div className="flex flex-col gap-2.5 text-[13px]">
         {rows.map((r) => (
           <div key={r.label} className={`flex items-center gap-2 ${r.value === 0 ? "opacity-40" : ""}`}>

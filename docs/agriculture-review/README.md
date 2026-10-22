@@ -5,15 +5,12 @@ workspace. Review the changes here before making a deployment decision.
 
 ## Upstream integration status
 
-The implementation and test results are based on the local `develop` checkpoint
-`edc4780`. Before publishing this review, a fresh fetch found GitHub `develop`
-at `bba3667`, with 101 upstream-only commits. Read-only merge analysis found
-conflicts, including overlap in authentication, document handling and shared UI.
-
-This is a **draft for review**, not a merge-ready integration with current
-`develop`. Reconcile the newer Ona, onboarding/account-deletion and document
-integration changes, then rerun regressions before merging. The existing test
-results do not validate that combined version.
+The branch has been merged with GitHub `develop` at `311dba9` and conflicts are
+resolved; everything already on `develop`, including the Google Sheets import,
+is kept. See the integration section of
+[`AGRICULTURE_VALIDATION.md`](../../AGRICULTURE_VALIDATION.md) for the
+conflicts, the migration re-parenting, the account-deletion change and the
+combined test results.
 
 ## Start here
 
@@ -73,15 +70,12 @@ through to reporting. All names, farms and amounts are fictional.
 
 ## Verification and remaining work
 
-Passed: 81 backend tests, a separate migration preservation/schema check,
-two money tests, full lint, TypeScript and a Webpack production build.
-Chromium exercised normal Better Auth signup/JWKS, all five farm profiles,
-transaction edits, report arithmetic, PDF output and a 390px mobile viewport.
-
-The separate migration test skips in an ordinary test run without its own empty
-database URL; it was run separately and passed. The default Turbopack build was
-blocked by the execution environment's compiler-port restriction. Verify the
-team's normal CI/deployment build before release.
+On the combined version: 162 backend tests passed, the migration preservation
+test passed on its own empty database, two money tests, TypeScript and the
+Webpack production build passed. The remaining backend failure
+(`test_fn_data_upload`) and all remaining ESLint errors also occur on unmodified
+`develop`. Chromium checks, screenshots and the sample PDF are from the original
+base and were not repeated after the merge.
 
 Live S3/MinIO, new OCR extraction, real OAuth-provider delivery, simulated-3G
 performance and deployment were not exercised. Legacy specifications reference

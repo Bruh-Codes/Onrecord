@@ -22,10 +22,55 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     llm_base_url: str = ""
     financial_mapping_model: str = "gpt-5.6-luna"
+    ona_model: str = ""
+    ona_max_questions_per_hour: int = 20
+    ona_web_search_enabled: bool = True
+    ona_max_web_results: int = 5
+    # Optional: improves Ona web answers on Groq (no built-in browsing). Tavily
+    # or Brave is recommended in production; without either, DuckDuckGo fallback is used.
+    tavily_api_key: str = ""
+    brave_search_api_key: str = ""
+
+    # The AI document reader and Ona's tool loop run on Groq when
+    # LLM_PROVIDER=groq and GROQ_API_KEY is set, otherwise on Claude when
+    # ANTHROPIC_API_KEY is set (see ai_provider). Groq has no PDF input: PDFs
+    # are read from their text layer and scanned pages and photos go to the
+    # vision model, at most 3 images per request.
+    groq_extraction_model: str = "openai/gpt-oss-120b"
+    groq_vision_model: str = "qwen/qwen3.8-27b"
+    groq_ona_model: str = "openai/gpt-oss-120b"
+
+    # Claude reads uploaded documents (PDF pages and images directly, other
+    # formats from their normalized capture) and powers Ona. Without a key
+    # the pipeline falls back to the parser-first path above.
+    anthropic_api_key: str = ""
+    claude_extraction_model: str = "claude-opus-5-5"
+    claude_extraction_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    claude_ona_model: str = "claude-opus-5-5"
+    # Statements whose balances reconcile are accepted without a manual
+    # review step; everything else waits for the owner to confirm the rows.
+    ai_ingest_auto_confirm_reconciled: bool = True
+
+    @property
+    def ai_provider(self) -> Literal["groq", "anthropic"] | None:
+        if self.llm_provider == "groq" and self.groq_api_key:
+            return "groq"
+        if self.anthropic_api_key:
+            return "anthropic"
+        return None
+
+    @property
+    def groq_api_url(self) -> str:
+        base_url = self.llm_base_url if self.llm_provider == "groq" and self.llm_base_url else "https://api.groq.com/openai/v1"
+        return f"{base_url.rstrip('/')}/chat/completions"
 
     @property
     def llm_api_key(self) -> str:
         return self.groq_api_key if self.llm_provider == "groq" else self.openai_api_key
+
+    @property
+    def agent_model(self) -> str:
+        return self.ona_model or self.financial_mapping_model
 
     @property
     def responses_api_url(self) -> str:
@@ -45,6 +90,15 @@ class Settings(BaseSettings):
         if self.financial_mapping_model.startswith("openai/gpt-oss-"):
             return {"reasoning": {"effort": "low"}}
         return {}
+
+    def ona_responses_options(self) -> dict:
+        """Slightly higher reasoning for conversational business Q&A."""
+        opts = self.responses_options()
+        if self.llm_provider == "openai":
+            return {**opts, "reasoning": {"effort": "medium"}}
+        if self.agent_model.startswith("openai/gpt-oss-"):
+            return {**opts, "reasoning": {"effort": "medium"}}
+        return opts
 
     # Better Auth (apps/web) issues these tokens via its `jwt` plugin, which
     # defaults to EdDSA/Ed25519 and is verified against its JWKS endpoint —
