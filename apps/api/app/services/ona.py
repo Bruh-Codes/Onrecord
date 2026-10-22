@@ -62,6 +62,7 @@ class OnaAnswer:
     error: bool = False
     error_code: str | None = None
     used_tools: tuple[str, ...] = ()
+    model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -441,6 +442,10 @@ async def execute_ona_tool(
                     "extracted_summary": {
                         "transactions": by_document.get(document.id, []),
                         "universal_extraction": (document.quality_flags or {}).get("universal_extraction"),
+                        "ai_reading": {
+                            key: value for key, value in ((document.quality_flags or {}).get("ai_ingest") or {}).items()
+                            if key in {"state", "summary", "row_count", "reconciliation", "transactions_created"}
+                        } or None,
                         "model_ledger_mapping": (document.quality_flags or {}).get("model_ledger_mapping"),
                     },
                 }
@@ -489,6 +494,13 @@ async def answer_question(
     snapshot: dict[str, Any],
     history: Sequence[HistoryTurn] = (),
 ) -> OnaAnswer:
+    if settings.anthropic_api_key:
+        from app.services.ona_claude import answer_with_claude
+
+        return await answer_with_claude(
+            settings=settings, session=session, business_id=business_id,
+            message=message, snapshot=snapshot, history=history,
+        )
     if not settings.llm_api_key or not settings.agent_model:
         logger.warning("Ona not available: llm_api_key=%s, agent_model=%s", bool(settings.llm_api_key), bool(settings.agent_model))
         return OnaAnswer(
@@ -718,7 +730,8 @@ def _function_calls(response: dict[str, Any]) -> list[dict[str, str]]:
 def _validate_answer(payload: object) -> OnaAnswer:
     if not isinstance(payload, dict) or not isinstance(payload.get("answer"), str):
         raise ValueError("invalid Ona response")
-    answer = " ".join(payload["answer"].split())[:MAX_ANSWER_CHARS]
+    # Keep line breaks: the answer is Markdown and lists depend on them.
+    answer = re.sub(r"\n{3,}", "\n\n", payload["answer"].strip())[:MAX_ANSWER_CHARS]
     citations = payload.get("cited_facts", [])
     if not isinstance(citations, Iterable) or isinstance(citations, (str, bytes)):
         citations = []
