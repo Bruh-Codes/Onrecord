@@ -6,12 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import {
 	AppsIcon,
 	DocumentsIcon,
-	GapsIcon,
 	HomeIcon,
 	MoneyIcon,
 	OverviewIcon,
 	ReadinessIcon,
 	SettingsIcon,
+	SummaryIcon,
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
@@ -28,15 +28,20 @@ const NAV_GROUPS = [
 		items: [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
 			{ href: "/money", icon: <MoneyIcon />, label: "Money" },
-			{ href: "/overview", icon: <OverviewIcon />, label: "Overview" },
-			{ href: "/readiness", icon: <ReadinessIcon />, label: "Readiness" },
-			{ href: "/documents", icon: <DocumentsIcon />, label: "Documents" },
+			{ href: "/overview", icon: <OverviewIcon />, label: "Business health" },
+			{ href: "/documents", icon: <DocumentsIcon />, label: "Records" },
+		],
+	},
+	{
+		label: "Financing",
+		items: [
+			{ href: "/readiness", icon: <ReadinessIcon />, label: "Loan readiness" },
+			{ href: "/lender-summary", icon: <SummaryIcon />, label: "Lender summary" },
 		],
 	},
 	{
 		label: "Manage",
 		items: [
-			{ href: "/gaps", icon: <GapsIcon />, label: "Gaps" },
 			{ href: "/apps", icon: <AppsIcon />, label: "Integrations" },
 		],
 	},
