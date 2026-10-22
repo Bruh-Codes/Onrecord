@@ -21,6 +21,15 @@ export function OverviewIcon({ className }: IconProps) {
   );
 }
 
+export function MoneyIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.4" className={className}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
 export function DocumentsIcon({ className }: IconProps) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>

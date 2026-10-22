@@ -6,12 +6,14 @@ import {
 	DocumentsIcon,
 	GapsIcon,
 	HomeIcon,
+	MoneyIcon,
 	OverviewIcon,
 	ReadinessIcon,
 } from "@/components/icons";
 
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
+	{ href: "/money", label: "Money", icon: MoneyIcon },
 	{ href: "/overview", label: "Overview", icon: OverviewIcon },
 	{ href: "/readiness", label: "Readiness", icon: ReadinessIcon },
 	{ href: "/documents", label: "Documents", icon: DocumentsIcon },
