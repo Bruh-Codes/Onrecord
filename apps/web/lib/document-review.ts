@@ -1,5 +1,5 @@
 /**
- * Rows Claude read from a document, and the owner's review of them.
+ * Rows the AI reader took from a document, and the owner's review of them.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

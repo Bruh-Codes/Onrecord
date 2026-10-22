@@ -238,15 +238,19 @@ without stating the case first.
 
 ## 8. Pipeline stages and review states
 
-When `ANTHROPIC_API_KEY` is set, transaction documents (statements in any
-layout, screenshots, receipts, cash books, spreadsheets, pasted SMS) go through
-`upload → Claude reads the file → amounts parsed to pesewas and balances
+When an AI reader is configured (`LLM_PROVIDER=groq` with `GROQ_API_KEY`, or
+else `ANTHROPIC_API_KEY`), transaction documents (statements in any layout,
+screenshots, receipts, cash books, spreadsheets, pasted SMS) go through
+`upload → the model reads the file → amounts parsed to pesewas and balances
 reconciled in code → staged extraction rows → auto-confirm if balances
 reconcile, otherwise owner review → transactions`. The model only transcribes;
 `app/pipeline/s3_ai_normalise.py` owns every number (INV-1, INV-6). Financial
-statements and invoices keep their dedicated parsers.
+statements and invoices keep their dedicated parsers. Claude reads PDFs and
+images directly. Groq has no PDF input, so `document_reader_groq.py` sends
+Docling's capture or the PDF text layer to `GROQ_EXTRACTION_MODEL` and renders
+scanned pages to images for `GROQ_VISION_MODEL` (3 images per request).
 
-Without a Claude key, the processing path is:
+Without either key, the processing path is:
 
 `upload → Docling extraction → document classification → deterministic facts →
 AI evidence review → recompute → insights + readiness score → human review`
