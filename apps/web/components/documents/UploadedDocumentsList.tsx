@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { DocumentsIcon, TrashIcon, XIcon } from "@/components/icons";
 import { DocumentRowSkeleton } from "@/components/ui/Skeleton";
 import { FinancialStatementView } from "@/components/documents/FinancialStatementView";
+import { ExtractedRowsReview } from "@/components/documents/ExtractedRowsReview";
+import { aiIngest } from "@/lib/document-review";
 import type { Document, DocumentStatus } from "@/lib/api-types";
 import { formatGhs } from "@/lib/format";
 
@@ -49,8 +51,21 @@ function needsReview(document: Document) {
 	);
 }
 
+function awaitingRowReview(document: Document) {
+	return aiIngest(document)?.state === "needs_review";
+}
+
+function hasReadRows(document: Document) {
+	const state = aiIngest(document)?.state;
+	return state === "needs_review" || state === "confirmed";
+}
+
 function evidenceReviewMessage(document: Document): string | null {
 	if (isUnsupportedDocument(document)) return null;
+	if (awaitingRowReview(document)) {
+		const count = aiIngest(document)?.row_count ?? 0;
+		return `We read ${count} row${count === 1 ? "" : "s"} from this file. Check them before they're added to your records.`;
+	}
 	const review = document.quality_flags?.evidence_review as
 		| { status?: string; summary?: string }
 		| undefined;
@@ -78,6 +93,7 @@ const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export function UploadedDocumentsList({
+	businessId = null,
 	documents,
 	loading,
 	error,
@@ -87,6 +103,7 @@ export function UploadedDocumentsList({
 	removingId,
 	retryingId,
 }: {
+	businessId?: string | null;
 	documents: Document[] | null;
 	loading: boolean;
 	error: string | null;
@@ -150,8 +167,8 @@ export function UploadedDocumentsList({
 							</div>
 						)}
 						{evidenceReviewMessage(doc) && (
-							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
-								{isPartiallyUsable(doc) ? "Usable with warnings: " : "Human review required before scoring. "}
+							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) || awaitingRowReview(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
+								{awaitingRowReview(doc) ? "" : isPartiallyUsable(doc) ? "Usable with warnings: " : "Human review required before scoring. "}
 								{evidenceReviewMessage(doc)}
 							</div>
 						)}
@@ -165,13 +182,23 @@ export function UploadedDocumentsList({
 								{retryingId === doc.id ? "Retrying..." : "Retry processing"}
 							</PillButton>
 						)}
+						{hasReadRows(doc) && (
+							<PillButton
+								variant={awaitingRowReview(doc) ? "primary" : "secondary"}
+								onClick={() => setExpandedId(expandedId === doc.id ? null : doc.id)}
+							>
+								{expandedId === doc.id ? "Hide rows" : awaitingRowReview(doc) ? "Check rows" : "View rows"}
+							</PillButton>
+						)}
 						{doc.doc_type === "financial_statement" && doc.status === "extracted" && (
 							<PillButton onClick={() => setExpandedId(expandedId === doc.id ? null : doc.id)}>
 								{expandedId === doc.id ? "Hide data" : "View data"}
 							</PillButton>
 						)}
-						<Badge tone={needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
-							{needsReview(doc)
+						<Badge tone={awaitingRowReview(doc) ? "neutral" : needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
+							{awaitingRowReview(doc)
+								? "Waiting for you"
+								: needsReview(doc)
 								? "Needs review"
 								: isUnsupportedDocument(doc)
 								? "Not financial data"
@@ -191,7 +218,9 @@ export function UploadedDocumentsList({
 						)}
 					</div>
 				</div>
-				{expandedId === doc.id && <FinancialStatementView documentId={doc.id} />}
+				{expandedId === doc.id && (hasReadRows(doc)
+					? <ExtractedRowsReview documentId={doc.id} businessId={businessId} />
+					: <FinancialStatementView documentId={doc.id} />)}
 				</div>
 			))}
 			{pendingDelete && (
