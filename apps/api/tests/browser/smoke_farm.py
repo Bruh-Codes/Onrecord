@@ -91,8 +91,8 @@ def run():
             browser.command("Emulation.setDeviceMetricsOverride", {"width": 1440, "height": 1050, "deviceScaleFactor": 1, "mobile": False})
             browser.navigate(origin)
             email = f"farm-smoke-{uuid.uuid4().hex}@example.test"
-            result = browser.evaluate(f"""fetch('/api/auth/sign-up/email', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({{name:'Fictional Farm Tester', email:{json.dumps(email)}, password:'Local-smoke-test-password-726!'}})}}).then(async r => ({{status:r.status}}))""")
-            assert result["status"] == 200, result
+            # Mirrors the signup page: /setup creates the Better Auth account and the business together.
+            browser.evaluate(f"""sessionStorage.setItem('onrecord_pending_signup', JSON.stringify({{name:'Fictional Farm Tester', email:{json.dumps(email)}, password:'Local-smoke-test-password-726!'}}))""")
             browser.navigate(origin + "/setup")
             browser.wait("!!document.querySelector('input[placeholder=\"e.g. Adom Provisions\"]')")
             browser.fill('input[placeholder="e.g. Adom Provisions"]', "Fictional Browser Farm")

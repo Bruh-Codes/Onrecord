@@ -52,7 +52,7 @@ Integration fixes required by the combined code:
 | TypeScript `tsc --noEmit --incremental false` | Passed |
 | Next.js production build, `bun run build --webpack` | Passed: five farm routes, Google Sheets API routes and `/money` |
 | Frontend ESLint | 6 errors, 1 warning, **all pre-existing on `develop`** (see below) |
-| Chromium browser smoke, screenshots and sample PDF | **Not re-run** on the combined version |
+| Chromium smoke: Better Auth signup through `/setup`, all five profiles, GHS 0.29 → 0.49 edit, insights/report totals, PDF, 390px viewport | **Passed**; screenshots and sample PDF refreshed |
 
 Notes on the non-passing rows:
 
@@ -69,15 +69,15 @@ Notes on the non-passing rows:
 - The build needs `DATABASE_URL` set to collect Better Auth page data; it was
   run with a disposable test database URL and placeholder auth secret.
 
-The screenshots and sample PDF in `docs/agriculture-review/` predate the
-merge. They do not show `develop`'s Money navigation item.
-
-## Earlier results on the original base (`edc4780`)
-
-Chromium with real Better Auth signup/session/JWKS, all five fictional profiles,
-the GHS 0.29 → 0.49 edit flowing to insights and the report (Yaw surplus GHS
-13,749.51), a 3-page printable PDF and a 390px viewport with no horizontal
-overflow all passed on the original base. They were not repeated after the merge.
+The browser smoke test now follows `develop`'s onboarding: the signup page
+stores the pending credentials and `/setup` creates the Better Auth account and
+the business together, so the script stages the pending signup the same way
+instead of calling the sign-up endpoint directly. No auth step is bypassed.
+It ran against the production build (`NEXT_PUBLIC_BACKEND_URL=/backend`) and
+the API on a fresh database migrated through the re-parented revisions. The
+screenshots and sample PDF in `docs/agriculture-review/` are from this run and
+show `develop`'s Money item next to Farm; Yaw's surplus is GHS 13,749.51 after
+the edit.
 
 ## Covered acceptance behavior
 
@@ -103,8 +103,9 @@ overflow all passed on the original base. They were not repeated after the merge
 
 ## Artifacts and limits
 
-Browser artifacts from the run are in `/private/tmp/onrecord-browser-artifacts`:
-`overview-desktop.png`, `overview-mobile.png`, and `yaw-report.pdf`.
+Browser artifacts from the combined-version run are checked in under
+`docs/agriculture-review/`: `overview-desktop.png`, `overview-mobile.png`, and
+`sample-report-after-edit.pdf`.
 
 Live S3/MinIO, new OCR extraction, real OAuth-provider delivery, production
 deployment, performance budgets under simulated 3G, lender sharing and

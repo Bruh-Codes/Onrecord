@@ -74,8 +74,9 @@ On the combined version: 162 backend tests passed, the migration preservation
 test passed on its own empty database, two money tests, TypeScript and the
 Webpack production build passed. The remaining backend failure
 (`test_fn_data_upload`) and all remaining ESLint errors also occur on unmodified
-`develop`. Chromium checks, screenshots and the sample PDF are from the original
-base and were not repeated after the merge.
+`develop`. The Chromium smoke test (signup through `/setup`, all five farm
+profiles, transaction edit, report totals, PDF and a 390px viewport) passed on
+the combined version; the screenshots and sample PDF below are from that run.
 
 Live S3/MinIO, new OCR extraction, real OAuth-provider delivery, simulated-3G
 performance and deployment were not exercised. Legacy specifications reference
