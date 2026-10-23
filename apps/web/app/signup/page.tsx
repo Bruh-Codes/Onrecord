@@ -15,7 +15,7 @@ function SignupForm() {
 	const [authMode, setAuthMode] = useState<"signup" | "login">(() => searchParams.get("mode") === "login" ? "login" : "signup");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [consented, setConsented] = useState(true);
+	const [consented, setConsented] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [googleLoading, setGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -49,6 +49,10 @@ function SignupForm() {
 
 	async function handleGoogleSignIn() {
 		if (busy) return;
+		if (authMode === "signup" && !consented) {
+			setError("Tick the box below to confirm you can act for this business, then continue with Google.");
+			return;
+		}
 		setGoogleLoading(true);
 		setError(null);
 
@@ -71,6 +75,8 @@ function SignupForm() {
 			const { error: socialError } = await authClient.signIn.social({
 				provider: "google",
 				callbackURL: searchParams.get("callbackURL") ?? "/dashboard",
+				// First-time Google users have no business yet; /setup creates it.
+				newUserCallbackURL: "/setup",
 			});
 			window.clearTimeout(timer);
 			setGoogleLoading(false);
@@ -107,17 +113,38 @@ function SignupForm() {
 						<button type="button" onClick={() => setAuthMode("login")} disabled={busy} className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${authMode === "login" ? "bg-foreground text-background font-semibold" : "text-foreground"}`}>Log in</button>
 					</div>
 
-					{authMode === "login" && <button
+					{authMode === "signup" && <button
+						type="button"
+						onClick={() => { setConsented((value) => !value); setError(null); }}
+						disabled={busy}
+						aria-pressed={consented}
+						className="mb-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						<span
+							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+								consented
+									? "border-foreground bg-foreground text-background"
+									: "border-foreground/30 bg-transparent text-background"
+							}`}
+						>
+							{consented && <CheckIcon className="h-3 w-3" />}
+						</span>
+						<span className="text-[11.5px] leading-relaxed opacity-70">
+							I confirm I&apos;m authorised to build a financial profile on this
+							business&apos;s behalf.
+						</span>
+					</button>}
+					<button
 						type="button"
 						onClick={handleGoogleSignIn}
 						disabled={busy}
 						className="w-full flex items-center justify-center gap-2.5 bg-card border border-foreground/16 rounded-full text-sm p-3 hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
 					>
 						<GoogleLogo />
-						{googleLoading ? "Redirecting…" : "Continue with Google"}
-					</button>}
+						{googleLoading ? "Redirecting…" : authMode === "signup" ? "Sign up with Google" : "Continue with Google"}
+					</button>
 
-					{authMode === "login" && <div className="flex items-center gap-2.5 mb-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or</span><div className="flex-1 h-px bg-foreground/12" /></div>}
+					<div className="flex items-center gap-2.5 my-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or use email</span><div className="flex-1 h-px bg-foreground/12" /></div>
 					<div className="mb-3.5">
 						<label className="block text-xs mb-1.5 text-foreground/70">Email</label>
 						<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} placeholder="you@business.com" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
@@ -132,27 +159,7 @@ function SignupForm() {
 					<button type="button" disabled={!ready || busy} onClick={handleSubmit} className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed" style={{ background: ready && !submitting ? "var(--foreground)" : "var(--muted-foreground)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
 						{submitting ? "Please wait…" : authMode === "signup" ? "Create account" : "Log in"}
 					</button>
-					<button
-						type="button"
-						onClick={() => setConsented((value) => !value)}
-						disabled={busy}
-						aria-pressed={consented}
-						className="mt-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						<span
-							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-								consented
-									? "border-foreground bg-foreground text-background"
-									: "border-foreground/30 bg-transparent text-background"
-							}`}
-						>
-							{consented && <CheckIcon className="h-3 w-3" />}
-						</span>
-						<span className="text-[11.5px] leading-relaxed opacity-70">
-							By continuing, I confirm I&apos;m authorised to build a financial
-							profile on this business&apos;s behalf.
-						</span>
-					</button>
+
 				</div>
 			</div>
 
