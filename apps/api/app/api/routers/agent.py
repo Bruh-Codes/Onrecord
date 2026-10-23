@@ -134,6 +134,19 @@ async def delete_agent_session(
     return Response(status_code=204)
 
 
+# Owner-facing page names for the paths in apps/web; unknown paths are ignored.
+_PAGE_NAMES = {
+    "/dashboard": "Home",
+    "/money": "Money",
+    "/overview": "Business health",
+    "/documents": "Records",
+    "/readiness": "Loan readiness",
+    "/lender-summary": "Lender summary",
+    "/apps": "Integrations",
+    "/settings": "Settings",
+}
+
+
 @router.post("/v1/businesses/{business_id}/agent/messages", response_model=AgentReply)
 async def ask_ona(
     business_id: uuid.UUID,
@@ -146,6 +159,9 @@ async def ask_ona(
     agent_session = await _resolve_session(session, business_id, claims.user_id, body.session_id)
     history = await _session_history(session, agent_session.id)
     snapshot = await build_business_snapshot(session, business_id)
+    page_name = _PAGE_NAMES.get((body.page or "").rstrip("/") or "/")
+    if page_name:
+        snapshot["current_page"] = page_name
     answer = await answer_question(
         settings=settings,
         session=session,

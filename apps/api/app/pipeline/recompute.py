@@ -330,11 +330,20 @@ def _sync_checklist(db: Session, business: Business, documents: list[Document]) 
 
 
 def _checklist_as_dict(item: ChecklistItem) -> dict:
-    return {
+    # The label lives only in the rule pack; without it gap titles fall back to
+    # the raw doc_type ("registration_cert is missing").
+    label = next(
+        (req["label"] for req in s9_checklist.pack_for(item.rule_pack_id) if req["doc_type"] == item.doc_type and "label" in req),
+        None,
+    )
+    data = {
         "requirement": item.requirement,
         "status": item.status,
         "doc_type": item.doc_type,
     }
+    if label:
+        data["label"] = label
+    return data
 
 
 def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem]) -> None:
@@ -368,6 +377,8 @@ def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: 
         )
         if exists is None:
             db.add(Gap(business_id=business_id, **gap))
+        elif exists.title != gap["title"]:
+            exists.title = gap["title"]
     db.flush()
 
 

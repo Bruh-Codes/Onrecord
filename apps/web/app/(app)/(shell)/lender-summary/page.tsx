@@ -10,7 +10,7 @@ import {
 	useScore,
 } from "@/lib/hooks/use-business";
 import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
-import { BAND_LABELS, docTypeLabel } from "@/lib/readiness";
+import { BAND_LABELS, docTypeLabel, gapTitle } from "@/lib/readiness";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -75,7 +75,7 @@ export default function LenderSummaryPage() {
 		: "—";
 
 	return (
-		<Page>
+		<Page printable>
 			<article className="rounded-2xl border border-border bg-card p-5 sm:p-8 print:border-0 print:p-0">
 				<header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
 					<div>
@@ -164,7 +164,7 @@ export default function LenderSummaryPage() {
 							<p className="m-0 text-[13px] text-foreground/60">Nothing outstanding.</p>
 						) : (
 							<ul className="m-0 list-disc pl-4 text-[13px] text-foreground/80">
-								{missing.slice(0, 8).map((gap) => <li key={gap.id} className="py-0.5">{gap.title}</li>)}
+								{missing.slice(0, 8).map((gap) => <li key={gap.id} className="py-0.5">{gapTitle(gap)}</li>)}
 							</ul>
 						)}
 					</div>
@@ -179,26 +179,42 @@ export default function LenderSummaryPage() {
 	);
 }
 
-function Page({ children }: { children: React.ReactNode }) {
+function Page({ children, printable = false }: { children: React.ReactNode; printable?: boolean }) {
 	return (
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[900px] print:max-w-none print:p-0">
-			<div className="mb-5 flex flex-wrap items-end justify-between gap-4 print:hidden">
-				<div>
-					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Lender summary</h1>
-					<p className="text-sm opacity-70 m-0 max-w-[560px]">
-						A one-page record of your last 12 months to show a bank, microfinance officer or co-op. Save it as a PDF or print it.
-					</p>
-				</div>
-				<button
-					type="button"
-					onClick={() => window.print()}
-					className="cursor-pointer rounded-full border-none bg-foreground px-4 py-2 text-[13px] text-background"
-				>
-					Save as PDF / Print
-				</button>
+			<div className="mb-5 print:hidden">
+				<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Lender summary</h1>
+				<p className="text-sm opacity-70 m-0 max-w-[560px]">
+					A one-page record of your last 12 months to show a bank, microfinance officer or co-op.
+				</p>
+				{printable && (
+					<div className="mt-4 flex flex-col gap-2 rounded-2xl border border-border bg-muted/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+						<span className="text-[13px] text-foreground/75">
+							Save it as a PDF to send on WhatsApp or email, or print it to take to the lender.
+						</span>
+						<PrintButton />
+					</div>
+				)}
 			</div>
 			{children}
+			{printable && (
+				<div className="mt-5 flex justify-center print:hidden">
+					<PrintButton />
+				</div>
+			)}
 		</div>
+	);
+}
+
+function PrintButton() {
+	return (
+		<button
+			type="button"
+			onClick={() => window.print()}
+			className="w-full shrink-0 cursor-pointer rounded-full border-none bg-foreground px-5 py-3 text-[14px] font-semibold text-background sm:w-auto"
+		>
+			Save as PDF / Print
+		</button>
 	);
 }
 

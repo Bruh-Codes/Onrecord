@@ -6,7 +6,7 @@ import { InfoHint } from "@/components/overview/InfoHint";
 import { GapRowSkeleton } from "@/components/ui/Skeleton";
 import { useChecklist, useGaps, useMe, useScore } from "@/lib/hooks/use-business";
 import { askOna } from "@/lib/ona";
-import { BAND_LABELS, BAND_MEANING, buildNextSteps, type NextStep } from "@/lib/readiness";
+import { BAND_LABELS, BAND_MEANING, buildNextSteps, gapTitle, type NextStep } from "@/lib/readiness";
 
 const PILLARS = [
 	{
@@ -152,7 +152,7 @@ export default function ReadinessPage() {
 						{done.map((gap) => (
 							<li key={gap.id} className="flex items-center gap-2.5 py-2 border-b border-foreground/6 text-[13px] text-foreground/60">
 								<span className="w-2 h-2 rounded-full bg-positive shrink-0" />
-								{gap.title}
+								{gapTitle(gap)}
 							</li>
 						))}
 					</ul>

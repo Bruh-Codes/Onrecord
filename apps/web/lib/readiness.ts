@@ -29,6 +29,16 @@ export function docTypeLabel(docType: string | null | undefined): string {
 	return DOC_TYPE_LABELS[docType] ?? docType.replaceAll("_", " ");
 }
 
+/** Gap titles written before rule-pack labels reached the API read
+ * "registration_cert is missing"; show a plain name instead. */
+export function gapTitle(gap: Gap): string {
+	const docType = typeof gap.target_ref?.doc_type === "string" ? gap.target_ref.doc_type : null;
+	if (gap.kind === "missing_document" && docType && gap.title.startsWith(`${docType} `)) {
+		return `${docTypeLabel(docType)} is missing`;
+	}
+	return gap.title;
+}
+
 export const BAND_LABELS: Record<Band, string> = {
 	not_ready: "Not ready yet",
 	developing: "Developing",
@@ -69,13 +79,14 @@ export function buildNextSteps(gaps: Gap[] | undefined, checklist: ChecklistItem
 				: gap.kind === "ambiguous_category" || gap.kind === "unexplained_txn"
 					? "categorise"
 					: "ask";
+		const title = gapTitle(gap);
 		steps.push({
 			id: gap.id,
-			title: gap.title,
+			title,
 			detail: gap.detail ?? "",
 			severity: gap.severity,
 			action,
-			prompt: `Help me fix this item on my record: "${gap.title}". ${gap.detail ?? ""} What exactly do I need to do?`.trim(),
+			prompt: `Help me fix this item on my record: "${title}". ${gap.detail ?? ""} What exactly do I need to do?`.trim(),
 		});
 	}
 
