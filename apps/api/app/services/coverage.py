@@ -126,8 +126,14 @@ def _assemble(accounts, docs, link_rows) -> dict:
             doc_accounts[document_id].setdefault(account_id, []).append(occurred_on)
 
     by_account: dict[uuid.UUID, list[tuple[date, date]]] = {a.id: [] for a in accounts}
+    # Records the owner typed in set the analysis window so their figures are
+    # analysed, but they are not statements, so they never count as covered months.
+    typed_end: date | None = None
     for doc in docs:
         for account_id, dates in doc_accounts.get(doc.id, {}).items():
+            if (doc.quality_flags or {}).get("hand_entered"):
+                typed_end = max(dates) if typed_end is None else max(typed_end, max(dates))
+                continue
             start = doc.period_start or min(dates)
             end = doc.period_end or max(dates)
             by_account.setdefault(account_id, []).append((start, end))
@@ -149,6 +155,8 @@ def _assemble(accounts, docs, link_rows) -> dict:
             account_end = max(e for _, e in ranges)
             latest_end = account_end if latest_end is None else max(latest_end, account_end)
 
+    if typed_end is not None:
+        latest_end = typed_end if latest_end is None else max(latest_end, typed_end)
     analysis_window_months = 0
     analysis_from = None
     if latest_end is not None:

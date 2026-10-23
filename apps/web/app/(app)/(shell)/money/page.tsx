@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { AddRecordForm } from "@/components/money/AddRecordForm";
+import { FarmBreakdown } from "@/components/money/FarmBreakdown";
 import { MonthlyCashFlowChart } from "@/components/money/MonthlyCashFlowChart";
 import { RankedList } from "@/components/money/RankedList";
 import { TransactionsList } from "@/components/money/TransactionsList";
 import { CATEGORY_LABELS } from "@/lib/document-review";
 import { formatGhs } from "@/lib/format";
 import { useMe } from "@/lib/hooks/use-business";
-import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
+import { type FarmFilter, monthLabel, rangeStart, useExampleSeason, useMoneySummary } from "@/lib/money";
 
 const RANGES = [
 	{ months: 3, label: "3 months" },
@@ -21,11 +23,37 @@ const RANGES = [
 export default function MoneyPage() {
 	const { businessId } = useMe();
 	const [months, setMonths] = useState(12);
+	const [filter, setFilter] = useState<FarmFilter>({});
+	const [adding, setAdding] = useState(false);
 	const overall = useMoneySummary(businessId, {});
 	const latest = overall.data?.latest_on ?? null;
 	const range = latest && months ? { from: rangeStart(latest, months) } : {};
-	const summary = useMoneySummary(businessId, range);
+	const summary = useMoneySummary(businessId, { ...range, ...filter });
 	const data = summary.data;
+	const example = useExampleSeason(businessId);
+	const tags = overall.data?.farm_tags ?? { activities: [], seasons: [] };
+	const addButton = (
+		<button
+			type="button"
+			onClick={() => setAdding((open) => !open)}
+			aria-expanded={adding}
+			className="rounded-full bg-foreground px-4 py-2 text-[13px] text-background cursor-pointer"
+		>
+			Add a record
+		</button>
+	);
+	const form = adding && businessId && (
+		<AddRecordForm
+			businessId={businessId}
+			activities={tags.activities}
+			seasons={tags.seasons}
+			defaults={{
+				farm_activity: filter.farm_activity === "untagged" ? undefined : filter.farm_activity,
+				season: filter.season === "untagged" ? undefined : filter.season,
+			}}
+			onDone={() => setAdding(false)}
+		/>
+	);
 
 	if (!businessId || overall.isLoading || (summary.isLoading && !data)) {
 		return <Shell><p className="text-[13px] text-foreground/55">Loading your money picture…</p></Shell>;
@@ -35,16 +63,29 @@ export default function MoneyPage() {
 	}
 	if (!overall.data?.latest_on) {
 		return (
-			<Shell>
+			<Shell actions={addButton}>
 				{data.documents_awaiting_review > 0 && <ReviewBanner count={data.documents_awaiting_review} />}
+				{form}
 				<div className="rounded-2xl border border-dashed border-foreground/25 bg-muted/50 p-8 text-center">
 					<p className="m-0 text-[15px] font-semibold">No transactions yet</p>
 					<p className="m-0 mt-1.5 text-[13px] text-foreground/60">
-						Upload a MoMo or bank statement, a screenshot, or paste your SMS alerts and we&apos;ll build this page for you.
+						Upload a MoMo or bank statement, a screenshot, or paste your SMS alerts and we&apos;ll build this page for you. Cash sales and costs, like seeds bought with cash, can be added with &ldquo;Add a record&rdquo;.
 					</p>
-					<Link href="/documents" className="mt-4 inline-block rounded-full bg-foreground px-4 py-2 text-[13px] text-background no-underline">
-						Add records
-					</Link>
+					<div className="mt-4 flex flex-wrap justify-center gap-2">
+						<Link href="/documents" className="inline-block rounded-full bg-foreground px-4 py-2 text-[13px] text-background no-underline">
+							Upload records
+						</Link>
+						{overall.data?.example_season_available && (
+							<button
+								type="button"
+								onClick={() => example.mutate()}
+								disabled={example.isPending}
+								className="rounded-full border border-border px-4 py-2 text-[13px] cursor-pointer disabled:opacity-50"
+							>
+								{example.isPending ? "Adding…" : "Try with Yaw’s tomato season (example)"}
+							</button>
+						)}
+					</div>
 				</div>
 			</Shell>
 		);
@@ -67,22 +108,41 @@ export default function MoneyPage() {
 	return (
 		<Shell
 			actions={
-				<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Time range">
-					{RANGES.map((option) => (
-						<button
-							key={option.label}
-							type="button"
-							aria-pressed={months === option.months}
-							onClick={() => setMonths(option.months)}
-							className={`rounded-full px-3 py-1.5 text-[12.5px] cursor-pointer ${months === option.months ? "bg-foreground text-background" : "text-foreground/70"}`}
-						>
-							{option.label}
-						</button>
-					))}
+				<div className="flex flex-wrap items-center gap-2">
+					{addButton}
+					<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Time range">
+						{RANGES.map((option) => (
+							<button
+								key={option.label}
+								type="button"
+								aria-pressed={months === option.months}
+								onClick={() => setMonths(option.months)}
+								className={`rounded-full px-3 py-1.5 text-[12.5px] cursor-pointer ${months === option.months ? "bg-foreground text-background" : "text-foreground/70"}`}
+							>
+								{option.label}
+							</button>
+						))}
+					</div>
 				</div>
 			}
 		>
 			{data.documents_awaiting_review > 0 && <ReviewBanner count={data.documents_awaiting_review} />}
+			{form}
+			{(filter.farm_activity || filter.season) && (
+				<div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/60 px-4 py-3 text-[13px]" role="status">
+					<span>
+						Showing only{" "}
+						<strong>
+							{[filter.farm_activity === "untagged" ? "no crop given" : filter.farm_activity, filter.season === "untagged" ? "no season given" : filter.season]
+								.filter(Boolean)
+								.join(" · ")}
+						</strong>
+					</span>
+					<button type="button" onClick={() => setFilter({})} className="cursor-pointer font-semibold underline underline-offset-2">
+						Show everything
+					</button>
+				</div>
+			)}
 
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<Stat label="Money in" value={formatGhs(totalIn)} tone="in" />
@@ -103,6 +163,8 @@ export default function MoneyPage() {
 				<p className="m-0 mb-3 text-[12px] text-foreground/50">Transfers between your own accounts are left out.</p>
 				{periods.length ? <MonthlyCashFlowChart periods={periods} /> : <p className="text-[13px] text-foreground/55">No activity in this range.</p>}
 			</section>
+
+			<FarmBreakdown farm={data.farm} filter={filter} onFilter={setFilter} />
 
 			<div className="mt-4 grid gap-4 md:grid-cols-2">
 				<RankedList
@@ -156,7 +218,7 @@ export default function MoneyPage() {
 			</div>
 
 			<div className="mt-4">
-				<TransactionsList businessId={businessId} range={range} />
+				<TransactionsList businessId={businessId} range={range} filter={filter} activities={tags.activities} seasons={tags.seasons} />
 			</div>
 		</Shell>
 	);
@@ -173,7 +235,7 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
 			<div className="mb-5 flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Money in &amp; out</h1>
-					<p className="text-sm opacity-70 m-0">Built from the records you&apos;ve uploaded and confirmed.</p>
+					<p className="text-sm opacity-70 m-0">Built from the records you&apos;ve uploaded and confirmed, plus any you typed in.</p>
 				</div>
 				{actions}
 			</div>

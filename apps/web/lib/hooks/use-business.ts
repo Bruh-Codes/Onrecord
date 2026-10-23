@@ -107,9 +107,6 @@ export function useDeleteDocument(businessId: string | null) {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["documents", businessId] }),
-        qc.invalidateQueries({ queryKey: ["farm-report", businessId] }),
-        qc.invalidateQueries({ queryKey: ["farm-entries", businessId] }),
-        qc.invalidateQueries({ queryKey: ["farm-documents", businessId] }),
         qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
         qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
         qc.invalidateQueries({ queryKey: ["score", businessId] }),
@@ -215,9 +212,6 @@ export function useClassifyTransaction(businessId: string | null) {
 			await Promise.all([
 				qc.invalidateQueries({ queryKey: ["transaction-review-queue", businessId] }),
 				qc.invalidateQueries({ queryKey: ["transactions", businessId] }),
-				qc.invalidateQueries({ queryKey: ["farm-report", businessId] }),
-				qc.invalidateQueries({ queryKey: ["farm-entries", businessId] }),
-				qc.invalidateQueries({ queryKey: ["farm-sources", businessId] }),
 				qc.invalidateQueries({ queryKey: ["indicators", businessId] }),
 				qc.invalidateQueries({ queryKey: ["score", businessId] }),
 				qc.invalidateQueries({ queryKey: ["coverage", businessId] }),
