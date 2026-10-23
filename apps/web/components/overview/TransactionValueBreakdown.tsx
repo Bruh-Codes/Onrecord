@@ -37,7 +37,7 @@ export function TransactionValueBreakdown({
     return { label: item.label, value: values, color: colors[index % colors.length], pct: (values / total) * 100 };
   });
   const rows = dynamicRows?.length ? dynamicRows : [
-    { label: "Revenue", value: revenueTotal, color: "var(--positive)", pct: (revenueTotal / total) * 100 },
+    { label: "Sales", value: revenueTotal, color: "var(--positive)", pct: (revenueTotal / total) * 100 },
     { label: "COGS + opex", value: opexValue, color: "var(--warning)", pct: (opexValue / total) * 100 },
     { label: "Other / financing", value: otherValue, color: "var(--muted-foreground)", pct: (otherValue / total) * 100 },
   ];
@@ -47,8 +47,8 @@ export function TransactionValueBreakdown({
   return (
     <div>
       <div className="flex items-center gap-1.5 text-sm font-semibold mb-3.5">
-        Transaction value
-        <InfoHint text="The total value of non-internal transactions in the selected period, split by category. Unclassified values need review before they can be used as revenue or expense." />
+        Total money moved
+        <InfoHint text="The total value of non-internal transactions in the selected period, split by category. Uncategorised money needs sorting before it can count as sales or costs." />
       </div>
       <div className="flex h-6 rounded-lg overflow-hidden mb-4 bg-border/50">
         {hasData ? (

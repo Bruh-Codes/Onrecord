@@ -16,6 +16,7 @@ import { LiveWaveform } from "@/components/ui/live-waveform";
 import { ThinkingOrb } from "@/components/ui/thinking-orbs";
 import { ToolGroup } from "@/components/ui/tool-group";
 import { transcribeVoice } from "@/lib/api";
+import { ASK_ONA_EVENT } from "@/lib/ona";
 import {
 	activityStatusLabel,
 	type OnaActivity,
@@ -384,6 +385,20 @@ export function AgentDock({
 		setMode("composing");
 		window.requestAnimationFrame(() => textareaRef.current?.focus());
 	}
+
+	// Pages hand Ona a question through askOna() (lib/ona.ts); send it as if typed.
+	const submitMessageRef = useRef(submitMessage);
+	useEffect(() => {
+		submitMessageRef.current = submitMessage;
+	});
+	useEffect(() => {
+		function handleAsk(event: Event) {
+			const text = (event as CustomEvent<string>).detail;
+			if (typeof text === "string" && text.trim()) void submitMessageRef.current(text);
+		}
+		window.addEventListener(ASK_ONA_EVENT, handleAsk);
+		return () => window.removeEventListener(ASK_ONA_EVENT, handleAsk);
+	}, []);
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();

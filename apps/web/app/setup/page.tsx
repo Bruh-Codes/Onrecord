@@ -28,7 +28,10 @@ export default function SetupPage() {
 		if (sessionPending) return;
 		const raw = sessionStorage.getItem("onrecord_pending_signup");
 		if (!raw) {
-			if (!session) router.replace("/signup");
+			// Signed in already (e.g. a new Google account): only the business
+			// is left to create.
+			if (session) setPendingSignup({ email: "", password: "", name: "" });
+			else router.replace("/signup");
 			return;
 		}
 		try {

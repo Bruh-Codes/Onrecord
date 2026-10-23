@@ -51,10 +51,12 @@ export default function DocumentsPage() {
 
 	return (
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[760px]">
-			<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Documents</h1>
+			<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Records</h1>
 			<p className="text-sm opacity-70 m-0 mb-5">
-				Upload financial documents and we&apos;ll extract the information needed
-				for your readiness profile.
+				Add anything that shows money moving through your business: MoMo or
+				bank statements (PDF or screenshots), receipts, invoices, or a photo of
+				your record book. We read them and build your money picture and loan
+				file from them.
 			</p>
 			{duplicateDocumentId && duplicateSheet && (
 				<GoogleSheetReplacement

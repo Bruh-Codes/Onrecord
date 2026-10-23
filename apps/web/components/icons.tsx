@@ -39,6 +39,16 @@ export function DocumentsIcon({ className }: IconProps) {
   );
 }
 
+export function SummaryIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className={className}>
+      <path d="M8 4h8v3H8z" />
+      <path d="M8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  );
+}
+
 export function GapsIcon({ className }: IconProps) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>

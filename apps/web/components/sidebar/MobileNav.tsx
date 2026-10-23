@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
 	DocumentsIcon,
-	GapsIcon,
 	HomeIcon,
 	MoneyIcon,
 	OverviewIcon,
@@ -14,11 +13,9 @@ import {
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
 	{ href: "/money", label: "Money", icon: MoneyIcon },
-	{ href: "/farm", label: "Farm", icon: OverviewIcon },
-	{ href: "/overview", label: "Overview", icon: OverviewIcon },
-	{ href: "/readiness", label: "Readiness", icon: ReadinessIcon },
-	{ href: "/documents", label: "Documents", icon: DocumentsIcon },
-	{ href: "/gaps", label: "Gaps", icon: GapsIcon },
+	{ href: "/overview", label: "Health", icon: OverviewIcon },
+	{ href: "/readiness", label: "Loan", icon: ReadinessIcon },
+	{ href: "/documents", label: "Records", icon: DocumentsIcon },
 ];
 
 // Bottom tab bar for the owner journey on narrow viewports-Sidebar.tsx

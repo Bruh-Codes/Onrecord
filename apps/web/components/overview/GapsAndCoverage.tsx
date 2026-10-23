@@ -1,3 +1,4 @@
+import { gapTitle } from "@/lib/readiness";
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import Link from "next/link";
@@ -18,14 +19,14 @@ export function GapsAndCoverage({
 	return (
 		<div className="grid gap-[52px] grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
 			<div>
-				<div className="text-sm font-semibold mb-1">Credit readiness gaps</div>
+				<div className="text-sm font-semibold mb-1">Gaps in your loan file</div>
 				<div className="text-xs opacity-60 mb-2.5">
 					Evidence needed for a lender-ready application; these do not remove your business insights.
 				</div>
 				{gaps.slice(0, 4).map((gap) => (
 					<div key={gap.id} className="py-3 border-b border-foreground/8">
 						<div className="flex justify-between items-start gap-2.5">
-							<div className="text-[13.5px] font-semibold">{gap.title}</div>
+							<div className="text-[13.5px] font-semibold">{gapTitle(gap)}</div>
 							<Badge tone="negative">{gap.severity}</Badge>
 						</div>
 						<div className="text-xs opacity-60 mt-0.5">
@@ -35,14 +36,14 @@ export function GapsAndCoverage({
 				))}
 				{gaps.length === 0 && (
 					<div className="text-[13.5px] py-3 opacity-70">
-						No open gaps-nice work.
+						Nothing missing. Nice work.
 					</div>
 				)}
 				<div className="text-[12.5px] opacity-55 mt-2.5">
 					{allGapCount > 0 && (
 						<>
 							{allGapCount} of {allGapCount} open ·{" "}
-							<Link href="/gaps">view all</Link>
+							<Link href="/readiness">view all</Link>
 						</>
 					)}
 				</div>

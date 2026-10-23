@@ -170,7 +170,7 @@ export const api = {
     request<{ updated: number }>(`/v1/businesses/${businessId}/notifications/read-all`, { method: "POST" }),
 
   // ---- Ona (read-only financial-readiness assistant) ----
-  askOna: (businessId: string, body: { message: string; session_id?: string }) =>
+  askOna: (businessId: string, body: { message: string; session_id?: string; page?: string }) =>
     request<AgentReply>(`/v1/businesses/${businessId}/agent/messages`, { method: "POST", body: JSON.stringify(body) }),
   confirmOnaAction: (businessId: string, proposalId: string) =>
     request<AgentReply>(`/v1/businesses/${businessId}/agent/actions/${proposalId}/confirm`, { method: "POST" }),
