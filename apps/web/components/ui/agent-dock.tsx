@@ -419,7 +419,9 @@ export function AgentDock({
 
 	return (
 		<form
-			className={className}
+			// Collapsed, the form still spans max-w-md while the bubble only fills its
+			// right edge; let clicks through the empty part to the page underneath.
+			className={`${className ?? ""} ${isExpanded ? "" : "pointer-events-none"}`}
 			onSubmit={handleSubmit}
 			style={{ maxWidth: isExpanded && hasStartedChat ? 560 : undefined }}
 		>
@@ -428,7 +430,7 @@ export function AgentDock({
 				className={
 					isExpanded
 						? "flex max-h-[calc(100dvh-5rem)] w-full flex-col overflow-visible rounded-2xl bg-card p-2 text-card-foreground shadow-card"
-						: "ml-auto flex w-fit flex-col items-center gap-1.5 rounded-2xl bg-card px-2.5 py-2.5 text-card-foreground shadow-card"
+						: "pointer-events-auto ml-auto flex w-fit flex-col items-center gap-1.5 rounded-2xl bg-card px-2.5 py-2.5 text-card-foreground shadow-card"
 				}
 				initial={false}
 				layout
