@@ -45,12 +45,13 @@ export type MoneySummary = {
   earliest_on: string | null;
   latest_on: string | null;
   documents_awaiting_review: number;
-  example_season_available: boolean;
-  farm: {
+  // Optional: an API deployed before the crop/season release doesn't send these.
+  example_season_available?: boolean;
+  farm?: {
     groups: FarmGroup[];
     untagged: { money_in_pesewas: number; money_out_pesewas: number; transactions: number };
   };
-  farm_tags: { activities: string[]; seasons: string[] };
+  farm_tags?: { activities: string[]; seasons: string[] };
   cash_flow: { periods: CashFlowPeriod[]; best_period: string | null; worst_period: string | null };
   top_customers: { counterparties: Counterparty[] };
   top_suppliers: { counterparties: Counterparty[] };

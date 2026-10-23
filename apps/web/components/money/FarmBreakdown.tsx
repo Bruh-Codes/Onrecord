@@ -9,10 +9,11 @@ export function FarmBreakdown({
 	filter,
 	onFilter,
 }: {
-	farm: MoneySummary["farm"];
+	farm: MoneySummary["farm"] | undefined;
 	filter: FarmFilter;
 	onFilter: (filter: FarmFilter) => void;
 }) {
+	if (!farm?.groups) return null;
 	if (!farm.groups.length) {
 		return (
 			<div className="mt-4 rounded-2xl border border-dashed border-foreground/25 px-4 py-3 text-[13px] text-foreground/70">
@@ -62,9 +63,9 @@ export function FarmBreakdown({
 					</tbody>
 				</table>
 			</div>
-			{farm.untagged.transactions > 0 && (
+			{(farm.untagged?.transactions ?? 0) > 0 && (
 				<p className="m-0 mt-3 text-[12.5px] text-foreground/60">
-					{farm.untagged.transactions === 1 ? "1 record has" : `${farm.untagged.transactions} records have`} no crop or season. Use “Tag” in the list below to add one.
+					{farm.untagged?.transactions === 1 ? "1 record has" : `${farm.untagged?.transactions} records have`} no crop or season. Use “Tag” in the list below to add one.
 				</p>
 			)}
 		</section>
