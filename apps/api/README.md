@@ -222,8 +222,8 @@ canonical fields plus provider-specific extra fields and line-item provenance.
 
 ## Tests
 
-Agricultural workspace setup, migrations and browser checks are documented in
-[`../../AGRICULTURE.md`](../../AGRICULTURE.md).
+Farm records (crop/season tags, typed-in records) and their migration are
+documented in [`../../AGRICULTURE.md`](../../AGRICULTURE.md).
 
 ```bash
 .venv/Scripts/python -m pytest

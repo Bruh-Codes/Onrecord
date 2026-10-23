@@ -100,6 +100,13 @@ TOOL_DEFINITIONS = [
         },
     ),
     _tool(
+        "get_farm_breakdown",
+        "Money in, money out and what was left for each crop or animal and season the owner tagged "
+        "(for example Tomatoes, 2026 main season), plus how much is not tagged. Use for 'how did my "
+        "tomatoes do' or 'which season was best'.",
+        {"start_date": _NULLABLE_DATE, "end_date": _NULLABLE_DATE},
+    ),
+    _tool(
         "compare_periods",
         "Compare two date ranges: money in, money out, net, transaction count and the change between them, "
         "plus the categories that moved most.",
@@ -136,6 +143,7 @@ TOOL_CITATIONS = {
     "get_top_counterparties": ("transactions",),
     "get_category_breakdown": ("transactions",),
     "search_transactions": ("transactions",),
+    "get_farm_breakdown": ("transactions",),
     "compare_periods": ("transactions",),
     "list_documents": ("documents",),
     "get_readiness_gaps": ("readiness_score", "open_gaps", "gap_details", "checklist"),
@@ -175,6 +183,16 @@ def _in_range(start: date | None, end: date | None) -> list:
     return conditions
 
 
+def _tagged(args: dict) -> list:
+    """Narrow to one crop/animal and/or season. "untagged" picks rows with no tag."""
+    conditions = []
+    for key, column in (("farm_activity", Transaction.farm_activity), ("season", Transaction.season)):
+        value = args.get(key)
+        if isinstance(value, str) and value.strip():
+            conditions.append(column.is_(None) if value == "untagged" else column == value.strip())
+    return conditions
+
+
 def _sum(direction: Direction):
     return func.coalesce(func.sum(case((Transaction.direction == direction, Transaction.amount_pesewas), else_=0)), 0)
 
@@ -189,7 +207,7 @@ async def cash_flow(session: AsyncSession, business_id: UUID, args: dict) -> dic
     bucket = func.date_trunc(unit, Transaction.occurred_on).label("bucket")
     rows = (await session.execute(
         _base(bucket, _sum(Direction.IN), _sum(Direction.OUT), func.count())
-        .where(*_active(business_id), *_analysed(), *_in_range(start, end))
+        .where(*_active(business_id), *_analysed(), *_in_range(start, end), *_tagged(args))
         .group_by(bucket).order_by(bucket)
     )).all()
     periods, previous_net = [], None
@@ -220,7 +238,7 @@ async def top_counterparties(session: AsyncSession, business_id: UUID, args: dic
     start, end = _parse_date(args.get("start_date")), _parse_date(args.get("end_date"))
     limit = min(max(int(args.get("limit") or 10), 1), 20)
     name = func.coalesce(Transaction.flags["counterparty"].astext, Transaction.description, "Unnamed").label("name")
-    filters = [*_active(business_id), *_analysed(), Transaction.direction == direction, *_in_range(start, end)]
+    filters = [*_active(business_id), *_analysed(), Transaction.direction == direction, *_in_range(start, end), *_tagged(args)]
     total = int(await session.scalar(_base(func.coalesce(func.sum(Transaction.amount_pesewas), 0)).where(*filters)) or 0)
     rows = (await session.execute(
         _base(name, func.count(), func.sum(Transaction.amount_pesewas), func.max(Transaction.occurred_on))
@@ -243,7 +261,7 @@ async def category_breakdown(session: AsyncSession, business_id: UUID, args: dic
     category = func.coalesce(Transaction.category_l1, "unclassified").label("category")
     rows = (await session.execute(
         _base(Transaction.direction, category, func.count(), func.sum(Transaction.amount_pesewas))
-        .where(*_active(business_id), *_analysed(), *_in_range(start, end))
+        .where(*_active(business_id), *_analysed(), *_in_range(start, end), *_tagged(args))
         .group_by(Transaction.direction, category).order_by(func.sum(Transaction.amount_pesewas).desc())
     )).all()
     result: dict[str, Any] = {"money_in": [], "money_out": []}
@@ -278,6 +296,7 @@ def transaction_filters(business_id: UUID, args: dict) -> list:
         value = category.strip().lower()
         filters.append(Transaction.category_l1.is_(None) if value == "unclassified" else Transaction.category_l1.ilike(f"%{value[:40]}%"))
     filters.extend(_in_range(_parse_date(args.get("start_date")), _parse_date(args.get("end_date"))))
+    filters.extend(_tagged(args))
     for key, op in (("min_amount_ghs", "ge"), ("max_amount_ghs", "le")):
         value = args.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -324,9 +343,43 @@ async def search_transactions(session: AsyncSession, business_id: UUID, args: di
                 "category": row.category_l1 or "unclassified",
                 "counterparty": (row.flags or {}).get("counterparty"),
                 "description": row.description,
+                "crop_or_animal": row.farm_activity,
+                "season": row.season,
+                "typed_in_by_owner": bool((row.flags or {}).get("hand_entered")),
             }
             for row in rows
         ],
+    }
+
+
+async def farm_breakdown(session: AsyncSession, business_id: UUID, args: dict) -> dict:
+    start, end = _parse_date(args.get("start_date")), _parse_date(args.get("end_date"))
+    typed = func.coalesce(func.sum(case((Transaction.flags["hand_entered"].astext == "true", 1), else_=0)), 0)
+    rows = (await session.execute(
+        _base(Transaction.farm_activity, Transaction.season, _sum(Direction.IN), _sum(Direction.OUT), func.count(),
+              typed, func.min(Transaction.occurred_on), func.max(Transaction.occurred_on))
+        .where(*_active(business_id), *_analysed(), *_in_range(start, end))
+        .group_by(Transaction.farm_activity, Transaction.season)
+    )).all()
+    groups, untagged = [], {"money_in_pesewas": 0, "money_out_pesewas": 0, "transactions": 0}
+    for activity, season, money_in, money_out, count, typed_count, first_on, last_on in rows:
+        if activity is None and season is None:
+            untagged = {"money_in_pesewas": int(money_in), "money_out_pesewas": int(money_out), "transactions": int(count)}
+            continue
+        groups.append({
+            "farm_activity": activity, "season": season,
+            "money_in": ghs(money_in), "money_out": ghs(money_out), "left_over": ghs(int(money_in) - int(money_out)),
+            "money_in_pesewas": int(money_in), "money_out_pesewas": int(money_out),
+            "left_over_pesewas": int(money_in) - int(money_out), "transactions": int(count),
+            "typed_in_by_owner": int(typed_count),
+            "first_on": first_on.isoformat(), "last_on": last_on.isoformat(),
+        })
+    groups.sort(key=lambda g: (g["last_on"], g["money_in_pesewas"]), reverse=True)
+    return {
+        "groups": groups,
+        "untagged": {**untagged, "money_in": ghs(untagged["money_in_pesewas"]), "money_out": ghs(untagged["money_out_pesewas"])},
+        "note": "Left over is money in minus money out for that crop or animal and season. It is not profit: "
+                "it leaves out unpaid bills, stock still on hand and costs that were not tagged.",
     }
 
 
@@ -382,4 +435,5 @@ HANDLERS = {
     "get_category_breakdown": category_breakdown,
     "search_transactions": search_transactions,
     "compare_periods": compare_periods,
+    "get_farm_breakdown": farm_breakdown,
 }

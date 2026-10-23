@@ -1,9 +1,8 @@
 # apps/web
 
-The agricultural finance workspace at `/farm` extends the existing authenticated
-shell. See [`../../AGRICULTURE.md`](../../AGRICULTURE.md) for its model,
-fictional demo, tests and deployment migration notes. The new money-input tests
-run with `bun run test`.
+Farm sales and costs are ordinary records on the Money page, tagged with a
+crop or animal and a season (see [`../../AGRICULTURE.md`](../../AGRICULTURE.md)).
+The money-input tests run with `bun run test`.
 
 Next.js frontend for the Onrecord Credit Readiness Assistant. Read
 [`Agent.md`](../../Agent.md) and [`specs/10-web.md`](../../specs/10-web.md)

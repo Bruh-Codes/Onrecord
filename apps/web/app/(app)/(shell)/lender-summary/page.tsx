@@ -135,6 +135,37 @@ export default function LenderSummaryPage() {
 					</div>
 				</section>
 
+				{data.farm.groups.length > 0 && (
+					<section className="border-b border-border py-5">
+						<h3 className="m-0 mb-1 text-[14px] font-semibold font-[family-name:var(--body-font)]">By crop and season</h3>
+						<p className="m-0 mb-3 text-[12px] text-foreground/55">Left over is money in minus money out for records the owner tagged. It is not profit.</p>
+						<div className="overflow-x-auto">
+							<table className="w-full border-collapse text-[13px] tabular-nums">
+								<thead>
+									<tr className="text-left text-[12px] text-foreground/55">
+										<th className="py-1.5 pr-3 font-normal">Crop or animal · season</th>
+										<th className="py-1.5 pr-3 text-right font-normal">Money in</th>
+										<th className="py-1.5 pr-3 text-right font-normal">Money out</th>
+										<th className="py-1.5 pr-3 text-right font-normal">Left over</th>
+										<th className="py-1.5 text-right font-normal">Typed in by owner</th>
+									</tr>
+								</thead>
+								<tbody>
+									{data.farm.groups.map((group) => (
+										<tr key={`${group.farm_activity}|${group.season}`} className="border-t border-foreground/8">
+											<td className="py-1.5 pr-3">{[group.farm_activity ?? "No crop given", group.season ?? "no season given"].join(" · ")}</td>
+											<td className="py-1.5 pr-3 text-right">{formatGhs(group.money_in_pesewas)}</td>
+											<td className="py-1.5 pr-3 text-right">{formatGhs(group.money_out_pesewas)}</td>
+											<td className={`py-1.5 pr-3 text-right ${group.left_over_pesewas < 0 ? "text-destructive" : ""}`}>{formatGhs(group.left_over_pesewas)}</td>
+											<td className="py-1.5 text-right">{group.typed_in_by_owner} of {group.transactions}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</section>
+				)}
+
 				<section className="grid gap-6 border-b border-border py-5 sm:grid-cols-2">
 					<Ranked title="Main buyers and customers" items={data.top_customers.counterparties.slice(0, 5)} />
 					<Ranked title="Main suppliers and costs" items={data.top_suppliers.counterparties.slice(0, 5)} />
@@ -149,7 +180,9 @@ export default function LenderSummaryPage() {
 							<ul className="m-0 list-none p-0 text-[13px]">
 								{evidence.map((doc) => (
 									<li key={doc.id} className="flex justify-between gap-3 border-t border-foreground/8 py-1.5">
-										<span className="min-w-0 truncate">{docTypeLabel(doc.doc_type)}{doc.issuer ? ` · ${doc.issuer}` : ""}</span>
+										<span className="min-w-0 truncate">
+											{doc.quality_flags?.hand_entered ? `Records typed in by the owner (${doc.transaction_count ?? 0})` : `${docTypeLabel(doc.doc_type)}${doc.issuer ? ` · ${doc.issuer}` : ""}`}
+										</span>
 										<span className="shrink-0 text-foreground/60">
 											{doc.period_start ? `${formatDate(doc.period_start)} – ${formatDate(doc.period_end)}` : formatDate(doc.created_at)}
 										</span>
@@ -171,7 +204,8 @@ export default function LenderSummaryPage() {
 				</section>
 
 				<footer className="border-t border-border pt-4 text-[11.5px] leading-relaxed text-foreground/55">
-					Prepared with Onrecord from statements and records the owner uploaded and confirmed. Transfers between the
+					Prepared with Onrecord from statements and records the owner uploaded and confirmed. Records the owner typed in
+					themselves, such as cash sales and farm costs, are counted and listed above as typed in. Transfers between the
 					owner&apos;s own accounts are left out. This is a summary of records, not an audited statement or a credit decision.
 				</footer>
 			</article>

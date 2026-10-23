@@ -1,13 +1,13 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Claims, require_business_access, verify_token
 from app.db import get_session
-from app.errors import forbidden, not_found
+from app.errors import AppError, forbidden, not_found
 from app.models.enums import CategorySource, Role
 from app.models.document import Document
 from app.models.transaction import Transaction
@@ -15,6 +15,7 @@ from app.schemas.common import Page
 from app.schemas.transaction import TransactionDetail, TransactionPatch, TransactionReviewItem, TransactionSummary
 from app.services.audit import write_audit_event
 from app.services.coverage import build_coverage
+from app.services.hand_entries import clean_tag
 
 router = APIRouter(tags=["transactions"])
 
@@ -178,6 +179,9 @@ async def patch_transaction(
             updates["category_source"] = CategorySource.HUMAN.value
             updates["category_confidence"] = 1.0
 
+    for tag in ("farm_activity", "season"):
+        if tag in updates:
+            updates[tag] = clean_tag(updates[tag])
     if "flags" in updates:
         # Patch flags rather than replacing them: provenance and model
         # suggestions remain available for audit after a human decision.
@@ -209,8 +213,38 @@ async def patch_transaction(
     return TransactionDetail.model_validate(transaction)
 
 
+@router.delete("/v1/transactions/{transaction_id}", status_code=204)
+async def delete_typed_record(
+    transaction_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Remove a record the owner typed in. Statement rows can't be deleted one by one."""
+    transaction = await session.get(Transaction, transaction_id)
+    if transaction is None:
+        raise not_found("TRANSACTION_NOT_FOUND", "No transaction with that id.")
+    await require_business_access(transaction.business_id, claims, session)
+    if claims.role not in {Role.OWNER, Role.ADMIN}:
+        raise forbidden("Only the business owner can remove records.")
+    if not (transaction.flags or {}).get("hand_entered"):
+        raise AppError("NOT_TYPED_IN", "Only records you typed in can be removed. Delete the document instead.", 409)
+    before = {**_transaction_before(transaction), "amount_pesewas": transaction.amount_pesewas,
+              "occurred_on": transaction.occurred_on.isoformat(), "direction": transaction.direction.value}
+    business_id = transaction.business_id
+    await session.delete(transaction)
+    await write_audit_event(session, business_id=business_id, actor=claims.user_id, action="transaction.delete",
+                            target=f"transaction:{transaction_id}", before=before)
+    await session.commit()
+    from app.workers.tasks import recompute
+
+    recompute.delay(str(business_id))
+    return Response(status_code=204)
+
+
 def _transaction_before(transaction: Transaction) -> dict:
     return {
+        "farm_activity": transaction.farm_activity,
+        "season": transaction.season,
         "category_l1": transaction.category_l1,
         "category_l2": transaction.category_l2,
         "category_source": transaction.category_source.value if transaction.category_source else None,
