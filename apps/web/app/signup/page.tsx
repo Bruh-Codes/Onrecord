@@ -113,27 +113,6 @@ function SignupForm() {
 						<button type="button" onClick={() => setAuthMode("login")} disabled={busy} className={`flex-1 text-center py-2.5 rounded-full text-[13.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${authMode === "login" ? "bg-foreground text-background font-semibold" : "text-foreground"}`}>Log in</button>
 					</div>
 
-					{authMode === "signup" && <button
-						type="button"
-						onClick={() => { setConsented((value) => !value); setError(null); }}
-						disabled={busy}
-						aria-pressed={consented}
-						className="mb-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						<span
-							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-								consented
-									? "border-foreground bg-foreground text-background"
-									: "border-foreground/30 bg-transparent text-background"
-							}`}
-						>
-							{consented && <CheckIcon className="h-3 w-3" />}
-						</span>
-						<span className="text-[11.5px] leading-relaxed opacity-70">
-							I confirm I&apos;m authorised to build a financial profile on this
-							business&apos;s behalf.
-						</span>
-					</button>}
 					<button
 						type="button"
 						onClick={handleGoogleSignIn}
@@ -159,7 +138,27 @@ function SignupForm() {
 					<button type="button" disabled={!ready || busy} onClick={handleSubmit} className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed" style={{ background: ready && !submitting ? "var(--foreground)" : "var(--muted-foreground)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
 						{submitting ? "Please wait…" : authMode === "signup" ? "Create account" : "Log in"}
 					</button>
-
+					{authMode === "signup" && <button
+						type="button"
+						onClick={() => { setConsented((value) => !value); setError(null); }}
+						disabled={busy}
+						aria-pressed={consented}
+						className="mt-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						<span
+							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+								consented
+									? "border-foreground bg-foreground text-background"
+									: "border-foreground/30 bg-transparent text-background"
+							}`}
+						>
+							{consented && <CheckIcon className="h-3 w-3" />}
+						</span>
+						<span className="text-[11.5px] leading-relaxed opacity-70">
+							I confirm I&apos;m authorised to build a financial profile on this
+							business&apos;s behalf.
+						</span>
+					</button>}
 				</div>
 			</div>
 
