@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 class AgentAsk(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     session_id: uuid.UUID | None = None
+    # The app path the owner is looking at (e.g. "/readiness"), so Ona can
+    # refer to what is on their screen.
+    page: str | None = Field(default=None, max_length=80)
 
 
 class AgentReply(BaseModel):

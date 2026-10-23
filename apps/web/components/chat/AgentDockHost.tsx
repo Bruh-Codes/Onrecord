@@ -61,6 +61,7 @@ export function AgentDockHost() {
 			const reply = await api.askOna(businessId, {
 				message,
 				session_id: sessionId.current,
+				page: window.location.pathname,
 		});
 			sessionId.current = reply.session_id;
 			const selectedTool = reply.used_tools.at(-1);

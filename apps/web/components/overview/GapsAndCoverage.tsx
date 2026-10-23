@@ -1,3 +1,4 @@
+import { gapTitle } from "@/lib/readiness";
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import Link from "next/link";
@@ -25,7 +26,7 @@ export function GapsAndCoverage({
 				{gaps.slice(0, 4).map((gap) => (
 					<div key={gap.id} className="py-3 border-b border-foreground/8">
 						<div className="flex justify-between items-start gap-2.5">
-							<div className="text-[13.5px] font-semibold">{gap.title}</div>
+							<div className="text-[13.5px] font-semibold">{gapTitle(gap)}</div>
 							<Badge tone="negative">{gap.severity}</Badge>
 						</div>
 						<div className="text-xs opacity-60 mt-0.5">
