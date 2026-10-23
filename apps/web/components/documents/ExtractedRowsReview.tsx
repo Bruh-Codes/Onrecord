@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { PillButton } from "@/components/ui/PillButton";
@@ -41,6 +42,7 @@ export function ExtractedRowsReview({ documentId, businessId }: { documentId: st
 	const confirm = useConfirmRows(businessId);
 	const [edits, setEdits] = useState<Record<string, Edit>>({});
 	const [error, setError] = useState<string | null>(null);
+	const [saved, setSaved] = useState<{ created: number; duplicates: number } | null>(null);
 	const data = query.data;
 	const editable = data?.state === "needs_review";
 
@@ -74,6 +76,7 @@ export function ExtractedRowsReview({ documentId, businessId }: { documentId: st
 
 	async function submit() {
 		setError(null);
+		setSaved(null);
 		const decisions: RowDecision[] = [];
 		for (const { row, edit } of current) {
 			const decision: RowDecision = { id: row.id };
@@ -85,10 +88,12 @@ export function ExtractedRowsReview({ documentId, businessId }: { documentId: st
 			if (Object.keys(decision).length > 1) decisions.push(decision);
 		}
 		try {
-			await confirm.mutateAsync({ documentId, rows: decisions });
+			const result = await confirm.mutateAsync({ documentId, rows: decisions });
 			setEdits({});
+			setSaved({ created: result.transactions_created, duplicates: result.duplicates_skipped });
 		} catch (err) {
-			setError(err instanceof ApiError ? err.message : "Couldn't save your review. Please try again.");
+			if (err instanceof ApiError && err.status < 500) setError(err.message);
+			else setError("We couldn't save these rows: the server hit an error. Nothing was saved, so you can try again in a minute.");
 		}
 	}
 
@@ -199,7 +204,18 @@ export function ExtractedRowsReview({ documentId, businessId }: { documentId: st
 					</PillButton>
 				)}
 			</div>
-			{error && <p className="m-0 mt-2 text-[12.5px] text-destructive">{error}</p>}
+			{error && (
+				<p role="alert" className="m-0 mt-3 rounded-xl bg-destructive-background px-3 py-2 text-[12.5px] text-destructive">
+					{error}
+				</p>
+			)}
+			{saved && (
+				<p role="status" className="m-0 mt-3 rounded-xl bg-positive-background px-3 py-2 text-[12.5px] text-positive">
+					Saved {saved.created} {saved.created === 1 ? "row" : "rows"} to your records
+					{saved.duplicates > 0 && ` (${saved.duplicates} already there, skipped)`}.{" "}
+					<Link href="/money" className="font-semibold underline underline-offset-2">See them in Money</Link>
+				</p>
+			)}
 		</div>
 	);
 }
