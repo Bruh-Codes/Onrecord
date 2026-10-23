@@ -33,6 +33,7 @@ class BusinessDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    is_demo: bool = False
     legal_name: str
     trading_name: str | None
     entity_type: EntityType
@@ -48,6 +49,7 @@ class BusinessDetail(BaseModel):
     def from_model(cls, business) -> "BusinessDetail":
         data = {
             "id": business.id,
+            "is_demo": business.is_demo,
             "legal_name": business.legal_name,
             "trading_name": business.trading_name,
             "entity_type": business.entity_type,

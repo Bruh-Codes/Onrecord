@@ -1,3 +1,4 @@
+import os
 import uuid
 from types import SimpleNamespace
 
@@ -26,7 +27,19 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app import models  # noqa: F401  import registers every table on Base.metadata before create_all runs
+# Never load a developer/production DATABASE_URL into destructive test fixtures.
+_test_url = os.environ.get("TEST_DATABASE_URL")
+if _test_url:
+    from sqlalchemy.engine import make_url
+    if not (make_url(_test_url).database or "").endswith("_test"):
+        raise RuntimeError("TEST_DATABASE_URL database name must end in _test.")
+    os.environ["DATABASE_URL"] = _test_url
+else:
+    os.environ["DATABASE_URL"] = "postgresql+asyncpg://sme:sme@localhost:5432/onrecord_test"
+# Worker tasks use the sync engine; point it at the same test database.
+os.environ["DATABASE_URL_SYNC"] = os.environ["DATABASE_URL"].replace("+asyncpg", "+psycopg", 1)
+
+from app import models  # noqa: F401  registers every model
 from app.config import get_settings
 from app.db import Base, get_session
 
@@ -41,9 +54,8 @@ _test_public_key = _test_private_key.public_key()
 
 @pytest_asyncio.fixture
 async def db_ready():
-    """DB-dependent tests need a real Postgres-sqlite can't stand in, since we
-    rely on native jsonb/enum behaviour (Agent.md §5). Skip cleanly if the
-    DATABASE_URL in .env isn't reachable, rather than faking a pass.
+    """DB-dependent tests require an explicitly selected disposable Postgres.
+    Unavailable configured test databases fail rather than silently skipping.
 
     NullPool here (not the app's pooled engine) sidesteps a Windows-specific
     asyncpg/ProactorEventLoop teardown crash when a pooled connection is
@@ -51,6 +63,8 @@ async def db_ready():
     task boundary triggers exactly that. Not needed under the app's real
     deployment target (Linux), only in this local test harness."""
 
+    if not _test_url:
+        pytest.skip("Set TEST_DATABASE_URL to a dedicated database ending in _test.")
     test_engine = create_async_engine(
         settings.database_url, poolclass=NullPool, connect_args={"timeout": 3}
     )
@@ -59,7 +73,7 @@ async def db_ready():
             await conn.run_sync(Base.metadata.create_all)
     except Exception as exc:
         await test_engine.dispose()
-        pytest.skip(f"Postgres not reachable at {settings.database_url}: {exc}")
+        pytest.fail(f"Dedicated test Postgres unavailable ({type(exc).__name__}).")
 
     yield test_engine
 
@@ -72,6 +86,8 @@ async def db_ready():
 async def client(db_ready, monkeypatch):
     from app.api import deps
     from app.api.main import app
+    from app.workers.tasks import recompute
+    monkeypatch.setattr(recompute, "delay", lambda *args: SimpleNamespace(id=str(uuid.uuid4())))
 
     test_session_local = async_sessionmaker(db_ready, expire_on_commit=False)
 

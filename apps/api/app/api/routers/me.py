@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Claims, verify_token
+from app.api.deps import Claims, verify_token, require_business_access
 from app.db import get_session
 from app.models.business import Business
 from app.models.enums import Role
@@ -41,6 +41,7 @@ async def get_me(
 
     business = None
     if business_id is not None:
+        await require_business_access(business_id, claims, session)
         row = await session.get(Business, business_id)
         if row is not None:
             business = BusinessDetail.from_model(row)

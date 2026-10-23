@@ -30,9 +30,9 @@ def _reading(rows):
 
 async def _document(client, sha_seed: bytes, filename: str = "momo.pdf"):
     owner_id = uuid.uuid4()
-    admin = bearer_header(role="admin", user_id=owner_id)
+    creator = bearer_header(role="owner", user_id=owner_id)
     business_id = (await client.post(
-        "/v1/businesses", json={"legal_name": "Yaw's Tomatoes", "entity_type": "sole_prop"}, headers=admin,
+        "/v1/businesses", json={"legal_name": "Yaw's Tomatoes", "entity_type": "sole_prop"}, headers=creator,
     )).json()["id"]
     owner = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
     created = await client.post(

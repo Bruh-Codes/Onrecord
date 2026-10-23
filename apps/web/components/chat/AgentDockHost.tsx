@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AgentDock, type DockConversationMessage } from "@/components/ui/agent-dock";
 import { useToast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
@@ -20,6 +21,7 @@ function toConversationMessages(
 }
 
 export function AgentDockHost() {
+	const pathname = usePathname();
 	const { businessId } = useMe();
 	const { toast } = useToast();
 	const sessionId = useRef<string | undefined>(undefined);
@@ -144,13 +146,16 @@ export function AgentDockHost() {
 		setSessionResetKey((key) => key + 1);
 	}
 
+	// Ona is not grounded in the farm ledger yet, so keep it off the farm workspace.
+	if (pathname.startsWith("/farm")) return null;
+
 	return (
 		<AgentDock
 			activeSessionId={sessionId.current}
 			agentName="Ona"
 			avatarSrc={avatarSrc}
 			chatSessions={chatSessions}
-			className="fixed inset-x-3 bottom-20 z-50 w-auto max-w-none md:inset-x-auto md:bottom-6 md:right-6 md:w-[calc(100vw-3rem)] md:max-w-md"
+			className="farm-no-print fixed inset-x-3 bottom-20 z-50 w-auto max-w-none md:inset-x-auto md:bottom-6 md:right-6 md:w-[calc(100vw-3rem)] md:max-w-md"
 			idleStatus="Your assistant"
 			agentResponse={agentResponse}
 			agentResponseKey={responseKey}

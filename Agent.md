@@ -55,6 +55,11 @@ whole system: the invariants, the shared decisions, the market facts.
 
 ## 3. Hard invariants
 
+The approved agricultural record-book extension is described in
+[`specs/12-agriculture.md`](./specs/12-agriculture.md). Its manual `farm_entry`
+declarations stay outside the extracted ledger and readiness indicators. The
+invariants below continue to govern that document-derived pipeline.
+
 These are not preferences. A change that violates any of them is wrong and must be
 rejected even if it passes tests. They apply wherever the relevant code lives,
 frontend or backend.

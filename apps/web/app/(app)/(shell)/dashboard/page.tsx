@@ -145,6 +145,11 @@ export default function HomePage() {
 				</section>
 			)}
 
+			<Link href="/farm" className="block rounded-2xl border border-border bg-card p-5 mb-6">
+				<span className="text-primary font-semibold">Open your farm finance workspace →</span>
+				<span className="block text-sm text-muted-foreground mt-1">Record farm income and costs, compare enterprises, and prepare a financial report.</span>
+			</Link>
+
 			<GetStartedCard
 				hasData={!isNewUser}
 				googleSheets={googleSheetsConnected ? <GoogleSheetsConnect /> : undefined}
