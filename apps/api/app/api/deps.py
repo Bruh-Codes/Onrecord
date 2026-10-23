@@ -49,14 +49,15 @@ except ImportError:  # pragma: no cover
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
-from app.db import get_session
+from app.db import get_session, uuid7
 from app.errors import forbidden, not_found, unauthorized
 from app.models.enums import Role
 from app.models.access import BusinessAccess
-from app.services.users import ensure_user
+from app.services.users import ensure_user, resolve_business_id
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -151,9 +152,32 @@ async def require_business_access(
         BusinessAccess.business_id == business_id,
         BusinessAccess.user_id == claims.user_id,
     ))
+    if grant is None and claims.role == Role.OWNER:
+        grant = await _backfill_owner_grant(session, claims.user_id, business_id)
     if grant is None or grant.role != claims.role:
         raise forbidden("You don't have access to this business.")
     return claims
+
+
+async def _backfill_owner_grant(
+    session: AsyncSession, user_id: uuid.UUID, business_id: uuid.UUID
+) -> BusinessAccess | None:
+    """Owners whose business predates business_access (no creation audit to
+    migrate from) keep access to the business linked on their own user rows.
+    The JWT claim is not trusted here; only the server-side link is."""
+    linked = await resolve_business_id(session, user_id=user_id, token_business_id=None)
+    if linked != business_id:
+        return None
+    await session.execute(
+        pg_insert(BusinessAccess)
+        .values(id=uuid7(), business_id=business_id, user_id=user_id, role=Role.OWNER)
+        .on_conflict_do_nothing(constraint="uq_business_access_user")
+    )
+    await session.commit()
+    return await session.scalar(select(BusinessAccess).where(
+        BusinessAccess.business_id == business_id,
+        BusinessAccess.user_id == user_id,
+    ))
 
 
 async def require_document_access(

@@ -36,6 +36,8 @@ if _test_url:
     os.environ["DATABASE_URL"] = _test_url
 else:
     os.environ["DATABASE_URL"] = "postgresql+asyncpg://sme:sme@localhost:5432/onrecord_test"
+# Worker tasks use the sync engine; point it at the same test database.
+os.environ["DATABASE_URL_SYNC"] = os.environ["DATABASE_URL"].replace("+asyncpg", "+psycopg", 1)
 
 from app import models  # noqa: F401  registers every model
 from app.config import get_settings

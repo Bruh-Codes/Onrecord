@@ -49,3 +49,32 @@ async def test_get_missing_business_returns_404(client):
 async def test_request_without_token_is_unauthorized(client):
     resp = await client.get(f"/v1/businesses/{uuid.uuid4()}")
     assert resp.status_code == 401
+
+
+
+async def test_legacy_owner_without_grant_keeps_access(client, db_ready):
+    """An owner whose business predates business_access (no creation audit to
+    migrate from) keeps access to the business linked to their account, and
+    gets the missing grant backfilled. Other owners still get 403."""
+    from sqlalchemy import text
+
+    admin_headers = bearer_header(role="admin", user_id=uuid.uuid4())
+    business_id = (await client.post(
+        "/v1/businesses", json={"legal_name": "Legacy Farm", "entity_type": "sole_prop"}, headers=admin_headers,
+    )).json()["id"]
+
+    owner_id = uuid.uuid4()
+    owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
+    me = await client.get("/v1/me", headers=owner_headers)
+    assert me.status_code == 200 and me.json()["business_id"] == business_id
+    assert (await client.get(f"/v1/businesses/{business_id}", headers=owner_headers)).status_code == 200
+
+    async with db_ready.connect() as conn:
+        grants = (await conn.execute(
+            text("SELECT role::text FROM business_access WHERE business_id = :b AND user_id = :u"),
+            {"b": business_id, "u": str(owner_id)},
+        )).scalars().all()
+    assert grants == ["OWNER"]
+
+    stranger = bearer_header(role="owner", user_id=uuid.uuid4(), business_id=uuid.uuid4())
+    assert (await client.get(f"/v1/businesses/{business_id}", headers=stranger)).status_code == 403
