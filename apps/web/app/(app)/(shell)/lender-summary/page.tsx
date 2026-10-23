@@ -135,7 +135,7 @@ export default function LenderSummaryPage() {
 					</div>
 				</section>
 
-				{data.farm.groups.length > 0 && (
+				{(data.farm?.groups?.length ?? 0) > 0 && (
 					<section className="border-b border-border py-5">
 						<h3 className="m-0 mb-1 text-[14px] font-semibold font-[family-name:var(--body-font)]">By crop and season</h3>
 						<p className="m-0 mb-3 text-[12px] text-foreground/55">Left over is money in minus money out for records the owner tagged. It is not profit.</p>
@@ -151,7 +151,7 @@ export default function LenderSummaryPage() {
 									</tr>
 								</thead>
 								<tbody>
-									{data.farm.groups.map((group) => (
+									{(data.farm?.groups ?? []).map((group) => (
 										<tr key={`${group.farm_activity}|${group.season}`} className="border-t border-foreground/8">
 											<td className="py-1.5 pr-3">{[group.farm_activity ?? "No crop given", group.season ?? "no season given"].join(" · ")}</td>
 											<td className="py-1.5 pr-3 text-right">{formatGhs(group.money_in_pesewas)}</td>
