@@ -3,8 +3,16 @@
 import { useEffect, useState } from "react";
 
 import { CATEGORY_LABELS } from "@/lib/document-review";
+import { useToast } from "@/components/ui/Toast";
 import { formatGhs } from "@/lib/format";
-import { type TransactionQuery, useMoneyTransactions } from "@/lib/money";
+import {
+	type FarmFilter,
+	type MoneyTransaction,
+	type TransactionQuery,
+	useMoneyTransactions,
+	useRemoveRecord,
+	useTagRecord,
+} from "@/lib/money";
 
 const PAGE = 50;
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -14,7 +22,20 @@ const DIRECTIONS: { value: TransactionQuery["direction"]; label: string }[] = [
 	{ value: "out", label: "Money out" },
 ];
 
-export function TransactionsList({ businessId, range }: { businessId: string; range: { from?: string; to?: string } }) {
+export function TransactionsList({
+	businessId,
+	range,
+	filter,
+	activities,
+	seasons,
+}: {
+	businessId: string;
+	range: { from?: string; to?: string };
+	filter: FarmFilter;
+	activities: string[];
+	seasons: string[];
+}) {
+	const [tagging, setTagging] = useState<string | null>(null);
 	const [search, setSearch] = useState("");
 	const [q, setQ] = useState("");
 	const [direction, setDirection] = useState<TransactionQuery["direction"]>(undefined);
@@ -31,7 +52,7 @@ export function TransactionsList({ businessId, range }: { businessId: string; ra
 	}, [search]);
 
 	const query = useMoneyTransactions(businessId, {
-		q: q || undefined, direction, category: category || undefined, sort, limit, ...range,
+		q: q || undefined, direction, category: category || undefined, sort, limit, ...range, ...filter,
 	});
 	const data = query.data;
 
@@ -108,11 +129,22 @@ export function TransactionsList({ businessId, range }: { businessId: string; ra
 								<div className="truncate text-[12px] text-foreground/55">
 									{[
 										row.counterparty ? row.description : null,
-										row.internal_transfer ? "Own transfer" : CATEGORY_LABELS[row.category_l1 ?? ""] ?? "Not categorised",
+										row.internal_transfer ? "Own transfer" : row.hand_entered ? row.category_l2 : CATEGORY_LABELS[row.category_l1 ?? ""] ?? "Not categorised",
 										row.fee_pesewas ? `fees ${formatGhs(row.fee_pesewas)}` : null,
-										row.document_name,
+										row.hand_entered ? "Typed in by you" : row.document_name,
 									].filter(Boolean).join(" · ")}
 								</div>
+								<div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+									{[row.farm_activity, row.season].filter(Boolean).map((tag) => (
+										<span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-foreground/75">{tag}</span>
+									))}
+									<button type="button" onClick={() => setTagging(tagging === row.id ? null : row.id)} className="cursor-pointer text-foreground/60 underline underline-offset-2">
+										{row.farm_activity || row.season ? "Change tag" : "Tag"}
+									</button>
+								</div>
+								{tagging === row.id && (
+									<TagEditor businessId={businessId} row={row} activities={activities} seasons={seasons} onDone={() => setTagging(null)} />
+								)}
 							</div>
 							<div className={`shrink-0 text-right text-[13.5px] font-semibold tabular-nums ${row.direction === "in" ? "text-positive" : ""}`}>
 								{row.direction === "in" ? "+" : "−"}{formatGhs(row.amount_pesewas)}
@@ -134,5 +166,62 @@ export function TransactionsList({ businessId, range }: { businessId: string; ra
 				</div>
 			)}
 		</section>
+	);
+}
+
+function TagEditor({
+	businessId,
+	row,
+	activities,
+	seasons,
+	onDone,
+}: {
+	businessId: string;
+	row: MoneyTransaction;
+	activities: string[];
+	seasons: string[];
+	onDone: () => void;
+}) {
+	const { toast } = useToast();
+	const tag = useTagRecord(businessId);
+	const remove = useRemoveRecord(businessId);
+	const [activity, setActivity] = useState(row.farm_activity ?? "");
+	const [season, setSeason] = useState(row.season ?? "");
+	const field = "min-w-0 flex-1 rounded-full border border-border bg-background px-3 py-1.5 text-[12.5px]";
+
+	async function save() {
+		try {
+			await tag.mutateAsync({ id: row.id, farm_activity: activity.trim(), season: season.trim() });
+			onDone();
+		} catch {
+			toast({ title: "Couldn't save the tag", tone: "error" });
+		}
+	}
+
+	async function removeRecord() {
+		if (!window.confirm("Remove this record you typed in?")) return;
+		try {
+			await remove.mutateAsync(row.id);
+			toast({ title: "Record removed", tone: "success" });
+		} catch {
+			toast({ title: "Couldn't remove the record", tone: "error" });
+		}
+	}
+
+	return (
+		<div className="mt-2 flex flex-wrap items-center gap-2">
+			<input className={field} list="tag-activities" placeholder="Crop or animal" aria-label="Crop or animal" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
+			<input className={field} list="tag-seasons" placeholder="Season" aria-label="Season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
+			<datalist id="tag-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
+			<datalist id="tag-seasons">{seasons.map((value) => <option key={value} value={value} />)}</datalist>
+			<button type="button" onClick={save} disabled={tag.isPending} className="rounded-full bg-foreground px-3 py-1.5 text-[12.5px] text-background cursor-pointer disabled:opacity-50">
+				Save
+			</button>
+			{row.hand_entered && (
+				<button type="button" onClick={removeRecord} disabled={remove.isPending} className="rounded-full border border-border px-3 py-1.5 text-[12.5px] text-destructive cursor-pointer disabled:opacity-50">
+					Remove record
+				</button>
+			)}
+		</div>
 	);
 }

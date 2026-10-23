@@ -70,7 +70,9 @@ async def delete_business(
         raise not_found("BUSINESS_NOT_FOUND", "No business with that id.")
 
     storage_keys = (await session.execute(
-        text("SELECT storage_key FROM document WHERE business_id = :business_id"),
+        # Typed-in records have no stored file.
+        text("SELECT storage_key FROM document WHERE business_id = :business_id "
+             "AND COALESCE(quality_flags->>'hand_entered', 'false') <> 'true'"),
         {"business_id": business_id},
     )).scalars().all()
     storage = get_storage_backend()
@@ -82,9 +84,6 @@ async def delete_business(
 
     statements = (
         "DELETE FROM notification WHERE business_id = :business_id",
-        "DELETE FROM farm_entry WHERE business_id = :business_id",
-        "DELETE FROM farm_cycle WHERE business_id = :business_id",
-        "DELETE FROM farm_enterprise WHERE business_id = :business_id",
         "DELETE FROM business_task WHERE business_id = :business_id",
         "DELETE FROM business_access WHERE business_id = :business_id",
         "DELETE FROM indicator WHERE business_id = :business_id",

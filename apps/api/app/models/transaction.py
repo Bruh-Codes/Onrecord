@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,7 @@ class Transaction(IdMixin, Base):
         Index("ix_transaction_business_occurred", "business_id", "occurred_on"),
         Index("ix_transaction_account_occurred_amount", "account_id", "occurred_on", "amount_pesewas"),
         Index("ix_transaction_business_category", "business_id", "category_l1"),
+        Index("ix_transaction_business_farm", "business_id", "farm_activity", "season"),
     )
 
     business_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("business.id"), nullable=False)
@@ -49,6 +50,10 @@ class Transaction(IdMixin, Base):
     category_l2: Mapped[str | None] = mapped_column(nullable=True)
     category_confidence: Mapped[float | None] = mapped_column(Numeric(3, 2), nullable=True)
     category_source: Mapped[CategorySource | None] = mapped_column(nullable=True)
+
+    # Optional farm tags so one ledger answers "how did my tomatoes do this season?".
+    farm_activity: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    season: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     flags: Mapped[dict] = mapped_column(JSONB, default=dict)
     provenance: Mapped[dict] = mapped_column(JSONB, nullable=False)

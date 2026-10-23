@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import CategorySource, Direction
 
@@ -21,6 +21,8 @@ class TransactionSummary(BaseModel):
     category_l2: str | None
     category_source: CategorySource | None
     category_confidence: float | None = None
+    farm_activity: str | None = None
+    season: str | None = None
     flags: dict
 
 
@@ -40,6 +42,9 @@ class TransactionPatch(BaseModel):
     category_l1: str | None = None
     category_l2: str | None = None
     flags: dict | None = None
+    # Crop/animal and season tags; an empty string clears the tag.
+    farm_activity: str | None = Field(None, max_length=80)
+    season: str | None = Field(None, max_length=80)
 
 
 class TransactionDetail(TransactionSummary):

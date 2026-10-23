@@ -55,10 +55,10 @@ whole system: the invariants, the shared decisions, the market facts.
 
 ## 3. Hard invariants
 
-The approved agricultural record-book extension is described in
-[`specs/12-agriculture.md`](./specs/12-agriculture.md). Its manual `farm_entry`
-declarations stay outside the extracted ledger and readiness indicators. The
-invariants below continue to govern that document-derived pipeline.
+Farm records are ordinary transactions tagged with a crop/animal and season
+([`specs/12-agriculture.md`](./specs/12-agriculture.md)). Records the owner types
+in are `owner_stated` transactions on an `informal_ledger` document with an
+extraction row behind each, so the invariants below apply to them too.
 
 These are not preferences. A change that violates any of them is wrong and must be
 rejected even if it passes tests. They apply wherever the relevant code lives,

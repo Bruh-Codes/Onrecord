@@ -1,0 +1,15 @@
+{
+  "note": "Illustrative records for demos only: Yaw Mensah's 3-acre main-season tomato farm in Greater Accra. Amounts are not real market prices.",
+  "farm_activity": "Tomatoes",
+  "season": "2026 main season",
+  "records": [
+    {"date": "2026-05-03", "direction": "out", "category": "Land preparation", "description": "Tractor hire and field preparation", "amount_ghs": "2200.00"},
+    {"date": "2026-05-09", "direction": "out", "category": "Seeds and seedlings", "description": "Tomato seedlings", "amount_ghs": "1350.00"},
+    {"date": "2026-05-15", "direction": "out", "category": "Fertilizer and chemicals", "description": "Fertilizer", "amount_ghs": "2750.00"},
+    {"date": "2026-06-03", "direction": "out", "category": "Labour", "description": "Planting and farm workers", "amount_ghs": "3200.00"},
+    {"date": "2026-06-24", "direction": "out", "category": "Water and power", "description": "Water and pumping", "amount_ghs": "950.00"},
+    {"date": "2026-07-18", "direction": "in", "category": "Produce sales", "description": "First tomato harvest", "amount_ghs": "7200.00", "counterparty": "Makola market queen"},
+    {"date": "2026-08-07", "direction": "in", "category": "Produce sales", "description": "Bulk tomato sales", "amount_ghs": "10900.00", "counterparty": "Accra aggregator"},
+    {"date": "2026-09-12", "direction": "in", "category": "Produce sales", "description": "Market tomato sales", "amount_ghs": "6100.00", "counterparty": "Makola market queen"}
+  ]
+}

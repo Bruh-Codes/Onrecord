@@ -29,7 +29,6 @@ const NAV_GROUPS = [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
 			{ href: "/money", icon: <MoneyIcon />, label: "Money" },
 			{ href: "/overview", icon: <OverviewIcon />, label: "Business health" },
-			{ href: "/farm", icon: <OverviewIcon />, label: "Farm finances" },
 			{ href: "/documents", icon: <DocumentsIcon />, label: "Records" },
 		],
 	},

@@ -57,9 +57,8 @@ Celery concurrency `1` because Docling's local models are CPU/memory intensive.
 
 ## Repo layout
 
-The agricultural finance workspace extends this application at `/farm`.
-See [AGRICULTURE.md](./AGRICULTURE.md) for its migration, financial boundaries,
-fictional demo, and test instructions.
+Farm sales and costs are ordinary records tagged by crop and season. See
+[AGRICULTURE.md](./AGRICULTURE.md) for the model, demo and migration.
 
 ```
 apps/web/       Next.js frontend (App Router, Tailwind 4, TypeScript)
