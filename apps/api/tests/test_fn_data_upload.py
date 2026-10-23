@@ -43,7 +43,7 @@ async def test_fn_data_upload_and_extraction(client, monkeypatch):
 
     # Create a business (admin + owner headers) – same pattern used in other tests.
     admin_owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=admin_owner_id)
+    admin_headers = bearer_header(role="owner", user_id=admin_owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=admin_owner_id, business_id=uuid.UUID(business_id))
 

@@ -29,6 +29,7 @@ export function useUploadDocument(businessId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["documents", businessId] });
+      qc.invalidateQueries({ queryKey: ["farm-documents", businessId] });
     },
   });
 }

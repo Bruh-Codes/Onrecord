@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { PillButton } from "@/components/ui/PillButton";
@@ -15,10 +15,16 @@ export default function SettingsPage() {
 	const { data: session } = authClient.useSession();
 	const { businessId } = useMe();
 	const businessQuery = useBusiness(businessId);
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [legalName, setLegalName] = useState("");
-	const [tradingName, setTradingName] = useState("");
+	const [profileDraft, setProfileDraft] = useState<{ id: string; name: string; email: string } | null>(null);
+	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string } | null>(null);
+	const name = profileDraft?.id === session?.user.id ? profileDraft?.name ?? "" : session?.user.name ?? "";
+	const email = profileDraft?.id === session?.user.id ? profileDraft?.email ?? "" : session?.user.email ?? "";
+	const legalName = businessDraft?.id === businessId ? businessDraft?.legalName ?? "" : businessQuery.data?.legal_name ?? "";
+	const tradingName = businessDraft?.id === businessId ? businessDraft?.tradingName ?? "" : businessQuery.data?.trading_name ?? "";
+	const setName = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name: value, email });
+	const setEmail = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name, email: value });
+	const setLegalName = (value: string) => setBusinessDraft({ id: businessId ?? "", legalName: value, tradingName });
+	const setTradingName = (value: string) => setBusinessDraft({ id: businessId ?? "", legalName, tradingName: value });
 	const [savingProfile, setSavingProfile] = useState(false);
 	const [savingBusiness, setSavingBusiness] = useState(false);
 	const [profileError, setProfileError] = useState<string | null>(null);
@@ -29,20 +35,6 @@ export default function SettingsPage() {
 	const [deleting, setDeleting] = useState(false);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-
-	useEffect(() => {
-		if (session?.user) {
-			setName(session.user.name ?? "");
-			setEmail(session.user.email ?? "");
-		}
-	}, [session?.user]);
-
-	useEffect(() => {
-		if (businessQuery.data) {
-			setLegalName(businessQuery.data.legal_name);
-			setTradingName(businessQuery.data.trading_name ?? "");
-		}
-	}, [businessQuery.data]);
 
 	async function saveProfile() {
 		setSavingProfile(true);

@@ -72,6 +72,8 @@ services:
     volumes:
       - ./apps/api:/app
     environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEMO_MODE_ENABLED: ${DEMO_MODE_ENABLED:-false}
       DATABASE_URL: postgresql+asyncpg://sme:sme@postgres:5432/sme
       DATABASE_URL_SYNC: postgresql+psycopg://sme:sme@postgres:5432/sme
       REDIS_URL: redis://redis:6379/0

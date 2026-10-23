@@ -15,8 +15,13 @@ export async function linkBusiness(businessId: string): Promise<void> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new Error("Not signed in.");
 
-  await pool.query('UPDATE auth_user SET "businessId" = $1, "updatedAt" = now() WHERE id = $2', [
+  const result = await pool.query(`UPDATE auth_user SET "businessId" = $1, "updatedAt" = now()
+    WHERE id = $2 AND EXISTS (
+      SELECT 1 FROM business_access WHERE business_id = $1::uuid
+        AND user_id = $2::uuid AND role::text = 'OWNER'
+    )`, [
     businessId,
     session.user.id,
   ]);
+  if (result.rowCount !== 1) throw new Error("You do not own this business.");
 }

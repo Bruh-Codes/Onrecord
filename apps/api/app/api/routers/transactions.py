@@ -141,7 +141,7 @@ async def get_transaction(
     )
     if transaction is None:
         raise not_found("TRANSACTION_NOT_FOUND", "No transaction with that id.")
-    require_business_access(transaction.business_id, claims)
+    await require_business_access(transaction.business_id, claims, session)
     return TransactionDetail.model_validate(transaction)
 
 
@@ -165,7 +165,7 @@ async def patch_transaction(
     )
     if transaction is None:
         raise not_found("TRANSACTION_NOT_FOUND", "No transaction with that id.")
-    require_business_access(transaction.business_id, claims)
+    await require_business_access(transaction.business_id, claims, session)
     if claims.role not in {Role.OWNER, Role.REVIEWER, Role.ADMIN}:
         raise forbidden("Only an owner, reviewer, or admin can classify transactions.")
 

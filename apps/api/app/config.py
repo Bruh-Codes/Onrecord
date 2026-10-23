@@ -9,6 +9,9 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://sme:sme@localhost:5432/sme"
     database_url_sync: str = "postgresql+psycopg://sme:sme@localhost:5432/sme"
+    environment: Literal["development", "test", "production"] = "production"
+    demo_mode_enabled: bool = False
+
     redis_url: str = "redis://localhost:6379/0"
     task_always_eager: bool = False
 

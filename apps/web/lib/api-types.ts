@@ -12,6 +12,7 @@ export type Me = {
 };
 
 export type Business = {
+	is_demo: boolean;
 	id: string;
 	legal_name: string;
 	trading_name: string | null;

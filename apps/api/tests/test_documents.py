@@ -19,7 +19,7 @@ async def _create_business(client, admin_headers) -> str:
 
 async def test_create_document_returns_upload_target(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
 
@@ -37,9 +37,11 @@ async def test_create_document_returns_upload_target(client):
 
 async def test_complete_document_enqueues_ingest(client, monkeypatch):
     from app.workers.tasks import s1_ingest
+    from app.api.main import app
+    from app.services.storage import get_storage_backend
 
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
     create_response = await client.post(
@@ -55,6 +57,7 @@ async def test_complete_document_enqueues_ingest(client, monkeypatch):
     document_id = create_response.json()["document_id"]
     enqueued: list[str] = []
     monkeypatch.setattr(s1_ingest, "delay", enqueued.append)
+    app.dependency_overrides[get_storage_backend] = lambda: SimpleNamespace(read_bytes=lambda key: b"queued-statement")
 
     response = await client.post(f"/v1/documents/{document_id}/complete", headers=owner_headers)
 
@@ -67,7 +70,7 @@ async def test_retry_received_document_reenqueues_ingest(client, monkeypatch):
     from app.workers.tasks import s1_ingest
 
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
     created = await client.post(
@@ -93,7 +96,7 @@ async def test_retry_received_document_reenqueues_ingest(client, monkeypatch):
 
 async def test_duplicate_sha256_is_rejected(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
 
@@ -110,7 +113,7 @@ async def test_duplicate_sha256_is_rejected(client):
 
 async def test_deleted_document_can_be_uploaded_again(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
     payload = {
@@ -139,7 +142,7 @@ async def test_deleted_document_can_be_uploaded_again(client):
 
 async def test_replace_document_reuses_its_file_hash(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
     payload = {
@@ -162,7 +165,7 @@ async def test_replace_document_reuses_its_file_hash(client):
 
 async def test_file_too_large_is_rejected(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
 
@@ -182,7 +185,7 @@ async def test_file_too_large_is_rejected(client):
 
 async def test_list_documents_is_paginated(client):
     owner_id = uuid.uuid4()
-    admin_headers = bearer_header(role="admin", user_id=owner_id)
+    admin_headers = bearer_header(role="owner", user_id=owner_id)
     business_id = await _create_business(client, admin_headers)
     owner_headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
 
