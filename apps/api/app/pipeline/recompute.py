@@ -108,7 +108,7 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
 
     # ---- Checklist + document gaps (S9) ----
     checklist_model = _sync_checklist(db, business, documents)
-    _sync_missing_document_gaps(db, business_id, checklist_model)
+    _sync_missing_document_gaps(db, business_id, checklist_model, tin_given=bool(business.tin))
 
     # ---- Coverage gaps (S5.3) ----
     open_period_gaps = _sync_missing_period_gaps(db, business_id, coverage)
@@ -346,9 +346,11 @@ def _checklist_as_dict(item: ChecklistItem) -> dict:
     return data
 
 
-def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem]) -> None:
+def _sync_missing_document_gaps(
+    db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem], *, tin_given: bool = False
+) -> None:
     missing = [c for c in checklist if c.status == "missing"]
-    missing_gaps = s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing])
+    missing_gaps = s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing], tin_given=tin_given)
     missing_codes = {gap["code"] for gap in missing_gaps}
 
     # A gap is a derived view of the current checklist. Resolve stale missing
@@ -377,8 +379,12 @@ def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: 
         )
         if exists is None:
             db.add(Gap(business_id=business_id, **gap))
-        elif exists.title != gap["title"]:
+        else:
+            # Wording and severity follow the owner's answers (a TIN typed in
+            # Settings turns the tax document from a blocker into a to-do).
             exists.title = gap["title"]
+            exists.severity = gap["severity"]
+            exists.detail = gap["detail"]
     db.flush()
 
 

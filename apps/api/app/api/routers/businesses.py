@@ -189,4 +189,9 @@ async def patch_business(
     )
     await session.commit()
     await session.refresh(business)
+    # The loan checklist depends on these answers (a typed TIN, the sector).
+    if updates.keys() & {"tin", "sector_code", "premises_status", "employee_count_declared"}:
+        from app.workers.tasks import recompute
+
+        recompute.delay(str(business.id))
     return BusinessDetail.from_model(business)

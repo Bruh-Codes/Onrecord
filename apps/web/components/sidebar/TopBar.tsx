@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BellIcon, SunIcon, MoonIcon, LogOutIcon, SettingsIcon, SummaryIcon } from "@/components/icons";
+import { BellIcon, SunIcon, MoonIcon, LogOutIcon, SettingsIcon } from "@/components/icons";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
@@ -231,15 +231,6 @@ export function TopBar() {
               >
                 <SettingsIcon className="w-4 h-4" />
                 Settings
-              </Link>
-              <Link
-                href="/lender-summary"
-                role="menuitem"
-                onClick={() => setIsDropdownOpen(false)}
-                className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left no-underline text-foreground transition-colors hover:bg-foreground hover:text-background md:hidden"
-              >
-                <SummaryIcon className="w-4 h-4" />
-                Lender summary
               </Link>
               <button
                 type="button"

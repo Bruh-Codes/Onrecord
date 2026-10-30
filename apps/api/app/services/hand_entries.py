@@ -2,7 +2,7 @@
 
 A cash sale or a stock purchase paid in cash is the same kind of fact as a
 MoMo payment, so it lives in the one `transaction` ledger and flows into Money,
-Business health, Loan readiness and the Lender summary. Typed records hang off
+Loan readiness and the Lender summary. Typed records hang off
 a single cash-book document per business ("Records you typed in"), which the
 readiness score already weighs as self-reported evidence (informal_ledger).
 """

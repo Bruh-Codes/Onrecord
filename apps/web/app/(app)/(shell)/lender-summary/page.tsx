@@ -7,10 +7,9 @@ import {
 	useDocuments,
 	useGaps,
 	useMe,
-	useScore,
 } from "@/lib/hooks/use-business";
 import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
-import { BAND_LABELS, docTypeLabel, gapTitle } from "@/lib/readiness";
+import { docTypeLabel, gapTitle } from "@/lib/readiness";
 import { sectorLabel } from "@/lib/sectors";
 import { taxStatusForLender } from "@/lib/tax";
 
@@ -32,7 +31,6 @@ export default function LenderSummaryPage() {
 	const overall = useMoneySummary(businessId, {});
 	const latest = overall.data?.latest_on ?? null;
 	const summary = useMoneySummary(businessId, latest ? { from: rangeStart(latest, 12) } : {});
-	const score = useScore(businessId);
 	const coverage = useCoverage(businessId);
 	const documents = useDocuments(businessId);
 	const gaps = useGaps(businessId);
@@ -94,9 +92,6 @@ export default function LenderSummaryPage() {
 					<div className="text-right text-[12.5px] text-foreground/65">
 						<div>Period: <span className="font-semibold text-foreground">{span}</span></div>
 						<div>Prepared {formatDate(new Date().toISOString())}</div>
-						{score.data && (
-							<div>Readiness {Math.round(score.data.total)}/100 · {BAND_LABELS[score.data.band]}</div>
-						)}
 					</div>
 				</header>
 

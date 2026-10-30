@@ -66,3 +66,12 @@ def test_missing_required_produces_blocker_gap():
     assert by_code["MISSING_DOC_REGISTRATION_CERT"]["severity"] == "blocker"
     assert by_code["MISSING_DOC_TENANCY_AGREEMENT"]["severity"] == "major"
     assert "MISSING_DOC_STOCK_LIST" not in by_code
+
+def test_typed_tin_turns_the_tax_document_into_a_to_do():
+    requirements = [{"doc_type": "tax_doc", "requirement": "required", "status": "missing", "label": "TIN certificate or Ghana Card"}]
+    [without] = s9_checklist.missing_gaps(requirements)
+    [with_tin] = s9_checklist.missing_gaps(requirements, tin_given=True)
+    assert without["severity"] == "blocker" and without["title"] == "TIN certificate or Ghana Card is missing"
+    assert with_tin["code"] == without["code"]
+    assert with_tin["severity"] == "major"
+    assert "saved" in with_tin["detail"]

@@ -8,7 +8,6 @@ import {
 	DocumentsIcon,
 	HomeIcon,
 	MoneyIcon,
-	OverviewIcon,
 	ReadinessIcon,
 	SettingsIcon,
 	SummaryIcon,
@@ -26,7 +25,6 @@ const NAV_GROUPS = [
 		items: [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
 			{ href: "/money", icon: <MoneyIcon />, label: "Money" },
-			{ href: "/overview", icon: <OverviewIcon />, label: "Business health" },
 			{ href: "/documents", icon: <DocumentsIcon />, label: "Records" },
 		],
 	},

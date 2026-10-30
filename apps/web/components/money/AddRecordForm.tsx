@@ -76,7 +76,7 @@ export function AddRecordForm({
 				<div>
 					<h2 className="m-0 text-[15px] font-semibold font-[family-name:var(--body-font)]">Add a record</h2>
 					<p className="m-0 mt-1 text-[12.5px] text-foreground/60">
-						For cash sales and costs that aren't on a MoMo or bank statement. Lenders trust statements and receipts more, so upload those too when you have them.
+						For cash sales and costs that aren&apos;t on a MoMo or bank statement. Lenders trust statements and receipts more, so upload those too when you have them.
 					</p>
 				</div>
 				<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Money in or out">
