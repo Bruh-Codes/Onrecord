@@ -64,18 +64,18 @@ export default function HomePage() {
 				</div>
 			)}
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">
-				Welcome back{ownerFirstName ? `, ${ownerFirstName}` : ""}!
+				{isNewUser ? "Welcome" : "Welcome back"}{ownerFirstName ? `, ${ownerFirstName}` : ""}!
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6">
 				{isNewUser
-					? "Add your MoMo or bank statements and we'll turn them into a record a lender can read."
+					? "Start by adding your MoMo or bank statements. We'll turn them into a record a lender can read."
 					: "Here's where your money and your loan file stand."}
 			</p>
 
 			{awaitingReview > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/35 bg-warning/10 px-4 py-3 text-[13px]" role="status">
 					<span>
-						{awaitingReview === 1 ? "1 upload has" : `${awaitingReview} uploads have`} rows waiting for you to check before they count.
+						{awaitingReview === 1 ? "1 upload has" : `${awaitingReview} uploads have`} rows waiting for you to check. They don&apos;t count until you confirm them.
 					</span>
 					<Link href="/documents" className="font-semibold underline underline-offset-2">Check rows</Link>
 				</div>

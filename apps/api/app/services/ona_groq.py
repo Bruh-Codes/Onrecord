@@ -37,7 +37,7 @@ WEB_SEARCH_TOOL = {
     "type": "function",
     "function": {
         "name": "web_search",
-        "description": "Search the web for outside facts: loan products, interest rates, GRA rules, crop prices, regulations.",
+        "description": "Search the web for outside facts: loan products, interest rates, GRA rules, market prices, regulations.",
         "parameters": {
             "type": "object",
             "properties": {"query": {"type": "string", "description": "A short search query."}},

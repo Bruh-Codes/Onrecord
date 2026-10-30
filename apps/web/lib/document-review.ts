@@ -63,12 +63,12 @@ export type AiIngestMeta = {
 
 export const CATEGORY_LABELS: Record<string, string> = {
   revenue: "Sales",
-  cogs: "Stock, inputs & labour",
+  cogs: "Stock & materials",
   opex: "Running costs",
   tax: "Tax",
   financing_in: "Loan received",
   financing_out: "Loan repayment",
-  owner: "Owner",
+  owner: "Owner’s own money",
   internal: "Own transfer",
   unknown: "Not sure",
 };

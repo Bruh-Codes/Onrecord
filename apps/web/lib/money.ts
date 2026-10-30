@@ -84,7 +84,7 @@ export type TransactionPage = {
   items: MoneyTransaction[];
 };
 
-/** Narrow everything on the Money page to one crop/animal and/or season. */
+/** Narrow everything on the Money page to one product or service tag and/or season. */
 export type FarmFilter = { farm_activity?: string; season?: string };
 
 export type TransactionQuery = FarmFilter & {

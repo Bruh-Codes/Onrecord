@@ -87,7 +87,10 @@ async def test_records_are_validated_and_scoped_to_the_owner(client):
     typed = (await client.post(url, headers=headers, json=_record())).json()
     assert (await client.delete(f"/v1/transactions/{typed['id']}", headers=other)).status_code == 403
     categories = (await client.get("/v1/money/record-categories", headers=headers)).json()
-    assert "Produce sales" in categories["in"] and "Seeds and seedlings" in categories["out"]
+    assert "Sales of goods" in categories["in"] and "Stock or goods to resell" in categories["out"]
+    # Farm-only labels from before are no longer offered but still accepted.
+    assert "Seeds and seedlings" not in categories["out"]
+    assert (await client.post(url, headers=headers, json=_record(category="Seeds and seedlings"))).status_code == 201
 
 
 async def test_example_season_loads_yaws_tomatoes_into_the_signed_in_business(client):

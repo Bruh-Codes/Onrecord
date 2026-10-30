@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BellIcon, SearchIcon, SunIcon, MoonIcon, LogOutIcon } from "@/components/icons";
+import { BellIcon, SunIcon, MoonIcon, LogOutIcon, SettingsIcon, SummaryIcon } from "@/components/icons";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
@@ -87,13 +87,9 @@ export function TopBar() {
         <span className="font-display text-[16px] hidden sm:inline">Onrecord</span>
       </Link>
 
-      <div className="flex-1 flex items-center gap-2 md:max-w-[420px] bg-muted rounded-full px-4 py-2 text-[13px]">
-        <SearchIcon className="opacity-50 shrink-0" />
-        <span className="opacity-50 truncate">Search documents, transactions…</span>
-      </div>
 
       <div className="ml-auto flex items-center gap-3 sm:gap-4 text-[13px] shrink-0">
-        <div ref={notificationsRef} className="relative hidden md:block">
+        <div ref={notificationsRef} className="relative">
           <button
             type="button"
             onClick={() => {
@@ -224,23 +220,27 @@ export function TopBar() {
                   </span>
                 </button>
               </div>
-              <button
-                type="button"
+              {session?.user?.email && (
+                <div className="px-3 pt-1 pb-2 text-[12px] text-foreground/60 truncate">{session.user.email}</div>
+              )}
+              <Link
+                href="/settings"
                 role="menuitem"
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  setIsNotificationsOpen(true);
-                }}
-                className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:bg-foreground hover:text-background cursor-pointer"
+                onClick={() => setIsDropdownOpen(false)}
+                className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left no-underline text-foreground transition-colors hover:bg-foreground hover:text-background"
               >
-                <BellIcon className="w-4 h-4" />
-                Notifications
-                {(notifications.data?.unread_count ?? 0) > 0 && (
-                  <span className="ml-auto min-w-4 h-4 rounded-full bg-destructive px-1 text-[9px] leading-4 text-white text-center">
-                    {(notifications.data?.unread_count ?? 0) > 99 ? "99+" : notifications.data?.unread_count}
-                  </span>
-                )}
-              </button>
+                <SettingsIcon className="w-4 h-4" />
+                Settings
+              </Link>
+              <Link
+                href="/lender-summary"
+                role="menuitem"
+                onClick={() => setIsDropdownOpen(false)}
+                className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left no-underline text-foreground transition-colors hover:bg-foreground hover:text-background md:hidden"
+              >
+                <SummaryIcon className="w-4 h-4" />
+                Lender summary
+              </Link>
               <button
                 type="button"
                 role="menuitem"

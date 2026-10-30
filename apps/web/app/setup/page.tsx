@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { linkBusiness } from "@/lib/link-business";
 import { authClient } from "@/lib/auth-client";
+import { SECTOR_OPTIONS } from "@/lib/sectors";
 
 const ENTITY_TYPES: { value: string; label: string }[] = [
-	{ value: "sole_prop", label: "Sole proprietorship" },
+	{ value: "sole_prop", label: "Just me (sole proprietor)" },
 	{ value: "partnership", label: "Partnership" },
 	{ value: "ltd", label: "Limited company" },
-	{ value: "ngo", label: "NGO" },
+	{ value: "ngo", label: "NGO or association" },
 ];
 
 export default function SetupPage() {
@@ -18,6 +19,7 @@ export default function SetupPage() {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [legalName, setLegalName] = useState("");
 	const [entityType, setEntityType] = useState("sole_prop");
+	const [sector, setSector] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string; name: string } | null>(null);
@@ -64,6 +66,7 @@ export default function SetupPage() {
 			const business = await api.createBusiness({
 				legal_name: legalName.trim(),
 				entity_type: entityType,
+				sector_code: sector || null,
 			});
 			await linkBusiness(business.id);
 			sessionStorage.removeItem("onrecord_pending_signup");
@@ -91,12 +94,12 @@ export default function SetupPage() {
 				<div className="w-full max-w-[460px] bg-card rounded-3xl shadow-card p-6 sm:p-9">
 					<h1 className="text-[22px] m-0 mb-1.5">Tell us about your business</h1>
 					<p className="text-[13px] opacity-70 m-0 mb-6.5">
-						This creates the profile we&apos;ll build your financial record against. OnRecord doesn&apos;t
-						share your records with GRA.
+						Two quick questions and you&apos;re in. You can change these later in Settings. OnRecord
+						doesn&apos;t share your records with GRA.
 					</p>
 
 					<div className="mb-3.5">
-						<label className="block text-xs mb-1.5 text-foreground/70">Legal name</label>
+						<label className="block text-xs mb-1.5 text-foreground/70">Business name</label>
 						<input
 							value={legalName}
 							onChange={(e) => setLegalName(e.target.value)}
@@ -105,8 +108,24 @@ export default function SetupPage() {
 						/>
 					</div>
 
+					<div className="mb-3.5">
+						<label className="block text-xs mb-1.5 text-foreground/70">What does your business do?</label>
+						<select
+							value={sector}
+							onChange={(e) => setSector(e.target.value)}
+							className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full"
+						>
+							<option value="">Choose one</option>
+							{SECTOR_OPTIONS.map((option) => (
+								<option key={option.value} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</div>
+
 					<div className="mb-2">
-						<label className="block text-xs mb-1.5 text-foreground/70">Business type</label>
+						<label className="block text-xs mb-1.5 text-foreground/70">Who owns it?</label>
 						<select
 							value={entityType}
 							onChange={(e) => setEntityType(e.target.value)}

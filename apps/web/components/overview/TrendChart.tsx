@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatGhs } from "@/lib/format";
+import { formatGhs, monthLabel } from "@/lib/format";
 import type { SeriesPoint } from "@/lib/types";
 import { InfoHint } from "./InfoHint";
 
@@ -52,9 +52,9 @@ export function TrendChart({
 			</div>
 			<div className="text-[12px] text-foreground/55 mb-3.5">
 				{hovered
-					? `${hovered.month} · ${formatGhs(hovered.value)}`
+					? `${monthLabel(hovered.month)} · ${formatGhs(hovered.value)}`
 					: hasData
-						? "Hover to inspect monthly values"
+						? "Tap or point at a month to see its amount"
 						: idleCaption}
 			</div>
 			<div className="relative overflow-visible">
@@ -82,6 +82,7 @@ export function TrendChart({
 							className="cursor-pointer"
 							onMouseEnter={() => setHoverIndex(i)}
 							onMouseLeave={() => setHoverIndex(null)}
+							onClick={() => setHoverIndex(i)}
 						/>
 					))}
 					{series.map((p, i) => (
@@ -104,15 +105,15 @@ export function TrendChart({
 							background: color,
 						}}
 					>
-						{hovered.month} · {formatGhs(hovered.value)}
+						{monthLabel(hovered.month)} · {formatGhs(hovered.value)}
 					</div>
 				)}
 			</div>
 			<div className="flex justify-between text-[11px] text-foreground/50 mt-1">
 				{series.length > 0 && (
 					<>
-						<span>{series[0].month}</span>
-						<span>{series[series.length - 1].month}</span>
+						<span>{monthLabel(series[0].month)}</span>
+						<span>{monthLabel(series[series.length - 1].month)}</span>
 					</>
 				)}
 			</div>

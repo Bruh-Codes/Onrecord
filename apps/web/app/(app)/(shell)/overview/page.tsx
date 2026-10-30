@@ -1,427 +1,181 @@
 "use client";
 
-import { GapsAndCoverage } from "@/components/overview/GapsAndCoverage";
+import Link from "next/link";
+import { useState } from "react";
+import { InvoiceInsightsPanel } from "@/components/overview/InvoiceInsightsPanel";
+import { MetricStat } from "@/components/overview/MetricStat";
 import { TransactionValueBreakdown } from "@/components/overview/TransactionValueBreakdown";
 import { TrendChart } from "@/components/overview/TrendChart";
+import { OverviewPageSkeleton } from "@/components/ui/Skeleton";
 import {
 	useCoverage,
 	useGaps,
 	useIndicatorsMap,
-	useMe,
 	useInvoiceInsights,
+	useMe,
 } from "@/lib/hooks/use-business";
 import { formatGhs, seriesToPoints, seriesTotal } from "@/lib/format";
-import { OverviewPageSkeleton } from "@/components/ui/Skeleton";
-import { MetricStat } from "@/components/overview/MetricStat";
-import { Dropdown } from "@/components/ui/Dropdown";
-import { InvoiceInsightsPanel } from "@/components/overview/InvoiceInsightsPanel";
-import { useState } from "react";
-import Link from "next/link";
-
-type OverviewMode =
-	| "executive"
-	| "transactions"
-	| "revenue"
-	| "profitability"
-	| "cashflow"
-	| "coverage";
-
-type SourceScope = "statements" | "invoices" | "other";
-
-const MODES: { value: OverviewMode; label: string }[] = [
-	{ value: "executive", label: "Summary" },
-	{ value: "transactions", label: "Sales activity" },
-	{ value: "revenue", label: "Sales" },
-	{ value: "profitability", label: "Costs" },
-	{ value: "cashflow", label: "Cash flow" },
-	{ value: "coverage", label: "Record gaps" },
-];
 
 const PERIODS = [
-	{ value: 3, label: "Last 3 months" },
-	{ value: 6, label: "Last 6 months" },
-	{ value: 12, label: "Trailing 12 months" },
+	{ value: 3, label: "3 months" },
+	{ value: 6, label: "6 months" },
+	{ value: 12, label: "12 months" },
 ];
 
-const SOURCE_SCOPES: { value: SourceScope; label: string }[] = [
-	{ value: "statements", label: "Bank & MoMo statements" },
-	{ value: "invoices", label: "Invoices" },
-	{ value: "other", label: "Other documents" },
-];
+type Series = { m: string; v: number }[];
 
-function indicatorValue(
-	indicator: { value_json: Record<string, unknown> } | undefined,
-): number | null {
+function indicatorValue(indicator: { value_json: Record<string, unknown> } | undefined): number | null {
 	const value = indicator?.value_json?.v;
 	return typeof value === "number" ? value : null;
 }
 
+function seriesOf(indicator: { value_json: Record<string, unknown> } | undefined): Series {
+	const series = indicator?.value_json?.series;
+	return Array.isArray(series) ? (series as Series) : [];
+}
+
+/** Ratio indicators report "insufficient_data" when there is nothing to divide by. */
+function ratioOf(indicator: { value_json: Record<string, unknown> } | undefined): number | null {
+	if (indicator?.value_json?.status === "insufficient_data") return null;
+	return indicatorValue(indicator);
+}
+
+/**
+ * The numbers a lender works out from the owner's records, on one page:
+ * sales, costs and cash, for the last 3, 6 or 12 months. Gaps in the loan file
+ * live on Loan readiness; this page only links there.
+ */
 export default function OverviewPage() {
-	const [mode, setMode] = useState<OverviewMode>("executive");
-	const [sourceScope, setSourceScope] = useState<SourceScope>("statements");
-	const [periodMonths, setPeriodMonths] = useState(12);
+	const [months, setMonths] = useState(12);
 	const { businessId } = useMe();
 	const coverage = useCoverage(businessId);
 	const indicators = useIndicatorsMap(businessId);
 	const gaps = useGaps(businessId);
 	const invoiceInsights = useInvoiceInsights(businessId);
 
-	if (
-		!businessId ||
-		coverage.isLoading ||
-		indicators.isLoading ||
-		gaps.isLoading ||
-		invoiceInsights.isLoading
-	) {
+	if (!businessId || coverage.isLoading || indicators.isLoading || gaps.isLoading || invoiceInsights.isLoading) {
 		return <OverviewPageSkeleton />;
 	}
 
-	const rev = indicators.map.REV_MONTHLY?.value_json as
-		| { series?: { m: string; v: number }[] }
+	const map = indicators.map;
+	const sales = seriesOf(map.REV_MONTHLY).slice(-months);
+	const cashLeft = seriesOf(map.OPERATING_CASHFLOW).slice(-months);
+	const net = seriesOf(map.NET_CASHFLOW).slice(-months);
+	const moved = seriesOf(map.TRANSACTION_VALUE).slice(-months);
+	const avgTicket = seriesOf(map.AVG_TICKET).slice(-months);
+	const tradingDays = seriesOf(map.ACTIVE_TRADING_DAYS).slice(-months);
+	const breakdown = map.TRANSACTION_VALUE?.value_json?.breakdown as
+		| { key: string; label: string; value: number; series?: Series }[]
 		| undefined;
-	const cf = indicators.map.OPERATING_CASHFLOW?.value_json as
-		| { series?: { m: string; v: number }[] }
-		| undefined;
-	const opexRatio = indicators.map.OPEX_RATIO?.value_json as
-		| { v?: number; status?: string }
-		| undefined;
-	const unclassified = indicators.map.UNCLASSIFIED_RATIO?.value_json as
-		| { v?: number; status?: string }
-		| undefined;
-	const transactionValue = indicators.map.TRANSACTION_VALUE?.value_json as
-		| { v?: number }
-		| undefined;
-	const transactionBreakdown = indicators.map.TRANSACTION_VALUE?.value_json
-		?.breakdown as
-		| {
-				key: string;
-				label: string;
-				value: number;
-				series?: { m: string; v: number }[];
-		  }[]
-		| undefined;
-	const transactionSeries = (indicators.map.TRANSACTION_VALUE?.value_json
-		?.series ?? []) as { m: string; v: number }[];
-	const avgTicketSeries = (indicators.map.AVG_TICKET?.value_json?.series ??
-		[]) as { m: string; v: number }[];
-	const activeTradingDaysSeries = (indicators.map.ACTIVE_TRADING_DAYS
-		?.value_json?.series ?? []) as { m: string; v: number }[];
-	const revenueGrowth = indicatorValue(indicators.map.REV_GROWTH_3M);
-	const netCashflow = (indicators.map.NET_CASHFLOW?.value_json?.series ??
-		[]) as { m: string; v: number }[];
-	const negativeBalanceDays = indicatorValue(
-		indicators.map.NEGATIVE_BALANCE_DAYS,
-	);
+	const costRatio = ratioOf(map.OPEX_RATIO);
+	const unsortedRatio = ratioOf(map.UNCLASSIFIED_RATIO);
 
-	const revenueSeries = Array.isArray(rev?.series) ? rev.series : [];
-	const cashflowSeries = Array.isArray(cf?.series) ? cf.series : [];
-	const selectedRevenueSeries = revenueSeries.slice(-periodMonths);
-	const selectedCashflowSeries = cashflowSeries.slice(-periodMonths);
-	const selectedTransactionSeries = transactionSeries.slice(-periodMonths);
-	const selectedNetCashflow = netCashflow.slice(-periodMonths);
-	const selectedAvgTicket = avgTicketSeries.slice(-periodMonths);
-	const selectedActiveTradingDays =
-		activeTradingDaysSeries.slice(-periodMonths);
-	const avgTicket =
-		selectedAvgTicket.length > 0
-			? Math.round(seriesTotal(selectedAvgTicket) / selectedAvgTicket.length)
-			: null;
-	const activeTradingDays =
-		selectedActiveTradingDays.length > 0
-			? seriesTotal(selectedActiveTradingDays)
-			: null;
-	const revenueTotal = seriesTotal(selectedRevenueSeries);
-	const transactionTotal =
-		transactionSeries.length > 0
-			? seriesTotal(selectedTransactionSeries)
-			: (transactionValue?.v ?? revenueTotal);
-	const modeLabel =
-		MODES.find((item) => item.value === mode)?.label ?? "Overview";
-	const periodLabel =
-		PERIODS.find((period) => period.value === periodMonths)?.label ??
-		"Selected period";
-	const coverageAvailable =
-		(coverage.data?.continuous_months ?? 0) > 0 ||
-		(gaps.data ?? []).some((gap) => gap.status === "open");
-	const modeOptions = MODES.filter(
-		(item) => !(item.value === "coverage" && !coverageAvailable),
-	);
-	const selectedRevenuePoints = seriesToPoints(selectedRevenueSeries);
-	const selectedCashflowPoints = seriesToPoints(selectedCashflowSeries);
-	const showCash = sourceScope === "statements";
-	const showInvoices = sourceScope === "invoices";
-	const hasUnclassified =
-		unclassified?.status !== "insufficient_data" && (unclassified?.v ?? 0) > 0;
-
-	const viewSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
-			<span>View</span>
-			<Dropdown
-				value={mode}
-				options={modeOptions}
-				onChange={(value) => setMode(value)}
-			/>
-		</label>
-	);
-	const periodSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
-			<span>Period</span>
-			<Dropdown
-				value={periodMonths}
-				options={PERIODS}
-				onChange={(value) => setPeriodMonths(value)}
-			/>
-		</label>
-	);
-	const sourceSelect = (
-		<label className="flex items-center gap-2 text-[13px] text-foreground/65">
-			<span>Source</span>
-			<Dropdown
-				value={sourceScope}
-				options={SOURCE_SCOPES}
-				onChange={(value) => {
-					setSourceScope(value);
-					if (value === "invoices" || value === "other") setMode("executive");
-				}}
-			/>
-		</label>
-	);
+	const salesTotal = seriesTotal(sales);
+	const movedTotal = moved.length ? seriesTotal(moved) : (indicatorValue(map.TRANSACTION_VALUE) ?? salesTotal);
+	const averageSale = avgTicket.length ? Math.round(seriesTotal(avgTicket) / avgTicket.length) : null;
+	const daysWithSales = tradingDays.length ? seriesTotal(tradingDays) : null;
+	const openGaps = (gaps.data ?? []).filter((gap) => gap.status === "open").length;
+	const hasAnything = movedTotal > 0 || salesTotal > 0;
+	const periodText = `last ${months} months`;
 
 	return (
-		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10">
-			<div className="flex flex-wrap items-start justify-between gap-5 mb-10">
+		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[1100px]">
+			<div className="mb-6 flex flex-wrap items-end justify-between gap-4">
 				<div>
-					<h1 className="text-[24px] sm:text-[28px] m-0 mb-2">
-						Business health
-					</h1>
-					<p className="text-sm opacity-65 m-0 max-w-[620px]">
-						The numbers a lender works out from your records: how steady your
-						sales are, what share goes to costs, and whether your account runs
-						dry. Updated whenever new records come in.
+					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Business health</h1>
+					<p className="text-sm opacity-70 m-0 max-w-[620px]">
+						The numbers a lender works out from your records: how steady your sales are, how much goes
+						on costs, and whether your account runs empty.
 					</p>
 				</div>
-				{sourceSelect}
+				<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Time range">
+					{PERIODS.map((option) => (
+						<button
+							key={option.value}
+							type="button"
+							aria-pressed={months === option.value}
+							onClick={() => setMonths(option.value)}
+							className={`rounded-full px-3 py-1.5 text-[12.5px] cursor-pointer ${months === option.value ? "bg-foreground text-background" : "text-foreground/70"}`}
+						>
+							{option.label}
+						</button>
+					))}
+				</div>
 			</div>
 
-			{sourceScope === "other" && (
-				<div className="rounded-xl border border-border/70 p-5 mb-10 text-sm text-foreground/65">
-					Other documents contribute supporting evidence and readiness coverage.
-					They do not represent cashflow or invoice totals.
+			{!hasAnything && (
+				<div className="mb-6 rounded-2xl border border-dashed border-foreground/25 bg-muted/50 p-6 text-center text-[13px] text-foreground/65">
+					These numbers fill in once your first statement or records are read.{" "}
+					<Link href="/documents" className="font-semibold underline underline-offset-2">Add records</Link>
 				</div>
 			)}
 
-			{showCash && (
-				<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
-					{mode === "executive"
-						? "Sales & cash at a glance"
-						: `${modeLabel} insights`}
-				</div>
-			)}
-			{showCash && mode === "executive" && (
-				<div className="grid gap-[52px] mb-12 grid-cols-1 lg:grid-cols-[1fr_1.3fr_1.3fr]">
-					<div>
-						<div className="mb-4">{viewSelect}</div>
-						<TransactionValueBreakdown
-							revenueTotal={revenueTotal}
-							transactionTotal={transactionTotal}
-							opexRatio={
-								opexRatio?.status === "insufficient_data"
-									? null
-									: (opexRatio?.v ?? null)
-							}
-							unclassifiedRatio={
-								unclassified?.status === "insufficient_data"
-									? null
-									: (unclassified?.v ?? null)
-							}
-							breakdown={transactionBreakdown}
-							months={periodMonths}
-						/>
-						{hasUnclassified && (
-							<Link
-								href="/reviewer"
-								className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-foreground underline decoration-ink/30 underline-offset-4 hover:decoration-ink"
-							>
-								Sort uncategorised transactions{" "}
-								<span aria-hidden="true">→</span>
-							</Link>
-						)}
-					</div>
-					<div>
-						<div className="mb-4">{periodSelect}</div>
-						<TrendChart
-							title={`Sales, ${periodLabel.toLowerCase()}`}
-							totalLabel={formatGhs(revenueTotal)}
-							series={selectedRevenuePoints}
-							color="var(--foreground)"
-							idleCaption="No sales recorded in this period"
-						/>
-					</div>
+			<h2 className="m-0 mb-3 text-[15px] font-semibold font-[family-name:var(--body-font)]">Sales</h2>
+			<div className="grid gap-3 mb-4 grid-cols-2 lg:grid-cols-4">
+				<MetricStat label="Sales" value={salesTotal} detail={periodText} />
+				<MetricStat label="Sales growth" value={indicatorValue(map.REV_GROWTH_3M)} unit="ratio" detail="Last 3 months vs the 3 before" />
+				<MetricStat label="Average sale" value={averageSale} detail="Typical payment you receive" />
+				<MetricStat label="Days with sales" value={daysWithSales} unit="count" detail={periodText} />
+			</div>
+			<div className="grid gap-4 mb-8 md:grid-cols-2">
+				<div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
 					<TrendChart
-						title={`Cash left from operations, ${periodLabel.toLowerCase()}`}
-						totalLabel={formatGhs(seriesTotal(selectedCashflowSeries))}
-						series={selectedCashflowPoints}
+						title="Sales by month"
+						totalLabel={formatGhs(salesTotal)}
+						series={seriesToPoints(sales)}
+						color="var(--foreground)"
+						idleCaption="No sales recorded in this period"
+					/>
+				</div>
+				<div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+					<TrendChart
+						title="Cash left after running costs, by month"
+						totalLabel={formatGhs(seriesTotal(cashLeft))}
+						series={seriesToPoints(cashLeft)}
 						color="var(--muted-foreground)"
-						idleCaption={`Coverage: ${coverage.data?.continuous_months ?? 0}/${coverage.data?.analysis_window_months ?? 12} months`}
+						idleCaption="Nothing to show for this period yet"
 					/>
 				</div>
-			)}
+			</div>
 
-			{showCash && mode !== "executive" && (
-				<div className="flex flex-wrap items-center gap-24 mb-5">
-					{viewSelect}
-					{periodSelect}
-				</div>
-			)}
+			<h2 className="m-0 mb-3 text-[15px] font-semibold font-[family-name:var(--body-font)]">Costs and cash</h2>
+			<div className="grid gap-3 mb-8 grid-cols-2 lg:grid-cols-4">
+				<MetricStat label="Costs as a share of sales" value={costRatio} unit="ratio" detail={costRatio == null ? "Needs sales to work out" : `GH¢${costRatio.toFixed(2)} of every GH¢1 you sell`} />
+				<MetricStat label="Cash left after running costs" value={seriesTotal(cashLeft)} detail={periodText} />
+				<MetricStat label="Money in minus money out" value={seriesTotal(net)} detail={periodText} />
+				<MetricStat label="Days the account was empty" value={indicatorValue(map.NEGATIVE_BALANCE_DAYS)} unit="count" detail="Lenders like this close to zero" />
+			</div>
 
-			{showCash && mode === "transactions" && (
-				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
-					<MetricStat
-						label="Total money moved"
-						value={transactionTotal}
-						detail={periodLabel}
-					/>
-					<MetricStat
-						label="Average sale"
-						value={avgTicket}
-						detail="Typical payment you receive"
-					/>
-					<MetricStat
-						label="Days with sales"
-						value={activeTradingDays}
-						unit="count"
-						detail={periodLabel}
-					/>
-					<div className="md:col-span-3">
-						<TransactionValueBreakdown
-							revenueTotal={revenueTotal}
-							transactionTotal={transactionTotal}
-							opexRatio={null}
-							unclassifiedRatio={null}
-							breakdown={transactionBreakdown}
-							months={periodMonths}
-						/>
-					</div>
-				</div>
-			)}
+			<section className="mb-8 rounded-2xl border border-border bg-card p-4 sm:p-5 max-w-[560px]">
+				<TransactionValueBreakdown
+					revenueTotal={salesTotal}
+					transactionTotal={movedTotal}
+					opexRatio={costRatio}
+					unclassifiedRatio={unsortedRatio}
+					breakdown={breakdown}
+					months={months}
+				/>
+				{(unsortedRatio ?? 0) > 0 && (
+					<Link href="/reviewer" className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold underline underline-offset-4">
+						Sort the money we couldn&apos;t place <span aria-hidden="true">→</span>
+					</Link>
+				)}
+			</section>
 
-			{showCash && mode === "revenue" && (
-				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
-					<MetricStat
-						label="Sales"
-						value={revenueTotal}
-						detail={periodLabel}
-					/>
-					<MetricStat
-						label="Sales growth"
-						value={revenueGrowth}
-						unit="ratio"
-						detail="Last 3 months compared with the 3 before"
-					/>
-					<MetricStat
-						label="Average sale"
-						value={avgTicket}
-						detail="Typical payment you receive"
-					/>
-				</div>
-			)}
-
-			{showCash && mode === "profitability" && (
-				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
-					<MetricStat
-						label="Sales"
-						value={revenueTotal}
-						detail={periodLabel}
-					/>
-					<MetricStat
-						label="Costs as share of sales"
-						value={
-							opexRatio?.status === "insufficient_data"
-								? null
-								: (opexRatio?.v ?? null)
-						}
-						unit="ratio"
-						detail="Running costs for every GH¢1 of sales"
-					/>
-					<MetricStat
-						label="Not yet categorised"
-						value={
-							unclassified?.status === "insufficient_data"
-								? null
-								: transactionTotal * (unclassified?.v ?? 0)
-						}
-						detail="Sort these so lenders see true costs"
-					/>
-				</div>
-			)}
-
-			{showCash && mode === "cashflow" && (
-				<div className="grid gap-5 mb-12 grid-cols-1 md:grid-cols-3">
-					<MetricStat
-						label="Cash left from operations"
-						value={seriesTotal(selectedCashflowSeries)}
-						detail={periodLabel}
-					/>
-					<MetricStat
-						label="Money in minus money out"
-						value={seriesTotal(selectedNetCashflow)}
-						detail={periodLabel}
-					/>
-					<MetricStat
-						label="Days the account was empty or overdrawn"
-						value={negativeBalanceDays}
-						unit="count"
-						detail="Lenders prefer this close to zero"
-					/>
-				</div>
-			)}
-
-			{showCash && mode === "coverage" && (
-				<div className="mb-12">
-					<GapsAndCoverage
-						gaps={(gaps.data ?? []).filter((g) => g.status === "open")}
-						coverage={coverage.data}
-						allGapCount={
-							(gaps.data ?? []).filter((g) => g.status === "open").length
-						}
-						unclassifiedRatio={
-							unclassified?.status === "insufficient_data"
-								? null
-								: (unclassified?.v ?? null)
-						}
-					/>
-				</div>
-			)}
-
-			{showCash && mode !== "coverage" && (
+			{(invoiceInsights.data?.total_documents ?? 0) > 0 && (
 				<>
-					<div className="h-px bg-border mb-10" />
-					<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
-						Gaps in your records
-					</div>
-					<GapsAndCoverage
-						gaps={(gaps.data ?? []).filter((g) => g.status === "open")}
-						coverage={coverage.data}
-						allGapCount={
-							(gaps.data ?? []).filter((g) => g.status === "open").length
-						}
-						unclassifiedRatio={
-							unclassified?.status === "insufficient_data"
-								? null
-								: (unclassified?.v ?? null)
-						}
-					/>
-				</>
-			)}
-
-			{showInvoices && (
-				<>
-					<div className="text-xs tracking-wider uppercase text-foreground/45 mb-4.5">
-						Invoices &amp; billing
-					</div>
+					<h2 className="m-0 mb-3 text-[15px] font-semibold font-[family-name:var(--body-font)]">Invoices and bills</h2>
 					<InvoiceInsightsPanel data={invoiceInsights.data} />
 				</>
 			)}
+
+			<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/60 px-4 py-3 text-[13px]">
+				<span>
+					Statement history: <strong>{coverage.data?.continuous_months ?? 0} of {coverage.data?.analysis_window_months ?? 12} months</strong>
+					{openGaps > 0 ? ` · ${openGaps} thing${openGaps === 1 ? "" : "s"} still missing from your loan file` : " · nothing missing from your loan file"}
+				</span>
+				<Link href="/readiness" className="font-semibold underline underline-offset-2">See loan readiness</Link>
+			</div>
 		</div>
 	);
 }

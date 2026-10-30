@@ -101,9 +101,10 @@ TOOL_DEFINITIONS = [
     ),
     _tool(
         "get_farm_breakdown",
-        "Money in, money out and what was left for each crop or animal and season the owner tagged "
-        "(for example Tomatoes, 2026 main season), plus how much is not tagged. Use for 'how did my "
-        "tomatoes do' or 'which season was best'.",
+        "Money in, money out and what was left for each product, service or crop and each season or "
+        "batch the owner tagged (for example Tomatoes, 2026 main season or Phone repairs, Christmas), "
+        "plus how much is not tagged. Use for 'how did my tomatoes do', 'which line of my business "
+        "makes the most' or 'which season was best'.",
         {"start_date": _NULLABLE_DATE, "end_date": _NULLABLE_DATE},
     ),
     _tool(
@@ -343,7 +344,7 @@ async def search_transactions(session: AsyncSession, business_id: UUID, args: di
                 "category": row.category_l1 or "unclassified",
                 "counterparty": (row.flags or {}).get("counterparty"),
                 "description": row.description,
-                "crop_or_animal": row.farm_activity,
+                "product_or_service": row.farm_activity,
                 "season": row.season,
                 "typed_in_by_owner": bool((row.flags or {}).get("hand_entered")),
             }
@@ -378,7 +379,7 @@ async def farm_breakdown(session: AsyncSession, business_id: UUID, args: dict) -
     return {
         "groups": groups,
         "untagged": {**untagged, "money_in": ghs(untagged["money_in_pesewas"]), "money_out": ghs(untagged["money_out_pesewas"])},
-        "note": "Left over is money in minus money out for that crop or animal and season. It is not profit: "
+        "note": "Left over is money in minus money out for that tag. It is not profit: "
                 "it leaves out unpaid bills, stock still on hand and costs that were not tagged.",
     }
 

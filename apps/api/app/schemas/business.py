@@ -9,6 +9,8 @@ from app.schemas.common import Declared
 
 # A GRA TIN or Ghana Card PIN (GHA-123456789-0), which is the TIN for individuals.
 Tin = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, max_length=20)]
+# Coarse ISIC rev4 division, e.g. "47" retail trade or "01" crop and animal farming.
+SectorCode = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=2)]
 TaxStatus = Literal["farm_produce", "flat_tax", "vat_registered", "not_sure"]
 
 
@@ -19,7 +21,7 @@ class BusinessCreate(BaseModel):
     registration_number: str | None = None
     tin: Tin | None = None
     tax_status: TaxStatus | None = None
-    sector_code: str | None = None
+    sector_code: SectorCode | None = None
     region: str | None = None
     premises_status: str | None = None
 
@@ -30,7 +32,7 @@ class BusinessPatch(BaseModel):
     registration_number: str | None = None
     tin: Tin | None = None
     tax_status: TaxStatus | None = None
-    sector_code: str | None = None
+    sector_code: SectorCode | None = None
     region: str | None = None
     premises_status: str | None = None
     employee_count_declared: int | None = None

@@ -1,7 +1,7 @@
 """Records the owner types in, stored as ordinary ledger transactions.
 
-A farmer's seed purchase or market sale is the same kind of fact as a MoMo
-payment, so it lives in the one `transaction` ledger and flows into Money,
+A cash sale or a stock purchase paid in cash is the same kind of fact as a
+MoMo payment, so it lives in the one `transaction` ledger and flows into Money,
 Business health, Loan readiness and the Lender summary. Typed records hang off
 a single cash-book document per business ("Records you typed in"), which the
 readiness score already weighs as self-reported evidence (informal_ledger).
@@ -22,35 +22,51 @@ from app.models.transaction import Transaction
 HAND_ENTERED_FILENAME = "Records you typed in"
 
 # What the money was for, in plain words, mapped to the ledger's category.
+# Worded for any small business; farm items are one choice among the others.
 MONEY_IN_CATEGORIES = {
-    "Produce sales": "revenue",
-    "Animal sales": "revenue",
+    "Sales of goods": "revenue",
+    "Payment for a service": "revenue",
+    "Farm produce or animal sales": "revenue",
     "Other sales": "revenue",
     "Loan received": "financing_in",
     "Money you put in": "owner",
 }
 MONEY_OUT_CATEGORIES = {
-    "Seeds and seedlings": "cogs",
-    "Fertilizer and chemicals": "cogs",
-    "Feed": "cogs",
-    "Animals or fingerlings bought": "cogs",
+    "Stock or goods to resell": "cogs",
+    "Materials and supplies": "cogs",
+    "Farm inputs (seeds, fertiliser, feed)": "cogs",
     "Packaging": "cogs",
-    "Labour": "opex",
-    "Land preparation": "opex",
-    "Water and power": "opex",
-    "Transport": "opex",
-    "Equipment and repairs": "opex",
-    "Vet and medicine": "opex",
+    "Wages and labour": "opex",
     "Rent": "opex",
+    "Transport": "opex",
+    "Fuel, water and power": "opex",
+    "Phone and internet": "opex",
+    "Equipment and repairs": "opex",
     "Taxes, levies and permits": "tax",
     "Other costs": "opex",
     "Loan repayment": "financing_out",
     "Money you took out": "owner",
 }
+# Earlier farm-only choices. Still accepted so older clients and saved records
+# keep working, but no longer offered in the list.
+_LEGACY_IN = {"Produce sales": "revenue", "Animal sales": "revenue"}
+_LEGACY_OUT = {
+    "Seeds and seedlings": "cogs",
+    "Fertilizer and chemicals": "cogs",
+    "Feed": "cogs",
+    "Animals or fingerlings bought": "cogs",
+    "Labour": "opex",
+    "Land preparation": "opex",
+    "Water and power": "opex",
+    "Vet and medicine": "opex",
+}
 
 
 def categories_for(direction: Direction) -> dict[str, str]:
-    return MONEY_IN_CATEGORIES if direction == Direction.IN else MONEY_OUT_CATEGORIES
+    """Every label a record may carry for this direction, including legacy ones."""
+    if direction == Direction.IN:
+        return {**MONEY_IN_CATEGORIES, **_LEGACY_IN}
+    return {**MONEY_OUT_CATEGORIES, **_LEGACY_OUT}
 
 
 def clean_tag(value: str | None) -> str | None:

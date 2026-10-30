@@ -11,6 +11,7 @@ import {
 } from "@/lib/hooks/use-business";
 import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
 import { BAND_LABELS, docTypeLabel, gapTitle } from "@/lib/readiness";
+import { sectorLabel } from "@/lib/sectors";
 import { taxStatusForLender } from "@/lib/tax";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -85,7 +86,7 @@ export default function LenderSummaryPage() {
 						<div className="text-[11px] uppercase tracking-wider text-foreground/50">Financial record summary</div>
 						<h2 className="m-0 mt-1 font-display text-[26px]">{businessName}</h2>
 						<div className="mt-1 text-[13px] text-foreground/65">
-							{[business?.legal_name !== businessName ? business?.legal_name : null, business?.region, business?.registration_number ? `Reg. ${business.registration_number}` : null, business?.tin ? `TIN ${business.tin}` : null]
+							{[business?.legal_name !== businessName ? business?.legal_name : null, sectorLabel(business?.sector_code), business?.region, business?.registration_number ? `Reg. ${business.registration_number}` : null, business?.tin ? `TIN ${business.tin}` : null]
 								.filter(Boolean)
 								.join(" · ") || "Business details can be completed in Settings"}
 						</div>
@@ -140,13 +141,13 @@ export default function LenderSummaryPage() {
 
 				{(data.farm?.groups?.length ?? 0) > 0 && (
 					<section className="border-b border-border py-5">
-						<h3 className="m-0 mb-1 text-[14px] font-semibold font-[family-name:var(--body-font)]">By crop and season</h3>
+						<h3 className="m-0 mb-1 text-[14px] font-semibold font-[family-name:var(--body-font)]">By product or service</h3>
 						<p className="m-0 mb-3 text-[12px] text-foreground/55">Left over is money in minus money out for records the owner tagged. It is not profit.</p>
 						<div className="overflow-x-auto">
 							<table className="w-full border-collapse text-[13px] tabular-nums">
 								<thead>
 									<tr className="text-left text-[12px] text-foreground/55">
-										<th className="py-1.5 pr-3 font-normal">Crop or animal · season</th>
+										<th className="py-1.5 pr-3 font-normal">Product or service · season</th>
 										<th className="py-1.5 pr-3 text-right font-normal">Money in</th>
 										<th className="py-1.5 pr-3 text-right font-normal">Money out</th>
 										<th className="py-1.5 pr-3 text-right font-normal">Left over</th>
@@ -156,7 +157,7 @@ export default function LenderSummaryPage() {
 								<tbody>
 									{(data.farm?.groups ?? []).map((group) => (
 										<tr key={`${group.farm_activity}|${group.season}`} className="border-t border-foreground/8">
-											<td className="py-1.5 pr-3">{[group.farm_activity ?? "No crop given", group.season ?? "no season given"].join(" · ")}</td>
+											<td className="py-1.5 pr-3">{[group.farm_activity ?? "No product given", group.season ?? "no season or batch"].join(" · ")}</td>
 											<td className="py-1.5 pr-3 text-right">{formatGhs(group.money_in_pesewas)}</td>
 											<td className="py-1.5 pr-3 text-right">{formatGhs(group.money_out_pesewas)}</td>
 											<td className={`py-1.5 pr-3 text-right ${group.left_over_pesewas < 0 ? "text-destructive" : ""}`}>{formatGhs(group.left_over_pesewas)}</td>
@@ -222,7 +223,7 @@ export default function LenderSummaryPage() {
 
 				<footer className="border-t border-border pt-4 text-[11.5px] leading-relaxed text-foreground/55">
 					Prepared with Onrecord from statements and records the owner uploaded and confirmed. Records the owner typed in
-					themselves, such as cash sales and farm costs, are counted and listed above as typed in. Transfers between the
+					themselves, such as cash sales and costs, are counted and listed above as typed in. Transfers between the
 					owner&apos;s own accounts are left out. Tax payments are those the records show; they are not a tax clearance. This is a summary of records, not an audited statement or a credit decision.
 				</footer>
 			</article>
