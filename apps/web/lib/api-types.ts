@@ -19,6 +19,8 @@ export type Business = {
 	entity_type: string;
 	registration_number: string | null;
 	tin: string | null;
+	// Optional: an API deployed before the tax release doesn't send it.
+	tax_status?: { value: string } | null;
 	sector_code: string | null;
 	established_on: string | null;
 	region: string | null;

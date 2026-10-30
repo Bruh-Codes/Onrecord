@@ -78,3 +78,28 @@ async def test_legacy_owner_without_grant_keeps_access(client, db_ready):
 
     stranger = bearer_header(role="owner", user_id=uuid.uuid4(), business_id=uuid.uuid4())
     assert (await client.get(f"/v1/businesses/{business_id}", headers=stranger)).status_code == 403
+
+
+async def test_owner_sets_tin_and_tax_status(client):
+    owner_id = uuid.uuid4()
+    business_id = (await client.post(
+        "/v1/businesses", json={"legal_name": "Yaw Farms", "entity_type": "sole_prop"},
+        headers=bearer_header(role="owner", user_id=owner_id),
+    )).json()["id"]
+    headers = bearer_header(role="owner", user_id=owner_id, business_id=uuid.UUID(business_id))
+
+    resp = await client.patch(
+        f"/v1/businesses/{business_id}",
+        json={"tin": "  gha-123456789-0 ", "tax_status": "farm_produce"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["tin"] == "GHA-123456789-0"
+    assert body["tax_status"] == {"value": "farm_produce", "kind": "declared"}
+
+    cleared = await client.patch(f"/v1/businesses/{business_id}", json={"tin": "", "tax_status": None}, headers=headers)
+    assert cleared.json()["tin"] is None and cleared.json()["tax_status"] is None
+
+    bad = await client.patch(f"/v1/businesses/{business_id}", json={"tax_status": "owes_nothing"}, headers=headers)
+    assert bad.status_code == 422

@@ -18,6 +18,9 @@ class Business(IdMixin, Base):
     entity_type: Mapped[EntityType] = mapped_column(nullable=False)
     registration_number: Mapped[str | None] = mapped_column(nullable=True)
     tin: Mapped[str | None] = mapped_column(nullable=True)
+    # Owner's own answer about how GRA taxes them (see TaxStatus). Shown to
+    # lenders as context; nothing is computed from it.
+    tax_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sector_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     established_on: Mapped[date | None] = mapped_column(nullable=True)
     region: Mapped[str | None] = mapped_column(nullable=True)

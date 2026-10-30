@@ -166,8 +166,15 @@ async def patch_business(
     if business is None:
         raise not_found("BUSINESS_NOT_FOUND", "No business with that id.")
 
-    before = {"legal_name": business.legal_name, "premises_status": business.premises_status}
+    before = {
+        "legal_name": business.legal_name,
+        "premises_status": business.premises_status,
+        "tin": business.tin,
+        "tax_status": business.tax_status,
+    }
     updates = body.model_dump(exclude_unset=True)
+    if updates.get("tin") == "":
+        updates["tin"] = None
     for field, value in updates.items():
         setattr(business, field, value)
 

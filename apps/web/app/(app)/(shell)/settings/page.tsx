@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { useBusiness, useMe } from "@/lib/hooks/use-business";
 import { ChangePasswordModal } from "@/components/sidebar/ChangePasswordModal";
+import { TAX_STATUS_OPTIONS } from "@/lib/tax";
 
 export default function SettingsPage() {
 	const { toast } = useToast();
@@ -16,15 +17,20 @@ export default function SettingsPage() {
 	const { businessId } = useMe();
 	const businessQuery = useBusiness(businessId);
 	const [profileDraft, setProfileDraft] = useState<{ id: string; name: string; email: string } | null>(null);
-	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string } | null>(null);
+	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string; tin: string; taxStatus: string } | null>(null);
 	const name = profileDraft?.id === session?.user.id ? profileDraft?.name ?? "" : session?.user.name ?? "";
 	const email = profileDraft?.id === session?.user.id ? profileDraft?.email ?? "" : session?.user.email ?? "";
 	const legalName = businessDraft?.id === businessId ? businessDraft?.legalName ?? "" : businessQuery.data?.legal_name ?? "";
 	const tradingName = businessDraft?.id === businessId ? businessDraft?.tradingName ?? "" : businessQuery.data?.trading_name ?? "";
+	const tin = businessDraft?.id === businessId ? businessDraft?.tin ?? "" : businessQuery.data?.tin ?? "";
+	const taxStatus = businessDraft?.id === businessId ? businessDraft?.taxStatus ?? "" : businessQuery.data?.tax_status?.value ?? "";
 	const setName = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name: value, email });
 	const setEmail = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name, email: value });
-	const setLegalName = (value: string) => setBusinessDraft({ id: businessId ?? "", legalName: value, tradingName });
-	const setTradingName = (value: string) => setBusinessDraft({ id: businessId ?? "", legalName, tradingName: value });
+	const businessFields = { id: businessId ?? "", legalName, tradingName, tin, taxStatus };
+	const setLegalName = (value: string) => setBusinessDraft({ ...businessFields, legalName: value });
+	const setTradingName = (value: string) => setBusinessDraft({ ...businessFields, tradingName: value });
+	const setTin = (value: string) => setBusinessDraft({ ...businessFields, tin: value });
+	const setTaxStatus = (value: string) => setBusinessDraft({ ...businessFields, taxStatus: value });
 	const [savingProfile, setSavingProfile] = useState(false);
 	const [savingBusiness, setSavingBusiness] = useState(false);
 	const [profileError, setProfileError] = useState<string | null>(null);
@@ -67,6 +73,8 @@ export default function SettingsPage() {
 			await api.patchBusiness(businessId, {
 				legal_name: legalName.trim(),
 				trading_name: tradingName.trim() || null,
+				tin: tin.trim() || null,
+				tax_status: taxStatus || null,
 			});
 			await businessQuery.refetch();
 			toast({ title: "Business details updated", tone: "success" });
@@ -120,6 +128,12 @@ export default function SettingsPage() {
 					<div className="grid gap-4 sm:grid-cols-2">
 						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Legal business name</span><input value={legalName} onChange={(event) => setLegalName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
 						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Trading name <span className="opacity-50">(optional)</span></span><input value={tradingName} onChange={(event) => setTradingName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
+					</div>
+					<h3 className="m-0 mt-6 mb-1 text-[14px] font-semibold">Tax</h3>
+					<p className="m-0 mb-4 text-[13px] opacity-65">Lenders ask for these. They appear on your Lender summary. OnRecord doesn&apos;t share your records with GRA or work out tax you owe.</p>
+					<div className="grid gap-4 sm:grid-cols-2">
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">TIN or Ghana Card number <span className="opacity-50">(optional)</span></span><input value={tin} onChange={(event) => setTin(event.target.value)} placeholder="GHA-123456789-0" maxLength={20} autoCapitalize="characters" disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /><span className="mt-1.5 block text-[12px] opacity-55">For individuals, your Ghana Card number is your TIN.</span></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">How GRA taxes you <span className="opacity-50">(optional)</span></span><select value={taxStatus} onChange={(event) => setTaxStatus(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{TAX_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
 					</div>
 					{businessError && <p className="mt-3 mb-0 text-[12.5px] text-destructive">{businessError}</p>}
 					<div className="mt-5 flex justify-end"><PillButton onClick={saveBusiness} disabled={savingBusiness || !businessId || !legalName.trim()}>{savingBusiness ? "Saving…" : "Save business"}</PillButton></div>

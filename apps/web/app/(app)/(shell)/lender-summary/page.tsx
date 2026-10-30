@@ -11,6 +11,7 @@ import {
 } from "@/lib/hooks/use-business";
 import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
 import { BAND_LABELS, docTypeLabel, gapTitle } from "@/lib/readiness";
+import { taxStatusForLender } from "@/lib/tax";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -68,6 +69,8 @@ export default function LenderSummaryPage() {
 	const avgIn = activeMonths ? Math.round(totalIn / activeMonths) : 0;
 	const avgOut = activeMonths ? Math.round(totalOut / activeMonths) : 0;
 	const positiveMonths = periods.filter((p) => p.net_pesewas > 0).length;
+	const taxPaid = data.categories.money_out.find((row) => row.category === "tax");
+	const taxStatus = taxStatusForLender(business?.tax_status?.value);
 	const evidence = (documents.data?.items ?? []).filter((doc) => doc.status === "extracted");
 	const missing = (gaps.data ?? []).filter((gap) => gap.status === "open");
 	const span = periods.length
@@ -171,6 +174,20 @@ export default function LenderSummaryPage() {
 					<Ranked title="Main suppliers and costs" items={data.top_suppliers.counterparties.slice(0, 5)} />
 				</section>
 
+				<section className="border-b border-border py-5">
+					<h3 className="m-0 mb-2 text-[14px] font-semibold font-[family-name:var(--body-font)]">Tax</h3>
+					<dl className="m-0 grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-[max-content_1fr]">
+						<dt className="text-foreground/55">TIN or Ghana Card</dt>
+						<dd className="m-0">{business?.tin ?? "Not given"}</dd>
+						<dt className="text-foreground/55">Tax status (owner&apos;s answer)</dt>
+						<dd className="m-0">{taxStatus ?? "Not given"}</dd>
+						<dt className="text-foreground/55">Tax, SSNIT and assembly payments (12 months)</dt>
+						<dd className="m-0 tabular-nums">
+							{taxPaid ? <>{formatGhs(taxPaid.amount_pesewas)} <span className="text-foreground/50">({taxPaid.transactions}×)</span></> : "None found in these records"}
+						</dd>
+					</dl>
+				</section>
+
 				<section className="grid gap-6 py-5 sm:grid-cols-2">
 					<div>
 						<h3 className="m-0 mb-2 text-[14px] font-semibold font-[family-name:var(--body-font)]">Records behind these numbers</h3>
@@ -206,7 +223,7 @@ export default function LenderSummaryPage() {
 				<footer className="border-t border-border pt-4 text-[11.5px] leading-relaxed text-foreground/55">
 					Prepared with Onrecord from statements and records the owner uploaded and confirmed. Records the owner typed in
 					themselves, such as cash sales and farm costs, are counted and listed above as typed in. Transfers between the
-					owner&apos;s own accounts are left out. This is a summary of records, not an audited statement or a credit decision.
+					owner&apos;s own accounts are left out. Tax payments are those the records show; they are not a tax clearance. This is a summary of records, not an audited statement or a credit decision.
 				</footer>
 			</article>
 		</Page>

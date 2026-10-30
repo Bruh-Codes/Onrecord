@@ -91,7 +91,8 @@ export default function SetupPage() {
 				<div className="w-full max-w-[460px] bg-card rounded-3xl shadow-card p-6 sm:p-9">
 					<h1 className="text-[22px] m-0 mb-1.5">Tell us about your business</h1>
 					<p className="text-[13px] opacity-70 m-0 mb-6.5">
-						This creates the profile we&apos;ll build your financial record against.
+						This creates the profile we&apos;ll build your financial record against. OnRecord doesn&apos;t
+						share your records with GRA.
 					</p>
 
 					<div className="mb-3.5">

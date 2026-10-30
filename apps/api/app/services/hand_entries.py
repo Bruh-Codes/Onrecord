@@ -42,6 +42,7 @@ MONEY_OUT_CATEGORIES = {
     "Equipment and repairs": "opex",
     "Vet and medicine": "opex",
     "Rent": "opex",
+    "Taxes, levies and permits": "tax",
     "Other costs": "opex",
     "Loan repayment": "financing_out",
     "Money you took out": "owner",
