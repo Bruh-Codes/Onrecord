@@ -8,15 +8,12 @@ import {
 	DocumentsIcon,
 	HomeIcon,
 	MoneyIcon,
-	OverviewIcon,
 	ReadinessIcon,
 	SettingsIcon,
 	SummaryIcon,
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
-import iconDark from "@/public/icon-dark.png";
-import { useTheme } from "next-themes";
 
 const MAX_WIDTH = 230;
 const COLLAPSED_WIDTH = 60;
@@ -28,7 +25,6 @@ const NAV_GROUPS = [
 		items: [
 			{ href: "/dashboard", icon: <HomeIcon />, label: "Home" },
 			{ href: "/money", icon: <MoneyIcon />, label: "Money" },
-			{ href: "/overview", icon: <OverviewIcon />, label: "Business health" },
 			{ href: "/documents", icon: <DocumentsIcon />, label: "Records" },
 		],
 	},
@@ -59,8 +55,6 @@ function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 }
 
 export function Sidebar() {
-	const { resolvedTheme } = useTheme();
-	const theme = resolvedTheme === "dark" ? "dark" : "light";
 	const [collapsed, setCollapsed] = useState(true);
 	const [storageReady, setStorageReady] = useState(false);
 	const [width, setWidth] = useState(MAX_WIDTH);
@@ -140,7 +134,7 @@ export function Sidebar() {
 			style={{ width: effective }}
 		>
 			<aside
-				className={`flex h-full w-full shrink-0 flex-col bg-muted border-r ${
+				className={`sidebar-scope flex h-full w-full shrink-0 flex-col bg-background border-r ${
 					dragging ? "border-[#60a5fa]" : "border-border"
 				} ${liveCollapsed ? "overflow-visible px-2.5" : "overflow-y-auto px-3.5"}`}
 			>
@@ -151,7 +145,7 @@ export function Sidebar() {
 						liveCollapsed ? "justify-center" : "gap-2 px-2"
 					}`}
 				>
-					<Image src={theme === "light" ? iconDark : icon} alt="" width={26} height={26} />
+					<Image src={icon} alt="" width={26} height={26} />
 					{!liveCollapsed && <span className="font-display">Onrecord</span>}
 					{liveCollapsed && (
 						<Tooltip

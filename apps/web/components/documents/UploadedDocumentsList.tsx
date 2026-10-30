@@ -13,10 +13,10 @@ import type { Document, DocumentStatus } from "@/lib/api-types";
 import { formatGhs } from "@/lib/format";
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
-	received: "Uploaded-waiting to be read",
-	classified: "Classified",
-	extracted: "Extracted",
-	reconciliation_failed: "Needs balance review",
+	received: "Waiting to be read",
+	classified: "Being read",
+	extracted: "Read",
+	reconciliation_failed: "Balances don't add up",
 	failed: "Couldn't be read",
 	superseded: "Replaced",
 };
@@ -70,7 +70,7 @@ function evidenceReviewMessage(document: Document): string | null {
 		| { status?: string; summary?: string }
 		| undefined;
 	if (!review || !["pending", "warning", "error", "rejected"].includes(review.status ?? "")) return null;
-	return review.summary || "This document will be reviewed before it contributes to readiness scoring.";
+	return review.summary || "We need you to check this file before it counts towards your loan file.";
 }
 
 function isPartiallyUsable(document: Document) {
@@ -163,12 +163,12 @@ export function UploadedDocumentsList({
 						</div>
 						{(doc.transaction_count ?? 0) > 0 && (
 							<div className="mt-1 text-[11px] text-foreground/60">
-								{doc.transaction_count} transactions · outflow {formatGhs(doc.money_out_pesewas ?? 0)}
+								{doc.transaction_count} transactions · money out {formatGhs(doc.money_out_pesewas ?? 0)}
 							</div>
 						)}
 						{evidenceReviewMessage(doc) && (
 							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) || awaitingRowReview(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
-								{awaitingRowReview(doc) ? "" : isPartiallyUsable(doc) ? "Usable with warnings: " : "Human review required before scoring. "}
+								{awaitingRowReview(doc) ? "" : isPartiallyUsable(doc) ? "Counted, with a warning: " : "Needs your check before it counts. "}
 								{evidenceReviewMessage(doc)}
 							</div>
 						)}
@@ -179,7 +179,7 @@ export function UploadedDocumentsList({
 								onClick={() => onRetryProcessing(doc.id)}
 								disabled={retryingId === doc.id}
 							>
-								{retryingId === doc.id ? "Retrying..." : "Retry processing"}
+								{retryingId === doc.id ? "Trying again…" : "Try reading again"}
 							</PillButton>
 						)}
 						{hasReadRows(doc) && (

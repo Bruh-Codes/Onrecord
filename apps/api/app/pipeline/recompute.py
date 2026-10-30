@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.models.business import Account, Business
 from app.models.document import Document
-from app.models.enums import DocStatus, GapStatus
+from app.models.enums import AccountKind, DocStatus, GapStatus
 from app.models.scoring import ChecklistItem, Gap, Indicator, ReadinessScore
 from app.models.transaction import Transaction
 from app.pipeline import s7_analyse
@@ -107,19 +107,29 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     _sync_indicators(db, business_id, window_start, window_end, indicators)
 
     # ---- Checklist + document gaps (S9) ----
-    checklist_model = _sync_checklist(db, business, documents)
-    _sync_missing_document_gaps(db, business_id, checklist_model)
+    checklist_model = _sync_checklist(
+        db, business, documents, continuous_months=score_coverage["continuous_months"]
+    )
+    _sync_missing_document_gaps(db, business_id, checklist_model, tin_given=bool(business.tin))
 
     # ---- Coverage gaps (S5.3) ----
     open_period_gaps = _sync_missing_period_gaps(db, business_id, coverage)
 
     # ---- Score (S8) ----
     unclassified_ratio = _score_unclassified_ratio(score_txns, window_start, window_end)
-    accounts_declared = len(accounts)
-    accounts_captured = len({t.account_id for t in score_txns})
+    # The owner's own cash book is not an account a lender can ask for.
+    statement_accounts = {a.id for a in accounts if a.kind != AccountKind.CASH_BOOK}
+    accounts_declared = len(statement_accounts)
+    accounts_captured = len({t.account_id for t in score_txns if t.account_id in statement_accounts})
     score_documents = [document for document in documents if document.id in eligible_document_ids]
-    statement_value = _statement_value_pesewas(score_txns, score_documents)
-    total_value = sum(t.amount_pesewas for t in score_txns)
+    counted_txns = [t for t in score_txns if not _excluded_from_totals(t)]
+    evidence_value = _evidence_value_pesewas(counted_txns, score_documents)
+    total_value = sum(t.amount_pesewas for t in counted_txns)
+    active_months = len({
+        (t.occurred_on.year, t.occurred_on.month)
+        for t in counted_txns
+        if window_start is not None and window_end is not None and window_start <= t.occurred_on <= window_end
+    })
     score_missing_periods = sum(len(account["holes"]) for account in score_coverage["accounts"])
 
     score_payload = s8_score.compute_score(
@@ -130,7 +140,8 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
         open_missing_periods=score_missing_periods,
         computable_codes=computable,
         checklist=[_checklist_as_dict(c) for c in checklist_model],
-        statement_value_pesewas=statement_value,
+        evidence_value_pesewas=evidence_value,
+        active_months=active_months,
         total_value_pesewas=total_value,
     )
     _sync_score(db, business_id, score_payload)
@@ -242,14 +253,23 @@ def _indicator_float(indicators: list[dict], code: str) -> float | None:
     return None
 
 
-def _statement_value_pesewas(txns: list[Transaction], documents: list[Document]) -> int:
-    statement_docs = {
-        d.id
+def _excluded_from_totals(txn: Transaction) -> bool:
+    """Rows that would count the same money twice (own transfers, duplicates
+    across overlapping statements, FX legs, reversals)."""
+    flags = txn.flags or {}
+    return any(flags.get(key) for key in ("duplicate", "internal_transfer", "fx", "reversal"))
+
+
+def _evidence_value_pesewas(txns: list[Transaction], documents: list[Document]) -> int:
+    """Transaction value weighted by how far a lender can rely on its source:
+    statements that reconciled 1.0, receipts 0.6, typed-in records 0.25.
+    A statement whose balances failed to reconcile earns nothing here."""
+    weight = {
+        d.id: s8_score.evidence_multiplier(d.doc_type.value if d.doc_type else None)
         for d in documents
-        if d.doc_type in ("bank_statement", "momo_statement", "momo_merchant_statement")
-        and d.status == DocStatus.EXTRACTED
+        if d.status == DocStatus.EXTRACTED
     }
-    return sum(t.amount_pesewas for t in txns if t.document_id in statement_docs)
+    return round(sum(t.amount_pesewas * weight.get(t.document_id, 0.0) for t in txns))
 
 
 def _sync_indicators(
@@ -287,7 +307,9 @@ def _sync_indicators(
     db.flush()
 
 
-def _sync_checklist(db: Session, business: Business, documents: list[Document]) -> list[ChecklistItem]:
+def _sync_checklist(
+    db: Session, business: Business, documents: list[Document], *, continuous_months: int
+) -> list[ChecklistItem]:
     business_dict = {
         "premises_status": business.premises_status,
         "sector_code": business.sector_code,
@@ -304,7 +326,9 @@ def _sync_checklist(db: Session, business: Business, documents: list[Document]) 
         }
         for d in documents
     ]
-    items = s9_checklist.build_checklist(business_dict, rule_pack_id=RULE_PACK_ID, documents=doc_dicts)
+    items = s9_checklist.build_checklist(
+        business_dict, rule_pack_id=RULE_PACK_ID, documents=doc_dicts, continuous_months=continuous_months
+    )
 
     existing = db.scalars(
         select(ChecklistItem).where(
@@ -346,9 +370,11 @@ def _checklist_as_dict(item: ChecklistItem) -> dict:
     return data
 
 
-def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem]) -> None:
+def _sync_missing_document_gaps(
+    db: Session, business_id: uuid.UUID, checklist: list[ChecklistItem], *, tin_given: bool = False
+) -> None:
     missing = [c for c in checklist if c.status == "missing"]
-    missing_gaps = s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing])
+    missing_gaps = s9_checklist.missing_gaps([_checklist_as_dict(c) for c in missing], tin_given=tin_given)
     missing_codes = {gap["code"] for gap in missing_gaps}
 
     # A gap is a derived view of the current checklist. Resolve stale missing
@@ -377,8 +403,12 @@ def _sync_missing_document_gaps(db: Session, business_id: uuid.UUID, checklist: 
         )
         if exists is None:
             db.add(Gap(business_id=business_id, **gap))
-        elif exists.title != gap["title"]:
+        else:
+            # Wording and severity follow the owner's answers (a TIN typed in
+            # Settings turns the tax document from a blocker into a to-do).
             exists.title = gap["title"]
+            exists.severity = gap["severity"]
+            exists.detail = gap["detail"]
     db.flush()
 
 

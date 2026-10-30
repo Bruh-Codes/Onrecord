@@ -2,25 +2,14 @@ import { formatGhs, formatRatio } from "@/lib/format";
 import { InfoHint } from "./InfoHint";
 
 const METRIC_INFO: Record<string, string> = {
-	"Transaction value":
-		"The total value of non-internal transactions in the selected period, including classified and unclassified activity.",
-	"Average ticket": "Average value of each transaction classified as revenue.",
-	"Active trading days":
-		"The number of distinct dates with non-internal transaction activity.",
-	Revenue:
-		"Incoming transactions confidently classified as customer or sales revenue. Internal transfers are excluded.",
-	"Revenue growth":
-		"The percentage change in revenue between the latest three months and the preceding three months.",
-	"Operating expense ratio":
-		"Operating expenses divided by revenue. It is unavailable when no revenue has been recorded.",
-	"Unclassified value":
-		"The value of transactions that do not yet have a confident category.",
-	"Operating cashflow":
-		"Revenue inflows minus operating expenses. Internal transfers and other excluded activity are not counted.",
-	"Net cashflow":
-		"All included cash inflows minus all included cash outflows in the selected period.",
-	"Negative balance days":
-		"The number of days on which the recorded balance was negative.",
+	Sales: "Money in that we could tell came from customers. Transfers between your own accounts, loans and money you put in are left out.",
+	"Sales growth": "How much your sales in the last 3 months went up or down compared with the 3 months before.",
+	"Average sale": "The usual size of one payment from a customer.",
+	"Days with sales": "How many different days a customer paid you.",
+	"Costs as a share of sales": "Your running costs divided by your sales. 60% means GH¢0.60 of every GH¢1 you sell goes on costs. Lower is better.",
+	"Cash left after running costs": "Sales minus stock, materials and running costs. Loans and money you put in or took out are left out.",
+	"Money in minus money out": "Everything that came in minus everything that went out, except transfers between your own accounts.",
+	"Days the account was empty": "Days your statement balance was zero or below.",
 };
 
 export function MetricStat({

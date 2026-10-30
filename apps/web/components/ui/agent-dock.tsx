@@ -792,7 +792,7 @@ export function AgentDock({
 														? "Thinking..."
 														: isTranscribing
 															? "Transcribing..."
-															: "Type something here..."
+															: "Ask Ona about your money or loan file…"
 												}
 												ref={textareaRef}
 												value={message}
@@ -841,7 +841,7 @@ export function AgentDock({
 											placeholder={
 												isTranscribing
 													? "Transcribing..."
-													: "Type something here..."
+													: "Ask Ona about your money or loan file…"
 											}
 											ref={textareaRef}
 											value={message}

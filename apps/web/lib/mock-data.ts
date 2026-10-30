@@ -95,23 +95,23 @@ export const CHAT_SCRIPT: ChatStep[] = [
 export const APP_INTEGRATIONS: AppIntegration[] = [
 	{
 		name: "Google Sheets",
-		desc: "Import bookkeeping records, sales trackers, and cash-flow sheets without re-uploading them.",
+		desc: "Bring in a sales book or cash book you keep in Google Sheets, and keep it up to date.",
 		icon: "google-sheets",
 	},
 	{
 		name: "Paystack",
-		desc: "Pull settlement and payout history directly instead of uploading statements.",
+		desc: "Bring in your Paystack payouts so you don't have to upload statements.",
 	},
 	{
-		name: "MTN MoMo API",
-		desc: "Skip the 90-day statement request-sync the wallet automatically.",
+		name: "MTN MoMo",
+		desc: "Connect your MoMo wallet so your history comes in by itself, without requesting a statement.",
 	},
 	{
 		name: "Bank feeds (GCB, Fidelity, Absa)",
-		desc: "Direct read-only bank connections via open banking, when available in Ghana.",
+		desc: "A read-only link to your bank account, once Ghanaian banks allow it.",
 	},
 	{
 		name: "Gmail",
-		desc: "Find invoices, receipts, and financial documents from your business inbox.",
+		desc: "Find invoices and receipts in your business email.",
 	},
 ];
