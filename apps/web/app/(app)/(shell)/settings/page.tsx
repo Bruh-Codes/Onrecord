@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { PillButton } from "@/components/ui/PillButton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { useBusiness, useMe } from "@/lib/hooks/use-business";
@@ -16,9 +17,10 @@ const REGIONS = ["Ahafo", "Ashanti", "Bono", "Bono East", "Central", "Eastern", 
 export default function SettingsPage() {
 	const { toast } = useToast();
 	const router = useRouter();
-	const { data: session } = authClient.useSession();
+	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const { businessId } = useMe();
 	const businessQuery = useBusiness(businessId);
+	const businessLoading = !businessId || businessQuery.isLoading;
 	const [profileDraft, setProfileDraft] = useState<{ id: string; name: string; email: string } | null>(null);
 	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string; sector: string; region: string; registration: string; tin: string; taxStatus: string } | null>(null);
 	const name = profileDraft?.id === session?.user.id ? profileDraft?.name ?? "" : session?.user.name ?? "";
@@ -121,10 +123,10 @@ export default function SettingsPage() {
 				<section className="mb-5 rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6">
 					<h2 className="m-0 mb-1 text-[16px] font-semibold">Your login</h2>
 					<p className="m-0 mb-5 text-[13px] opacity-65">The name and email you sign in with.</p>
-					<div className="grid gap-4 sm:grid-cols-2">
+					{sessionPending ? <FieldsSkeleton count={2} /> : <div className="grid gap-4 sm:grid-cols-2">
 						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Name</span><input value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
 						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
-					</div>
+					</div>}
 					{profileError && <p className="mt-3 mb-0 text-[12.5px] text-destructive">{profileError}</p>}
 					<div className="mt-5 flex justify-end"><PillButton onClick={saveProfile} disabled={savingProfile || !name.trim() || !email.trim()}>{savingProfile ? "Saving…" : "Save login details"}</PillButton></div>
 				</section>
@@ -132,19 +134,19 @@ export default function SettingsPage() {
 				<section className="mb-5 rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6">
 					<h2 className="m-0 mb-1 text-[16px] font-semibold">Business</h2>
 					<p className="m-0 mb-5 text-[13px] opacity-65">These appear at the top of your Lender summary.</p>
-					<div className="grid gap-4 sm:grid-cols-2">
-						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business name</span><input value={legalName} onChange={(event) => setLegalName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
-						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Name customers know you by <span className="opacity-50">(optional, if different)</span></span><input value={tradingName} onChange={(event) => setTradingName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
-						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">What the business does</span><select value={sector} onChange={(event) => setSector(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{SECTOR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Region</span><select value={region} onChange={(event) => setRegion(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{REGIONS.map((name) => <option key={name} value={name}>{name}</option>)}{region && !REGIONS.includes(region) && <option value={region}>{region}</option>}</select></label>
-						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business registration number <span className="opacity-50">(optional)</span></span><input value={registration} onChange={(event) => setRegistration(event.target.value)} placeholder="e.g. BN123456789" maxLength={40} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /><span className="mt-1.5 block text-[12px] opacity-55">From your ORC (Registrar-General) certificate. Leave it empty if you haven&apos;t registered yet.</span></label>
-					</div>
+					{businessLoading ? <FieldsSkeleton count={5} /> : <div className="grid gap-4 sm:grid-cols-2">
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business name</span><input value={legalName} onChange={(event) => setLegalName(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Name customers know you by <span className="opacity-50">(optional, if different)</span></span><input value={tradingName} onChange={(event) => setTradingName(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">What the business does</span><select value={sector} onChange={(event) => setSector(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm"><option value="">Choose one</option>{SECTOR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Region</span><select value={region} onChange={(event) => setRegion(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm"><option value="">Choose one</option>{REGIONS.map((name) => <option key={name} value={name}>{name}</option>)}{region && !REGIONS.includes(region) && <option value={region}>{region}</option>}</select></label>
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business registration number <span className="opacity-50">(optional)</span></span><input value={registration} onChange={(event) => setRegistration(event.target.value)} placeholder="e.g. BN123456789" maxLength={40} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /><span className="mt-1.5 block text-[12px] opacity-55">From your ORC (Registrar-General) certificate. Leave it empty if you haven&apos;t registered yet.</span></label>
+					</div>}
 					<h3 className="m-0 mt-6 mb-1 text-[14px] font-semibold">Tax</h3>
 					<p className="m-0 mb-4 text-[13px] opacity-65">Lenders ask for these. They appear on your Lender summary. OnRecord doesn&apos;t share your records with GRA or work out tax you owe.</p>
-					<div className="grid gap-4 sm:grid-cols-2">
-						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">TIN or Ghana Card number <span className="opacity-50">(optional)</span></span><input value={tin} onChange={(event) => setTin(event.target.value)} placeholder="GHA-123456789-0" maxLength={20} autoCapitalize="characters" disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /><span className="mt-1.5 block text-[12px] opacity-55">For individuals, your Ghana Card number is your TIN.</span></label>
-						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">How GRA taxes you <span className="opacity-50">(optional)</span></span><select value={taxStatus} onChange={(event) => setTaxStatus(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{TAX_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-					</div>
+					{businessLoading ? <FieldsSkeleton count={2} /> : <div className="grid gap-4 sm:grid-cols-2">
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">TIN or Ghana Card number <span className="opacity-50">(optional)</span></span><input value={tin} onChange={(event) => setTin(event.target.value)} placeholder="GHA-123456789-0" maxLength={20} autoCapitalize="characters" className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /><span className="mt-1.5 block text-[12px] opacity-55">For individuals, your Ghana Card number is your TIN.</span></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">How GRA taxes you <span className="opacity-50">(optional)</span></span><select value={taxStatus} onChange={(event) => setTaxStatus(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm"><option value="">Choose one</option>{TAX_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+					</div>}
 					{businessError && <p className="mt-3 mb-0 text-[12.5px] text-destructive">{businessError}</p>}
 					<div className="mt-5 flex justify-end"><PillButton onClick={saveBusiness} disabled={savingBusiness || !businessId || !legalName.trim()}>{savingBusiness ? "Saving…" : "Save business details"}</PillButton></div>
 				</section>
@@ -175,5 +177,18 @@ export default function SettingsPage() {
 		</div>}
 		<ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
 		</>
+	);
+}
+
+function FieldsSkeleton({ count }: { count: number }) {
+	return (
+		<div aria-busy="true" aria-label="Loading your details" className="grid gap-4 sm:grid-cols-2">
+			{Array.from({ length: count }, (_, i) => (
+				<div key={i}>
+					<Skeleton className="h-3 w-24 mb-2" />
+					<Skeleton className="h-[42px] w-full rounded-xl" />
+				</div>
+			))}
+		</div>
 	);
 }

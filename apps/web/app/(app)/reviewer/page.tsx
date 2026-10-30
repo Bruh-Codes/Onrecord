@@ -10,6 +10,7 @@ import {
 	useMe,
 	useTransactionReviewQueue,
 } from "@/lib/hooks/use-business";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function ReviewerQueuePage() {
 	const { businessId } = useMe();
@@ -49,15 +50,28 @@ export default function ReviewerQueuePage() {
 				What was this money for?
 			</h1>
 			<p className="text-sm opacity-75 m-0 mb-6.5">
-				{openCount} transaction{openCount === 1 ? "" : "s"} we couldn&apos;t sort
+				{queue.isLoading ? "Some transactions" : `${openCount} transaction${openCount === 1 ? "" : "s"}`} we couldn&apos;t sort
 				on our own. Tell us whether each one was a sale, a cost, a loan or
 				something else, so lenders see your true sales and costs. Transfers
 				between your own accounts are already left out.
 			</p>
 
 			{queue.isLoading ? (
-				<div className="rounded-[20px] bg-muted p-6 text-sm text-foreground/65">
-					Loading transactions that need review…
+				<div aria-busy="true" aria-label="Loading transactions that need sorting" className="flex flex-col gap-3">
+					{[0, 1, 2].map((i) => (
+						<div key={i} className="rounded-[20px] border border-border bg-card p-5">
+							<div className="flex items-start justify-between gap-4">
+								<div className="flex-1 space-y-2">
+									<Skeleton className="h-4 w-1/2" />
+									<Skeleton className="h-3 w-1/3" />
+								</div>
+								<Skeleton className="h-5 w-24" />
+							</div>
+							<div className="mt-4 flex flex-wrap gap-2">
+								{[0, 1, 2, 3].map((j) => <Skeleton key={j} className="h-8 w-24 rounded-full" />)}
+							</div>
+						</div>
+					))}
 				</div>
 			) : null}
 			{queue.isError ? (

@@ -14,6 +14,7 @@ import { monthLabel, rangeStart, useMoneySummary } from "@/lib/money";
 import { docTypeLabel, gapTitle } from "@/lib/readiness";
 import { sectorLabel } from "@/lib/sectors";
 import { taxStatusForLender } from "@/lib/tax";
+import { LenderSummarySkeleton } from "@/components/ui/Skeleton";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -41,7 +42,7 @@ export default function LenderSummaryPage() {
 	const businessName = business?.trading_name || business?.legal_name || "Your business";
 
 	if (!businessId || overall.isLoading || summary.isLoading) {
-		return <Page><p className="text-[13px] text-foreground/55">Preparing your summary…</p></Page>;
+		return <Page><LenderSummarySkeleton /></Page>;
 	}
 	if (overall.isError || summary.isError || !summary.data) {
 		return <Page><p className="text-[13px] text-destructive">Couldn&apos;t load your records. Refresh to try again.</p></Page>;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Spreadsheet = { id: string; name: string; modifiedTime?: string };
 type Sheet = { title: string; sheetId: number };
@@ -105,7 +106,12 @@ export function GoogleSheetsConnect() {
 
   return (
     <div className="flex flex-col gap-3 w-full max-w-[440px]">
-      {status === "loading" ? <span className="text-[12px] opacity-65">Loading your spreadsheets...</span> : null}
+      {status === "loading" ? (
+        <div aria-busy="true" aria-label="Loading your spreadsheets" className="flex items-center gap-2">
+          <Skeleton className="h-8 flex-1 rounded-lg" />
+          <Skeleton className="h-8 w-20 rounded-lg" />
+        </div>
+      ) : null}
       {files.length > 0 ? (
         <>
           <div className="flex flex-wrap items-center gap-2">

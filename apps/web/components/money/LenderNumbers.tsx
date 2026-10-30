@@ -5,6 +5,7 @@ import { InvoiceInsightsPanel } from "@/components/overview/InvoiceInsightsPanel
 import { MetricStat } from "@/components/overview/MetricStat";
 import { seriesTotal } from "@/lib/format";
 import { useIndicatorsMap, useInvoiceInsights } from "@/lib/hooks/use-business";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Series = { m: string; v: number }[];
 type Indicator = { value_json: Record<string, unknown> } | undefined;
@@ -29,7 +30,24 @@ function seriesOf(indicator: Indicator): Series {
 export function LenderNumbers({ businessId, months }: { businessId: string; months: number }) {
 	const indicators = useIndicatorsMap(businessId);
 	const invoices = useInvoiceInsights(businessId);
-	if (indicators.isLoading || indicators.isError) return null;
+	if (indicators.isError) return null;
+	if (indicators.isLoading) {
+		return (
+			<section aria-busy="true" aria-label="Loading what a lender works out" className="mt-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+				<Skeleton className="h-4 w-44" />
+				<Skeleton className="mt-2 mb-4 h-2.5 w-3/4" />
+				<div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+					{[0, 1, 2, 3, 4, 5].map((i) => (
+						<div key={i} className="rounded-xl bg-muted/50 p-3.5">
+							<Skeleton className="h-3 w-24" />
+							<Skeleton className="mt-2 h-6 w-20" />
+							<Skeleton className="mt-2 h-2.5 w-28 max-w-full" />
+						</div>
+					))}
+				</div>
+			</section>
+		);
+	}
 
 	const map = indicators.map;
 	const avgTicket = seriesOf(map.AVG_TICKET).slice(-months);
