@@ -80,6 +80,22 @@
   --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
+/* The sidebar is dark in both themes so the menu stands apart from the page.
+   Redefining the tokens here makes everything inside it (links, tooltips,
+   dividers) flip to white-on-black without per-element colours. */
+.sidebar-scope {
+  --background: #141414;
+  --foreground: #f7f7f6;
+  --muted: #141414;
+  --border: rgba(247, 247, 246, 0.14);
+  color: var(--foreground);
+}
+
+.dark .sidebar-scope {
+  --background: #0a0a09;
+  --muted: #0a0a09;
+}
+
 @theme inline {
   --font-sans: var(--body-font);
   --font-display: var(--display-font);
