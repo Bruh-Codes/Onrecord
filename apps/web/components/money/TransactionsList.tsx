@@ -210,8 +210,8 @@ function TagEditor({
 
 	return (
 		<div className="mt-2 flex flex-wrap items-center gap-2">
-			<input className={field} list="tag-activities" placeholder="Crop or animal" aria-label="Crop or animal" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
-			<input className={field} list="tag-seasons" placeholder="Season" aria-label="Season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
+			<input className={field} list="tag-activities" placeholder="Product or service" aria-label="Product or service" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
+			<input className={field} list="tag-seasons" placeholder="Season or batch" aria-label="Season or batch" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
 			<datalist id="tag-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
 			<datalist id="tag-seasons">{seasons.map((value) => <option key={value} value={value} />)}</datalist>
 			<button type="button" onClick={save} disabled={tag.isPending} className="rounded-full bg-foreground px-3 py-1.5 text-[12.5px] text-background cursor-pointer disabled:opacity-50">

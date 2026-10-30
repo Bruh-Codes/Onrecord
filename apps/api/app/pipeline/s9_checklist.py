@@ -10,6 +10,7 @@ app/rules/checklists/*.yaml. Semantics are identical.
 from typing import Any
 
 REQUIREMENT_WEIGHT = {"required": 3, "conditional": 2, "optional": 1}
+_STATEMENT_TYPES = {"bank_statement", "momo_statement", "momo_merchant_statement"}
 
 
 def pack_for(rule_pack_id: str) -> dict[str, Any]:
@@ -124,9 +125,14 @@ def build_checklist(
     *,
     rule_pack_id: str,
     documents: list[dict],
+    continuous_months: int | None = None,
 ) -> list[dict]:
     """Evaluate a rule pack against uploaded documents. `documents` carry
-    {doc_type, status, period_start, period_end}. Returns checklist items."""
+    {doc_type, status, period_start, period_end}. Returns checklist items.
+
+    A statement item with `constraint.min_months` is only satisfied once
+    `continuous_months` (unbroken statement months) reaches it: one month of
+    MoMo history does not meet "Six months of bank or MoMo statements"."""
     requirements = _PACKS.get(rule_pack_id, _PACKS["gh_mfi_working_capital_v1"])
     items: list[dict] = []
     for req in requirements:
@@ -143,6 +149,10 @@ def build_checklist(
             ),
             None,
         )
+        min_months = (req.get("constraint") or {}).get("min_months")
+        if match is not None and min_months and continuous_months is not None and req["doc_type"] in _STATEMENT_TYPES:
+            if continuous_months < min_months:
+                match = None
         if match is not None:
             items.append({**req, "status": "satisfied", "satisfied_by_document_id": match["id"]})
         else:
@@ -150,11 +160,27 @@ def build_checklist(
     return items
 
 
-def missing_gaps(checklist: list[dict]) -> list[dict]:
-    """Map missing required/conditional items to gaps (specs/06-scoring-checklist.md)."""
+def missing_gaps(checklist: list[dict], *, tin_given: bool = False) -> list[dict]:
+    """Map missing required/conditional items to gaps (specs/06-scoring-checklist.md).
+
+    When the owner has typed their TIN in Settings, the tax document is still
+    asked for (lenders want to see the certificate or card) but it is no longer
+    a blocker, and the wording says the number itself is already saved."""
     gaps: list[dict] = []
     for item in checklist:
         if item["status"] != "missing":
+            continue
+        if item["doc_type"] == "tax_doc" and tin_given:
+            gaps.append(
+                {
+                    "kind": "missing_document",
+                    "severity": "major",
+                    "code": "MISSING_DOC_TAX_DOC",
+                    "title": "Upload your TIN certificate or Ghana Card",
+                    "detail": "Your TIN is saved and shows on your Lender summary. Lenders still ask to see the certificate or card itself.",
+                    "target_ref": {"doc_type": item["doc_type"]},
+                }
+            )
             continue
         if item["requirement"] == "required":
             gaps.append(
@@ -163,6 +189,7 @@ def missing_gaps(checklist: list[dict]) -> list[dict]:
                     "severity": "blocker",
                     "code": f"MISSING_DOC_{item['doc_type']}".upper(),
                     "title": f"{item.get('label', item['doc_type'])} is missing",
+                    "detail": None,
                     "target_ref": {"doc_type": item["doc_type"]},
                 }
             )
@@ -173,6 +200,7 @@ def missing_gaps(checklist: list[dict]) -> list[dict]:
                     "severity": "major",
                     "code": f"MISSING_DOC_{item['doc_type']}".upper(),
                     "title": f"{item.get('label', item['doc_type'])} is missing",
+                    "detail": None,
                     "target_ref": {"doc_type": item["doc_type"]},
                 }
             )

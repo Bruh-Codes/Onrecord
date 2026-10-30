@@ -6,16 +6,16 @@ import {
 	DocumentsIcon,
 	HomeIcon,
 	MoneyIcon,
-	OverviewIcon,
 	ReadinessIcon,
+	SummaryIcon,
 } from "@/components/icons";
 
 const ITEMS = [
 	{ href: "/dashboard", label: "Home", icon: HomeIcon },
 	{ href: "/money", label: "Money", icon: MoneyIcon },
-	{ href: "/overview", label: "Health", icon: OverviewIcon },
 	{ href: "/readiness", label: "Loan", icon: ReadinessIcon },
 	{ href: "/documents", label: "Records", icon: DocumentsIcon },
+	{ href: "/lender-summary", label: "Summary", icon: SummaryIcon },
 ];
 
 // Bottom tab bar for the owner journey on narrow viewports-Sidebar.tsx

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AddRecordForm } from "@/components/money/AddRecordForm";
 import { FarmBreakdown } from "@/components/money/FarmBreakdown";
+import { LenderNumbers } from "@/components/money/LenderNumbers";
 import { MonthlyCashFlowChart } from "@/components/money/MonthlyCashFlowChart";
 import { RankedList } from "@/components/money/RankedList";
 import { TransactionsList } from "@/components/money/TransactionsList";
@@ -69,7 +70,7 @@ export default function MoneyPage() {
 				<div className="rounded-2xl border border-dashed border-foreground/25 bg-muted/50 p-8 text-center">
 					<p className="m-0 text-[15px] font-semibold">No transactions yet</p>
 					<p className="m-0 mt-1.5 text-[13px] text-foreground/60">
-						Upload a MoMo or bank statement, a screenshot, or paste your SMS alerts and we&apos;ll build this page for you. Cash sales and costs, like seeds bought with cash, can be added with &ldquo;Add a record&rdquo;.
+						Upload a MoMo or bank statement, a screenshot, or paste your SMS alerts and we&apos;ll build this page for you. Sales and costs paid in cash can be added with &ldquo;Add a record&rdquo;.
 					</p>
 					<div className="mt-4 flex flex-wrap justify-center gap-2">
 						<Link href="/documents" className="inline-block rounded-full bg-foreground px-4 py-2 text-[13px] text-background no-underline">
@@ -82,7 +83,7 @@ export default function MoneyPage() {
 								disabled={example.isPending}
 								className="rounded-full border border-border px-4 py-2 text-[13px] cursor-pointer disabled:opacity-50"
 							>
-								{example.isPending ? "Adding…" : "Try with Yaw’s tomato season (example)"}
+								{example.isPending ? "Adding…" : "See an example (Yaw’s tomato farm)"}
 							</button>
 						)}
 					</div>
@@ -133,7 +134,7 @@ export default function MoneyPage() {
 					<span>
 						Showing only{" "}
 						<strong>
-							{[filter.farm_activity === "untagged" ? "no crop given" : filter.farm_activity, filter.season === "untagged" ? "no season given" : filter.season]
+							{[filter.farm_activity === "untagged" ? "no product given" : filter.farm_activity, filter.season === "untagged" ? "no season or batch" : filter.season]
 								.filter(Boolean)
 								.join(" · ")}
 						</strong>
@@ -147,7 +148,7 @@ export default function MoneyPage() {
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<Stat label="Money in" value={formatGhs(totalIn)} tone="in" />
 				<Stat label="Money out" value={formatGhs(totalOut)} />
-				<Stat label="Net" value={formatGhs(net)} tone={net < 0 ? "negative" : undefined} />
+				<Stat label="In minus out" value={formatGhs(net)} tone={net < 0 ? "negative" : undefined} />
 				<Stat label="Transactions" value={count.toLocaleString()} caption={span} />
 			</div>
 
@@ -163,6 +164,8 @@ export default function MoneyPage() {
 				<p className="m-0 mb-3 text-[12px] text-foreground/50">Transfers between your own accounts are left out.</p>
 				{periods.length ? <MonthlyCashFlowChart periods={periods} /> : <p className="text-[13px] text-foreground/55">No activity in this range.</p>}
 			</section>
+
+			<LenderNumbers businessId={businessId} months={months || 12} />
 
 			<FarmBreakdown farm={data.farm} filter={filter} onFilter={setFilter} />
 
@@ -235,7 +238,7 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
 			<div className="mb-5 flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Money in &amp; out</h1>
-					<p className="text-sm opacity-70 m-0">Built from the records you&apos;ve uploaded and confirmed, plus any you typed in.</p>
+					<p className="text-sm opacity-70 m-0">Everything that came in and went out, and the numbers a lender works out from it.</p>
 				</div>
 				{actions}
 			</div>

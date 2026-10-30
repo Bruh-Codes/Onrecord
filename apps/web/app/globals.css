@@ -80,6 +80,22 @@
   --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
+/* The sidebar is dark in both themes so the menu stands apart from the page.
+   Redefining the tokens here makes everything inside it (links, tooltips,
+   dividers) flip to white-on-black without per-element colours. */
+.sidebar-scope {
+  --background: #141414;
+  --foreground: #f7f7f6;
+  --muted: #141414;
+  --border: rgba(247, 247, 246, 0.14);
+  color: var(--foreground);
+}
+
+.dark .sidebar-scope {
+  --background: #0a0a09;
+  --muted: #0a0a09;
+}
+
 @theme inline {
   --font-sans: var(--body-font);
   --font-display: var(--display-font);
@@ -185,6 +201,23 @@
 }
 
 /* The lender summary is printed or saved as PDF: always print on white. */
+/* The Lender summary is a document: it stays paper-white in dark mode too, so
+   what the owner sees is what the lender gets. */
+.paper {
+  --background: #ffffff;
+  --foreground: #141414;
+  --muted: #f4f4f1;
+  --border: rgba(20, 20, 20, 0.12);
+  --positive: #1e6b45;
+  --destructive: #a13327;
+  color-scheme: light;
+}
+
+@page {
+  size: A4;
+  margin: 14mm 14mm 16mm;
+}
+
 @media print {
   :root,
   .dark {
@@ -199,5 +232,11 @@
   }
   body {
     background: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .paper tr,
+  .paper li {
+    break-inside: avoid;
   }
 }

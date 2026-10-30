@@ -5,7 +5,7 @@ Measured against completeness and internal consistency, NOT creditworthiness
 `earned/available/reason`. Same inputs + RUBRIC_VERSION -> identical output.
 """
 
-RUBRIC_VERSION = "1.0.0"
+RUBRIC_VERSION = "1.1.0"
 
 LEGIBILITY_CODES = (
     "REV_MONTHLY",
@@ -21,6 +21,7 @@ LEGIBILITY_CODES = (
 )
 
 REQUIREMENT_WEIGHT = {"required": 3, "conditional": 2, "optional": 1}
+MIN_READABLE_MONTHS = 3
 
 _EVIDENCE_MULTIPLIER = {
     "bank_statement": 1.0,
@@ -33,6 +34,11 @@ _EVIDENCE_MULTIPLIER = {
 }
 
 
+def evidence_multiplier(doc_type: str | None) -> float:
+    """How far a lender can rely on a row, by the document behind it (spec S8)."""
+    return _EVIDENCE_MULTIPLIER.get(doc_type or "", 0.0)
+
+
 def compute_score(
     *,
     continuous_months: int,
@@ -42,11 +48,19 @@ def compute_score(
     open_missing_periods: int,
     computable_codes: set[str],
     checklist: list[dict],
-    statement_value_pesewas: int,
+    evidence_value_pesewas: int,
     total_value_pesewas: int,
+    active_months: int | None = None,
 ) -> dict:
     """Returns the full readiness_score payload. All inputs integer/float;
-    money in pesewas. checklist items carry {requirement, status, doc_type}."""
+    money in pesewas. checklist items carry {requirement, status, doc_type}.
+
+    `continuous_months` counts bank/MoMo statement months only; typed-in records
+    never add history. `evidence_value_pesewas` is transaction value already
+    weighted by `evidence_multiplier` of the document behind each row.
+    `active_months` is how many months in the window have any transactions;
+    with fewer than 3, indicators exist but say little, so legibility scales
+    down (one month of data is not a readable trend)."""
     contributions: list[dict] = []
 
     # ---- coverage (30) ----
@@ -54,26 +68,31 @@ def compute_score(
         months_pts = 20
         months_reason = f"{continuous_months} continuous months of statements; 12 earns full marks"
     elif continuous_months >= 6:
-        months_pts = 12 + (continuous_months - 6)
+        # Linear 6 -> 12 pts, 12 -> 20 pts (spec), so 11 months is not scored
+        # like 7 and the step to 12 isn't a 3-point cliff.
+        months_pts = round(12 + (continuous_months - 6) * 8 / 6, 2)
         months_reason = f"{continuous_months} continuous months; 12 earns full marks"
     elif continuous_months >= 3:
-        months_pts = 5 + int((continuous_months - 3) * (12 - 5) / 3)
+        months_pts = round(5 + (continuous_months - 3) * 7 / 3, 2)
         months_reason = f"{continuous_months} continuous months of statements"
     else:
         months_pts = 0
         months_reason = "fewer than 3 continuous months of statements"
 
+    # Sorting and account capture only count once there is statement history
+    # to sort and capture; typed-in records alone must not earn History points.
+    has_history = continuous_months > 0
     unclassified_pts = 0
-    if unclassified_ratio is not None:
+    if unclassified_ratio is not None and has_history:
         unclassified_pts = round(5 * (1 - min(unclassified_ratio, 1.0)), 2)
     unclassified_reason = (
         f"{round((unclassified_ratio or 0) * 100)}% of transaction value is unclassified"
-        if unclassified_ratio is not None
-        else "no transactions to classify"
+        if unclassified_ratio is not None and has_history
+        else "no statement transactions to classify yet"
     )
 
     captured_pts = 0
-    if accounts_declared:
+    if accounts_declared and has_history:
         captured_pts = round(5 * min(accounts_captured / accounts_declared, 1.0), 2)
 
     coverage_earned = months_pts + unclassified_pts + captured_pts - 2 * open_missing_periods
@@ -88,7 +107,11 @@ def compute_score(
     # ---- legibility (25) ----
     legible = sum(1 for j in computable_codes if j in LEGIBILITY_CODES)
     legibility_earned = min(25.0, 2.5 * legible)
-    contributions.append({"component": "legibility", "pillar": "legibility", "earned": round(legibility_earned, 2), "available": 25.0, "reason": f"{legible} of {len(LEGIBILITY_CODES)} core indicators computable"})
+    legibility_reason = f"{legible} of {len(LEGIBILITY_CODES)} core indicators computable"
+    if active_months is not None and active_months < MIN_READABLE_MONTHS:
+        legibility_earned = round(legibility_earned * active_months / MIN_READABLE_MONTHS, 2)
+        legibility_reason += f", from only {active_months} month(s) of activity"
+    contributions.append({"component": "legibility", "pillar": "legibility", "earned": round(legibility_earned, 2), "available": 25.0, "reason": legibility_reason})
 
     # ---- documentation (30) ----
     numerator, denominator = 0, 0
@@ -104,9 +127,9 @@ def compute_score(
 
     # ---- verifiability (15) ----
     if total_value_pesewas > 0:
-        weighted_share = statement_value_pesewas / total_value_pesewas
+        weighted_share = min(evidence_value_pesewas / total_value_pesewas, 1.0)
         verif_pts = round(15 * weighted_share, 2)
-        verif_reason = f"{round(weighted_share * 100)}% of transaction value backed by statements"
+        verif_reason = f"evidence-weighted share of transaction value is {round(weighted_share * 100)}%"
     else:
         verif_pts = 0.0
         verif_reason = "no transactions to evidence"
@@ -114,6 +137,15 @@ def compute_score(
 
     total = round(coverage_earned + legibility_earned + doc_earned + verif_pts, 2)
     band = _band(total)
+    # "Lender ready" promises the file is complete; a missing required or
+    # applicable conditional document keeps it at "nearly ready" whatever the total.
+    missing_required = [
+        item for item in checklist
+        if item["status"] == "missing" and item["requirement"] in ("required", "conditional")
+    ]
+    if band == "lender_ready" and missing_required:
+        band = "nearly_ready"
+        contributions.append({"component": "band_cap", "pillar": "documentation", "earned": 0, "available": 0, "reason": f"{len(missing_required)} required document(s) still missing, so not lender ready yet"})
 
     return {
         "rubric_version": RUBRIC_VERSION,

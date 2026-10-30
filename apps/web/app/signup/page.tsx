@@ -50,7 +50,7 @@ function SignupForm() {
 	async function handleGoogleSignIn() {
 		if (busy) return;
 		if (authMode === "signup" && !consented) {
-			setError("Tick the box below to confirm you can act for this business, then continue with Google.");
+			setError("First tick the box below the password to confirm this is your business, then continue with Google.");
 			return;
 		}
 		setGoogleLoading(true);
@@ -130,40 +130,45 @@ function SignupForm() {
 					</div>
 					<div className="mb-2">
 						<label className="block text-xs mb-1.5 text-foreground/70">Password</label>
-						<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} placeholder="••••••••" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
+						<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"} className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
 					</div>
 					{error && <p className="text-[12.5px] text-destructive mt-3">{error}</p>}
 
 					{authMode === "login" && !busy && <p className="text-right -mt-1.5 mb-0"><Link href="/forgot-password" className="text-[12px] opacity-60 hover:opacity-100">Forgot password?</Link></p>}
+					{authMode === "signup" && <ConsentCheckbox checked={consented} disabled={busy} onToggle={() => { setConsented((value) => !value); setError(null); }} />}
 					<button type="button" disabled={!ready || busy} onClick={handleSubmit} className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed" style={{ background: ready && !submitting ? "var(--foreground)" : "var(--muted-foreground)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
 						{submitting ? "Please wait…" : authMode === "signup" ? "Create account" : "Log in"}
 					</button>
-					{authMode === "signup" && <button
-						type="button"
-						onClick={() => { setConsented((value) => !value); setError(null); }}
-						disabled={busy}
-						aria-pressed={consented}
-						className="mt-4.5 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						<span
-							className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-								consented
-									? "border-foreground bg-foreground text-background"
-									: "border-foreground/30 bg-transparent text-background"
-							}`}
-						>
-							{consented && <CheckIcon className="h-3 w-3" />}
-						</span>
-						<span className="text-[11.5px] leading-relaxed opacity-70">
-							I confirm I&apos;m authorised to build a financial profile on this
-							business&apos;s behalf.
-						</span>
-					</button>}
 				</div>
 			</div>
 
 			<Footer />
 		</div>
+	);
+}
+
+function ConsentCheckbox({ checked, disabled, onToggle }: { checked: boolean; disabled: boolean; onToggle: () => void }) {
+	return (
+		<button
+			type="button"
+			onClick={onToggle}
+			disabled={disabled}
+			aria-pressed={checked}
+			className="mt-4 flex w-full items-start gap-2.5 text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			<span
+				className={`mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+					checked
+						? "border-foreground bg-foreground text-background"
+						: "border-foreground/30 bg-transparent text-background"
+				}`}
+			>
+				{checked && <CheckIcon className="h-3 w-3" />}
+			</span>
+			<span className="text-[12.5px] leading-relaxed opacity-80">
+				I own this business or I&apos;m allowed to manage its records.
+			</span>
+		</button>
 	);
 }
 

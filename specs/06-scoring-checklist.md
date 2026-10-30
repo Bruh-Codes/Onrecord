@@ -17,7 +17,15 @@ recommended loan amount.
 
 ### Rubric
 
-`RUBRIC_VERSION = "1.0.0"`. Weights sum to 100.
+`RUBRIC_VERSION = "1.1.0"`. Weights sum to 100.
+
+Changes in 1.1.0 (2026-10-30), to stop over- and under-scoring:
+- `accounts_captured` and `unclassified` points need at least one continuous statement month. The owner's cash book (typed-in records) is not a declared account.
+- `continuous_months` is linear 6 → 12 pts and 12 → 20 pts. Before, 11 months earned 17 and 12 jumped to 20.
+- Legibility scales by `active_months / 3` when there are fewer than 3 months of activity. One month gives computable indicators but no readable trend.
+- Verifiability applies the evidence multipliers below (before, only statements counted). Own transfers, duplicates, FX legs and reversals are excluded from both sides of the share.
+- A statement checklist item with `constraint.min_months` is satisfied only when continuous statement months reach it.
+- The band is capped at `nearly_ready` while any required or applicable conditional document is missing.
 
 | Pillar          | Weight | Components                                                                                                                                                                                |
 | --------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

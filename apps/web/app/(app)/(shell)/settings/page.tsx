@@ -8,7 +8,10 @@ import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { useBusiness, useMe } from "@/lib/hooks/use-business";
 import { ChangePasswordModal } from "@/components/sidebar/ChangePasswordModal";
+import { SECTOR_OPTIONS } from "@/lib/sectors";
 import { TAX_STATUS_OPTIONS } from "@/lib/tax";
+
+const REGIONS = ["Ahafo", "Ashanti", "Bono", "Bono East", "Central", "Eastern", "Greater Accra", "North East", "Northern", "Oti", "Savannah", "Upper East", "Upper West", "Volta", "Western", "Western North"];
 
 export default function SettingsPage() {
 	const { toast } = useToast();
@@ -17,25 +20,30 @@ export default function SettingsPage() {
 	const { businessId } = useMe();
 	const businessQuery = useBusiness(businessId);
 	const [profileDraft, setProfileDraft] = useState<{ id: string; name: string; email: string } | null>(null);
-	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string; tin: string; taxStatus: string } | null>(null);
+	const [businessDraft, setBusinessDraft] = useState<{ id: string; legalName: string; tradingName: string; sector: string; region: string; registration: string; tin: string; taxStatus: string } | null>(null);
 	const name = profileDraft?.id === session?.user.id ? profileDraft?.name ?? "" : session?.user.name ?? "";
 	const email = profileDraft?.id === session?.user.id ? profileDraft?.email ?? "" : session?.user.email ?? "";
 	const legalName = businessDraft?.id === businessId ? businessDraft?.legalName ?? "" : businessQuery.data?.legal_name ?? "";
 	const tradingName = businessDraft?.id === businessId ? businessDraft?.tradingName ?? "" : businessQuery.data?.trading_name ?? "";
+	const sector = businessDraft?.id === businessId ? businessDraft?.sector ?? "" : businessQuery.data?.sector_code ?? "";
+	const region = businessDraft?.id === businessId ? businessDraft?.region ?? "" : businessQuery.data?.region ?? "";
+	const registration = businessDraft?.id === businessId ? businessDraft?.registration ?? "" : businessQuery.data?.registration_number ?? "";
 	const tin = businessDraft?.id === businessId ? businessDraft?.tin ?? "" : businessQuery.data?.tin ?? "";
 	const taxStatus = businessDraft?.id === businessId ? businessDraft?.taxStatus ?? "" : businessQuery.data?.tax_status?.value ?? "";
 	const setName = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name: value, email });
 	const setEmail = (value: string) => setProfileDraft({ id: session?.user.id ?? "", name, email: value });
-	const businessFields = { id: businessId ?? "", legalName, tradingName, tin, taxStatus };
+	const businessFields = { id: businessId ?? "", legalName, tradingName, sector, region, registration, tin, taxStatus };
 	const setLegalName = (value: string) => setBusinessDraft({ ...businessFields, legalName: value });
 	const setTradingName = (value: string) => setBusinessDraft({ ...businessFields, tradingName: value });
+	const setSector = (value: string) => setBusinessDraft({ ...businessFields, sector: value });
+	const setRegion = (value: string) => setBusinessDraft({ ...businessFields, region: value });
+	const setRegistration = (value: string) => setBusinessDraft({ ...businessFields, registration: value });
 	const setTin = (value: string) => setBusinessDraft({ ...businessFields, tin: value });
 	const setTaxStatus = (value: string) => setBusinessDraft({ ...businessFields, taxStatus: value });
 	const [savingProfile, setSavingProfile] = useState(false);
 	const [savingBusiness, setSavingBusiness] = useState(false);
 	const [profileError, setProfileError] = useState<string | null>(null);
 	const [businessError, setBusinessError] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<"account" | "billing">("account");
 	const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 	const [deleteConfirmation, setDeleteConfirmation] = useState("");
 	const [deleting, setDeleting] = useState(false);
@@ -73,6 +81,9 @@ export default function SettingsPage() {
 			await api.patchBusiness(businessId, {
 				legal_name: legalName.trim(),
 				trading_name: tradingName.trim() || null,
+				sector_code: sector || null,
+				region: region || null,
+				registration_number: registration.trim() || null,
 				tin: tin.trim() || null,
 				tax_status: taxStatus || null,
 			});
@@ -104,30 +115,29 @@ export default function SettingsPage() {
 		<>
 		<div className="min-w-0 max-w-[820px] px-4 pb-10 pt-6 sm:px-7 sm:pt-7.5">
 			<h1 className="m-0 mb-1.5 text-[24px] sm:text-[28px]">Settings</h1>
-			<p className="m-0 mb-5 text-sm opacity-70">Manage your account and business details.</p>
-			<div className="mb-6 flex gap-1 border-b border-border" role="tablist" aria-label="Settings sections">
-				<button type="button" role="tab" aria-selected={activeTab === "account"} onClick={() => setActiveTab("account")} className={`border-b-2 px-3 py-2.5 text-[13px] font-semibold ${activeTab === "account" ? "border-foreground" : "border-transparent opacity-55"}`}>Account</button>
-				<button type="button" role="tab" aria-selected={false} disabled className="cursor-not-allowed border-b-2 border-transparent px-3 py-2.5 text-[13px] font-semibold opacity-35">Billing</button>
-			</div>
+			<p className="m-0 mb-6 text-sm opacity-70">Your login and the business details lenders see on your Lender summary.</p>
 
-			{activeTab === "account" ? <>
+			<>
 				<section className="mb-5 rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6">
-					<h2 className="m-0 mb-1 text-[16px] font-semibold">Profile</h2>
-					<p className="m-0 mb-5 text-[13px] opacity-65">Update the details used for your account.</p>
+					<h2 className="m-0 mb-1 text-[16px] font-semibold">Your login</h2>
+					<p className="m-0 mb-5 text-[13px] opacity-65">The name and email you sign in with.</p>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Name</span><input value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
 						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm" /></label>
 					</div>
 					{profileError && <p className="mt-3 mb-0 text-[12.5px] text-destructive">{profileError}</p>}
-					<div className="mt-5 flex justify-end"><PillButton onClick={saveProfile} disabled={savingProfile || !name.trim() || !email.trim()}>{savingProfile ? "Saving…" : "Save profile"}</PillButton></div>
+					<div className="mt-5 flex justify-end"><PillButton onClick={saveProfile} disabled={savingProfile || !name.trim() || !email.trim()}>{savingProfile ? "Saving…" : "Save login details"}</PillButton></div>
 				</section>
 
 				<section className="mb-5 rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6">
 					<h2 className="m-0 mb-1 text-[16px] font-semibold">Business</h2>
-					<p className="m-0 mb-5 text-[13px] opacity-65">Keep your business identity up to date.</p>
+					<p className="m-0 mb-5 text-[13px] opacity-65">These appear at the top of your Lender summary.</p>
 					<div className="grid gap-4 sm:grid-cols-2">
-						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Legal business name</span><input value={legalName} onChange={(event) => setLegalName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
-						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Trading name <span className="opacity-50">(optional)</span></span><input value={tradingName} onChange={(event) => setTradingName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business name</span><input value={legalName} onChange={(event) => setLegalName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Name customers know you by <span className="opacity-50">(optional, if different)</span></span><input value={tradingName} onChange={(event) => setTradingName(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">What the business does</span><select value={sector} onChange={(event) => setSector(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{SECTOR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">Region</span><select value={region} onChange={(event) => setRegion(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{REGIONS.map((name) => <option key={name} value={name}>{name}</option>)}{region && !REGIONS.includes(region) && <option value={region}>{region}</option>}</select></label>
+						<label className="text-[13px] sm:col-span-2"><span className="mb-1.5 block opacity-70">Business registration number <span className="opacity-50">(optional)</span></span><input value={registration} onChange={(event) => setRegistration(event.target.value)} placeholder="e.g. BN123456789" maxLength={40} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50" /><span className="mt-1.5 block text-[12px] opacity-55">From your ORC (Registrar-General) certificate. Leave it empty if you haven&apos;t registered yet.</span></label>
 					</div>
 					<h3 className="m-0 mt-6 mb-1 text-[14px] font-semibold">Tax</h3>
 					<p className="m-0 mb-4 text-[13px] opacity-65">Lenders ask for these. They appear on your Lender summary. OnRecord doesn&apos;t share your records with GRA or work out tax you owe.</p>
@@ -136,7 +146,7 @@ export default function SettingsPage() {
 						<label className="text-[13px]"><span className="mb-1.5 block opacity-70">How GRA taxes you <span className="opacity-50">(optional)</span></span><select value={taxStatus} onChange={(event) => setTaxStatus(event.target.value)} disabled={!businessId || businessQuery.isLoading} className="w-full rounded-xl border border-foreground/16 bg-muted px-3.5 py-2.5 text-sm disabled:opacity-50"><option value="">Choose one</option>{TAX_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
 					</div>
 					{businessError && <p className="mt-3 mb-0 text-[12.5px] text-destructive">{businessError}</p>}
-					<div className="mt-5 flex justify-end"><PillButton onClick={saveBusiness} disabled={savingBusiness || !businessId || !legalName.trim()}>{savingBusiness ? "Saving…" : "Save business"}</PillButton></div>
+					<div className="mt-5 flex justify-end"><PillButton onClick={saveBusiness} disabled={savingBusiness || !businessId || !legalName.trim()}>{savingBusiness ? "Saving…" : "Save business details"}</PillButton></div>
 				</section>
 				<section className="mb-5 rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6">
 					<h2 className="m-0 mb-1 text-[16px] font-semibold">Password</h2>
@@ -151,7 +161,7 @@ export default function SettingsPage() {
 					<p className="m-0 max-w-[620px] text-[13px] leading-relaxed opacity-75">This permanently deletes your login, sessions, business profile, uploaded documents, transactions, and all derived data. This cannot be undone.</p>
 					<PillButton variant="danger" className="mt-5" onClick={() => setShowDeleteConfirmation(true)}>Delete account</PillButton>
 				</section>
-			</> : <section className="rounded-2xl border border-foreground/12 bg-card p-5 sm:p-6"><h2 className="m-0 mb-1 text-[16px] font-semibold">Billing</h2><p className="m-0 text-[13px] opacity-65">Billing and subscription management will be available later.</p></section>}
+			</>
 		</div>
 		{showDeleteConfirmation && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 px-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !deleting) setShowDeleteConfirmation(false); }}>
 			<div role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-[440px] rounded-2xl border border-destructive/25 bg-card p-5 shadow-card">

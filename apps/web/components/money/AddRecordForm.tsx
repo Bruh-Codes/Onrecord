@@ -9,7 +9,7 @@ import { accraDate, parsePesewas } from "@/lib/money-input";
 const FIELD = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
 const LABEL = "grid gap-1.5 text-[12.5px] font-semibold";
 
-/** A cash sale or cost with no statement behind it, such as seeds paid for in cash. */
+/** A cash sale or cost with no statement behind it, such as stock paid for in cash. */
 export function AddRecordForm({
 	businessId,
 	activities,
@@ -76,7 +76,7 @@ export function AddRecordForm({
 				<div>
 					<h2 className="m-0 text-[15px] font-semibold font-[family-name:var(--body-font)]">Add a record</h2>
 					<p className="m-0 mt-1 text-[12.5px] text-foreground/60">
-						For cash sales and costs with no statement, like seeds bought with cash. A lender trusts statements and receipts more, so upload those too when you have them.
+						For cash sales and costs that aren&apos;t on a MoMo or bank statement. Lenders trust statements and receipts more, so upload those too when you have them.
 					</p>
 				</div>
 				<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Money in or out">
@@ -111,12 +111,12 @@ export function AddRecordForm({
 					</select>
 				</label>
 				<label className={LABEL}>
-					<span>Crop or animal <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} list="record-activities" placeholder="Tomatoes" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
+					<span>Product or service <span className="font-normal text-foreground/50">(optional)</span></span>
+					<input className={FIELD} list="record-activities" placeholder="e.g. Rice, Hair braiding, Tomatoes" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
 				</label>
 				<label className={LABEL}>
-					<span>Season <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} list="record-seasons" placeholder="2026 main season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
+					<span>Season or batch <span className="font-normal text-foreground/50">(optional)</span></span>
+					<input className={FIELD} list="record-seasons" placeholder="e.g. Christmas 2026, Main season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
 				</label>
 				<label className={LABEL}>
 					<span>{direction === "in" ? "Who paid you?" : "Who did you pay?"} <span className="font-normal text-foreground/50">(optional)</span></span>
@@ -124,7 +124,7 @@ export function AddRecordForm({
 				</label>
 				<label className={`${LABEL} sm:col-span-2 lg:col-span-3`}>
 					<span>Note <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} placeholder={direction === "in" ? "First harvest sold at Makola" : "Tomato seedlings"} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
+					<input className={FIELD} placeholder={direction === "in" ? "e.g. 10 bags of rice sold at Makola" : "e.g. New stock from the wholesaler"} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
 				</label>
 			</div>
 			<datalist id="record-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
