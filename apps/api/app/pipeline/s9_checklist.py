@@ -10,6 +10,7 @@ app/rules/checklists/*.yaml. Semantics are identical.
 from typing import Any
 
 REQUIREMENT_WEIGHT = {"required": 3, "conditional": 2, "optional": 1}
+_STATEMENT_TYPES = {"bank_statement", "momo_statement", "momo_merchant_statement"}
 
 
 def pack_for(rule_pack_id: str) -> dict[str, Any]:
@@ -124,9 +125,14 @@ def build_checklist(
     *,
     rule_pack_id: str,
     documents: list[dict],
+    continuous_months: int | None = None,
 ) -> list[dict]:
     """Evaluate a rule pack against uploaded documents. `documents` carry
-    {doc_type, status, period_start, period_end}. Returns checklist items."""
+    {doc_type, status, period_start, period_end}. Returns checklist items.
+
+    A statement item with `constraint.min_months` is only satisfied once
+    `continuous_months` (unbroken statement months) reaches it: one month of
+    MoMo history does not meet "Six months of bank or MoMo statements"."""
     requirements = _PACKS.get(rule_pack_id, _PACKS["gh_mfi_working_capital_v1"])
     items: list[dict] = []
     for req in requirements:
@@ -143,6 +149,10 @@ def build_checklist(
             ),
             None,
         )
+        min_months = (req.get("constraint") or {}).get("min_months")
+        if match is not None and min_months and continuous_months is not None and req["doc_type"] in _STATEMENT_TYPES:
+            if continuous_months < min_months:
+                match = None
         if match is not None:
             items.append({**req, "status": "satisfied", "satisfied_by_document_id": match["id"]})
         else:

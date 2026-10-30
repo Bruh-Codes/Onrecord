@@ -75,3 +75,12 @@ def test_typed_tin_turns_the_tax_document_into_a_to_do():
     assert with_tin["code"] == without["code"]
     assert with_tin["severity"] == "major"
     assert "saved" in with_tin["detail"]
+
+
+def test_one_month_of_statements_does_not_meet_six_months():
+    documents = [{"id": "d1", "doc_type": "momo_statement", "status": "extracted", "period_start": None, "period_end": None}]
+    pack = "gh_mfi_working_capital_v1"
+    short = s9_checklist.build_checklist({}, rule_pack_id=pack, documents=documents, continuous_months=1)
+    enough = s9_checklist.build_checklist({}, rule_pack_id=pack, documents=documents, continuous_months=6)
+    assert next(i for i in short if i["doc_type"] == "bank_statement")["status"] == "missing"
+    assert next(i for i in enough if i["doc_type"] == "bank_statement")["status"] == "satisfied"

@@ -14,14 +14,14 @@ const PILLARS = [
 		label: "History",
 		weight: 30,
 		description:
-			"How many recent months your statements cover without breaks. Lenders usually want 6 to 12 months.",
+			"How many recent months your bank or MoMo statements cover without breaks, and how much of that money is sorted. Lenders usually want 6 to 12 months.",
 	},
 	{
 		key: "legibility",
 		label: "Clarity",
 		weight: 25,
 		description:
-			"Whether your records are clear enough to work out sales, costs and cash flow.",
+			"Whether your records are clear enough to work out sales, costs and cash flow. Needs at least 3 months of activity.",
 	},
 	{
 		key: "documentation",
@@ -35,7 +35,7 @@ const PILLARS = [
 		label: "Proof",
 		weight: 15,
 		description:
-			"How much of your activity is backed by a bank or MoMo statement rather than typed in.",
+			"How much of your money is backed by a bank or MoMo statement. Receipts count for part, records you typed in for a quarter.",
 	},
 ] as const;
 
