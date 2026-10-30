@@ -13,6 +13,7 @@ import {
 	useRemoveRecord,
 	useTagRecord,
 } from "@/lib/money";
+import { TransactionRowsSkeleton } from "@/components/ui/Skeleton";
 
 const PAGE = 50;
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -116,7 +117,7 @@ export function TransactionsList({
 			{query.isError ? (
 				<p className="mt-4 text-[13px] text-destructive">Couldn&apos;t load transactions.</p>
 			) : !data ? (
-				<p className="mt-4 text-[13px] text-foreground/55">Loading…</p>
+				<TransactionRowsSkeleton />
 			) : data.items.length === 0 ? (
 				<p className="mt-4 text-[13px] text-foreground/55">No transactions match these filters.</p>
 			) : (

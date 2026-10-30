@@ -18,6 +18,7 @@ import {
 import { monthLabel, useMoneySummary } from "@/lib/money";
 import { askOna } from "@/lib/ona";
 import { BAND_LABELS, buildNextSteps } from "@/lib/readiness";
+import { HomePageSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 export default function HomePage() {
 	const state = useAppState();
@@ -55,6 +56,8 @@ export default function HomePage() {
 	const prevMonth = periods.at(-2);
 	const awaitingReview = money.data?.documents_awaiting_review ?? 0;
 
+	if (!businessId || documents.isLoading) return <HomePageSkeleton />;
+
 	return (
 		<div className="px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[1100px]">
 			{state.draftMode && (
@@ -88,7 +91,7 @@ export default function HomePage() {
 							{lastMonth ? `Money in, ${monthLabel(lastMonth.period, true)}` : "Money in"}
 						</div>
 						<div className="mt-1 font-display text-[24px] leading-tight tabular-nums text-positive">
-							{lastMonth ? formatGhs(lastMonth.money_in_pesewas) : "—"}
+							{money.isLoading ? <Skeleton className="mt-1 h-6 w-28" /> : lastMonth ? formatGhs(lastMonth.money_in_pesewas) : "—"}
 						</div>
 						<div className="mt-1 text-[12px] text-foreground/60">
 							{lastMonth
@@ -99,8 +102,8 @@ export default function HomePage() {
 					<Link href="/readiness" className="rounded-2xl border border-border bg-card p-4 no-underline text-foreground hover:border-foreground/30">
 						<div className="text-[12.5px] text-foreground/60">Loan readiness</div>
 						<div className="mt-1 font-display text-[24px] leading-tight tabular-nums">
-							{score.data ? `${Math.round(score.data.total)}` : "—"}
-							<span className="text-[14px] text-foreground/50"> / 100</span>
+							{score.isLoading ? <Skeleton className="mt-1 h-6 w-20" /> : <>{score.data ? `${Math.round(score.data.total)}` : "—"}
+							<span className="text-[14px] text-foreground/50"> / 100</span></>}
 						</div>
 						<div className="mt-1 text-[12px] text-foreground/60">
 							{score.data ? `${BAND_LABELS[score.data.band]} · not a credit decision` : "Calculated after your first statement"}
@@ -109,8 +112,8 @@ export default function HomePage() {
 					<Link href="/documents" className="rounded-2xl border border-border bg-card p-4 no-underline text-foreground hover:border-foreground/30">
 						<div className="text-[12.5px] text-foreground/60">Statement history</div>
 						<div className="mt-1 font-display text-[24px] leading-tight tabular-nums">
-							{coverage.data ? coverage.data.continuous_months : "—"}
-							<span className="text-[14px] text-foreground/50"> of {coverage.data?.analysis_window_months ?? 12} months</span>
+							{coverage.isLoading ? <Skeleton className="mt-1 h-6 w-28" /> : <>{coverage.data ? coverage.data.continuous_months : "—"}
+							<span className="text-[14px] text-foreground/50"> of {coverage.data?.analysis_window_months ?? 12} months</span></>}
 						</div>
 						<div className="mt-1 text-[12px] text-foreground/60">
 							{coverage.data && coverage.data.continuous_months >= coverage.data.analysis_window_months

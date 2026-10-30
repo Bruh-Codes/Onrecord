@@ -14,6 +14,7 @@ import {
 	useExtractedRows,
 } from "@/lib/document-review";
 import { formatGhs } from "@/lib/format";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Edit = { include: boolean; direction: "in" | "out"; amount: string; category: string };
 
@@ -65,7 +66,20 @@ export function ExtractedRowsReview({ documentId, businessId }: { documentId: st
 	}, [current]);
 	const invalid = current.some(({ edit }) => edit.include && !cedisToPesewas(edit.amount));
 
-	if (query.isLoading) return <div className="px-1 pb-4 text-[12.5px] text-foreground/60">Loading the rows we read…</div>;
+	if (query.isLoading) {
+		return (
+			<div aria-busy="true" aria-label="Loading the rows we read" className="px-1 pb-4">
+				{[0, 1, 2, 3].map((i) => (
+					<div key={i} className="flex items-center gap-3 border-t border-border py-2.5 first:border-t-0">
+						<Skeleton className="h-4 w-4 shrink-0 rounded" />
+						<Skeleton className="h-3 w-20 shrink-0" />
+						<Skeleton className="h-3 flex-1" />
+						<Skeleton className="h-3 w-20 shrink-0" />
+					</div>
+				))}
+			</div>
+		);
+	}
 	if (query.isError || !data) {
 		return <div className="px-1 pb-4 text-[12.5px] text-destructive">Couldn&apos;t load the rows for this document.</div>;
 	}

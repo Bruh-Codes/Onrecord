@@ -13,6 +13,7 @@ import { CATEGORY_LABELS } from "@/lib/document-review";
 import { formatGhs } from "@/lib/format";
 import { useMe } from "@/lib/hooks/use-business";
 import { type FarmFilter, monthLabel, rangeStart, useExampleSeason, useMoneySummary } from "@/lib/money";
+import { MoneyPageSkeleton } from "@/components/ui/Skeleton";
 
 const RANGES = [
 	{ months: 3, label: "3 months" },
@@ -57,7 +58,7 @@ export default function MoneyPage() {
 	);
 
 	if (!businessId || overall.isLoading || (summary.isLoading && !data)) {
-		return <Shell><p className="text-[13px] text-foreground/55">Loading your money picture…</p></Shell>;
+		return <Shell><MoneyPageSkeleton /></Shell>;
 	}
 	if (overall.isError || summary.isError || !data) {
 		return <Shell><p className="text-[13px] text-destructive">Couldn&apos;t load your money picture. Refresh to try again.</p></Shell>;

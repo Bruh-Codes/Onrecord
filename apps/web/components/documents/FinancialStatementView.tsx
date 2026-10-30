@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import type { FinancialStatement, FinancialStatementValue } from "@/lib/api-types";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const money = new Intl.NumberFormat("en-GH", {
 	style: "currency",
@@ -19,7 +20,16 @@ export function FinancialStatementView({ documentId }: { documentId: string }) {
 	});
 
 	if (document.isLoading) {
-		return <p className="m-0 py-4 text-xs opacity-60">Loading extracted statement…</p>;
+		return (
+			<div aria-busy="true" aria-label="Loading extracted statement" className="py-4 space-y-2.5">
+				{[0, 1, 2, 3, 4].map((i) => (
+					<div key={i} className="flex justify-between gap-4">
+						<Skeleton className="h-3 w-2/5" />
+						<Skeleton className="h-3 w-20" />
+					</div>
+				))}
+			</div>
+		);
 	}
 	if (document.isError) {
 		return <p className="m-0 py-4 text-xs text-destructive">Couldn&apos;t load the extracted statement.</p>;

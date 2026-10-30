@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/overview/InfoHint";
-import { GapRowSkeleton } from "@/components/ui/Skeleton";
+import { GapRowSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { useChecklist, useGaps, useMe, useScore } from "@/lib/hooks/use-business";
 import { askOna } from "@/lib/ona";
 import { BAND_LABELS, BAND_MEANING, buildNextSteps, gapTitle, type NextStep } from "@/lib/readiness";
@@ -71,6 +71,15 @@ export default function ReadinessPage() {
 			</div>
 
 			<div className="grid gap-4 mb-8 md:grid-cols-[1fr_1.6fr]">
+				{score.isLoading || businessId == null ? (
+					<div aria-busy="true" aria-label="Loading your score" className="rounded-2xl border border-border bg-card p-5">
+						<Skeleton className="h-3 w-24" />
+						<Skeleton className="mt-2.5 h-10 w-28" />
+						<Skeleton className="mt-3 h-5 w-24 rounded-full" />
+						<Skeleton className="mt-3 h-3 w-full" />
+						<Skeleton className="mt-1.5 h-3 w-4/5" />
+					</div>
+				) : (
 				<div className="rounded-2xl border border-border bg-card p-5">
 					<div className="text-[12.5px] text-foreground/60">Readiness score</div>
 					<div className="mt-1 flex items-baseline gap-2">
@@ -92,6 +101,7 @@ export default function ReadinessPage() {
 							: "Your score appears after your first statement is processed."}
 					</p>
 				</div>
+				)}
 				<div className="rounded-2xl border border-border bg-card p-5">
 					<div className="text-[13px] font-semibold mb-4">What the score is made of</div>
 					<div className="grid gap-4 sm:grid-cols-2">
@@ -105,9 +115,13 @@ export default function ReadinessPage() {
 											<span>{pillar.label}</span>
 											<InfoHint text={pillar.description} />
 										</div>
-										<span className="tabular-nums text-foreground/60">
-											{value ? Math.round(value.earned) : "—"} / {pillar.weight}
-										</span>
+										{score.isLoading ? (
+											<Skeleton className="h-3.5 w-12" />
+										) : (
+											<span className="tabular-nums text-foreground/60">
+												{value ? Math.round(value.earned) : "—"} / {pillar.weight}
+											</span>
+										)}
 									</div>
 									<div className="h-1.5 rounded-full bg-border/60 mt-2 overflow-hidden">
 										<div className="h-full rounded-full bg-foreground" style={{ width: `${pct}%` }} />
