@@ -19,6 +19,7 @@ from app.models.enums import (
 )
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
 from app.models.notification import Notification
+from app.models.sheet_sync import SheetConnection, SheetRow
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.models.access import BusinessAccess, BusinessTask
@@ -53,6 +54,8 @@ __all__ = [
     "Indicator",
     "ReadinessScore",
     "Notification",
+    "SheetConnection",
+    "SheetRow",
     "Transaction",
     "User",
 ]

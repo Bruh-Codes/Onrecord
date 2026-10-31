@@ -110,6 +110,13 @@ class Settings(BaseSettings):
     better_auth_issuer: str = "http://localhost:3000"
     better_auth_audience: str = "http://localhost:3000"
 
+    # Same Google OAuth client as apps/web's Better Auth (GOOGLE_CLIENT_ID /
+    # GOOGLE_CLIENT_SECRET). The worker refreshes the owner's Google token with
+    # it so connected spreadsheets keep syncing while the owner is away.
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    sheet_sync_interval_minutes: int = 15
+
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 

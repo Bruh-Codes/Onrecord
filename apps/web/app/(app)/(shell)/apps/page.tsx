@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { AppsIcon, GoogleSheetsLogo } from "@/components/icons";
 import { GoogleSheetsStatus } from "@/components/integrations/GoogleSheetsStatus";
+import { SheetConnections } from "@/components/integrations/SheetConnections";
 import { APP_INTEGRATIONS } from "@/lib/mock-data";
 
 export default function IntegrationsPage() {
@@ -15,16 +16,19 @@ export default function IntegrationsPage() {
 				{APP_INTEGRATIONS.map((app) => (
 					<div
 						key={app.name}
-						className="flex items-center gap-4 p-5 border border-foreground/12 rounded-2xl opacity-75 hover:opacity-100 transition-opacity"
+						className={`flex flex-col gap-4 p-5 border border-foreground/12 rounded-2xl transition-opacity ${app.icon === "google-sheets" ? "" : "opacity-75 hover:opacity-100"}`}
 					>
-						<div className="w-11 h-11 shrink-0 rounded-xl bg-muted flex items-center justify-center">
-							{app.icon === "google-sheets" ? <GoogleSheetsLogo /> : <AppsIcon />}
+						<div className="flex items-center gap-4">
+							<div className="w-11 h-11 shrink-0 rounded-xl bg-muted flex items-center justify-center">
+								{app.icon === "google-sheets" ? <GoogleSheetsLogo /> : <AppsIcon />}
+							</div>
+							<div className="flex-1 min-w-0">
+								<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
+								<div className="text-[12.5px] opacity-65">{app.desc}</div>
+							</div>
+							{app.icon === "google-sheets" ? <GoogleSheetsStatus /> : <Badge tone="neutral">Coming soon</Badge>}
 						</div>
-						<div className="flex-1 min-w-0">
-							<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
-							<div className="text-[12.5px] opacity-65">{app.desc}</div>
-						</div>
-						{app.icon === "google-sheets" ? <GoogleSheetsStatus /> : <Badge tone="neutral">Coming soon</Badge>}
+						{app.icon === "google-sheets" ? <SheetConnections /> : null}
 					</div>
 				))}
 			</div>

@@ -8,6 +8,7 @@ import { BellIcon, SunIcon, MoonIcon, LogOutIcon, SettingsIcon } from "@/compone
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
+import { useSheetCatchUp } from "@/lib/sheet-sync";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
 
@@ -20,6 +21,7 @@ export function TopBar() {
   const { data: session } = authClient.useSession();
   const { businessId } = useMe();
   const notifications = useNotifications(businessId);
+  useSheetCatchUp(businessId);
   const markRead = useMarkNotificationRead(businessId);
   const markAllRead = useMarkAllNotificationsRead(businessId);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

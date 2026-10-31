@@ -1,7 +1,8 @@
 # One image, two entrypoints (Agent.md §4). The API runs:
 #   uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 # The worker runs:
-#   celery -A app.workers.celery_app worker --loglevel INFO
+#   celery -A app.workers.celery_app worker --beat --loglevel INFO
+#   (--beat runs the connected-spreadsheet sweep; use it on exactly one worker)
 # docker-compose.yml (repo root, once added) picks the command per service.
 
 # syntax=docker/dockerfile:1.7
