@@ -87,7 +87,7 @@ services:
 
   worker:
     build: ./apps/api
-    command: celery -A app.workers.celery_app worker --loglevel INFO
+    command: celery -A app.workers.celery_app worker --beat --loglevel INFO
     depends_on:
       postgres:
         condition: service_healthy

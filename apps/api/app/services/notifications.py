@@ -14,6 +14,7 @@ from app.models.scoring import Gap
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.models.notification import Notification
+from app.services.sheet_sync import review as sheet_review
 
 
 def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
@@ -93,7 +94,9 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
             "data": {"document_id": str(document.id), "status": document.status.value, "review_status": review_status},
         })
 
-    managed_keys = {"classification_queue", "open_gaps"} | {
+    states.extend(sheet_review.notification_states(db, business_id))
+
+    managed_keys = {"classification_queue", "open_gaps"} | sheet_review.managed_keys(db, business_id) | {
         state["dedupe_key"] for state in states if state["kind"] == "document_review"
     }
     now = datetime.now(UTC)
