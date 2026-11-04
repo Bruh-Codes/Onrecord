@@ -3,6 +3,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin, jwt, organization, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendPasswordResetEmail } from "@/lib/resend";
+import { dash } from "@better-auth/infra";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -28,8 +29,8 @@ export const pool = new Pool({
 
 pool.on("error", (error) => {
 	console.error("Better Auth database connection closed", {
-	name: error.name,
-	message: error.message,
+		name: error.name,
+		message: error.message,
 	});
 });
 
@@ -126,6 +127,7 @@ export const auth = betterAuth({
 	},
 
 	plugins: [
+		dash(),
 		phoneNumber({
 			// Dev-only stub-no SMS provider configured yet. Real delivery is
 			// out of scope for this pass (ROADMAP.md Phase 0/1). OTPs are stored
