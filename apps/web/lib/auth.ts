@@ -4,6 +4,7 @@ import { admin, jwt, organization, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendPasswordResetEmail } from "@/lib/resend";
 import { dash } from "@better-auth/infra";
+import { adminHub } from "@/lib/admin-hub";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -166,6 +167,13 @@ export const auth = betterAuth({
 						(user as { institutionId?: string }).institutionId ?? null,
 				}),
 			},
+		}),
+		// Lets the self-hosted admin hub manage users over HTTPS. Stays off
+		// (endpoints 404) until ADMIN_HUB_KEY is set. Roles match the admin()
+		// plugin above so the hub only offers owner|reviewer|admin.
+		adminHub({
+			key: process.env.ADMIN_HUB_KEY,
+			roles: ["owner", "reviewer", "admin"],
 		}),
 		nextCookies(),
 	],
