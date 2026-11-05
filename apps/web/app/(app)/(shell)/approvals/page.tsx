@@ -107,7 +107,7 @@ export default function ApprovalsPage() {
 	}
 
 	return (
-		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1400px] mx-auto">
+		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 lg:pb-4 max-w-[1400px] mx-auto">
 			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">Review</div>
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">Approvals</h1>
 			<p className="text-sm opacity-75 m-0 mb-5 max-w-[720px]">
@@ -161,7 +161,7 @@ export default function ApprovalsPage() {
 					{/* A second sidebar: its own scroll, so a long queue never pushes the detail down. */}
 					<aside
 						aria-label="Uploads"
-						className="flex flex-col rounded-[20px] border border-border bg-card lg:sticky lg:top-[84px] max-h-[45dvh] lg:max-h-[calc(100dvh-108px)]"
+						className="flex flex-col rounded-[20px] border border-border bg-card max-h-[45dvh] lg:max-h-none lg:sticky lg:top-[calc(var(--topbar-h,65px)+16px)] lg:h-[calc(100dvh-var(--topbar-h,65px)-32px)]"
 					>
 						<div className="border-b border-border p-3">
 							<input

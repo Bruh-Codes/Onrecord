@@ -18,6 +18,17 @@ export function TopBar() {
   const theme = resolvedTheme === "dark" ? "dark" : "light";
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const router = useRouter();
+  // Publish the bar's real height so sticky panels below it (Approvals list) start under it, not behind it.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const publish = () => document.documentElement.style.setProperty("--topbar-h", `${bar.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
   const isDark = theme === "dark";
   const { data: session } = authClient.useSession();
   const { businessId, data: me } = useMe();
@@ -81,7 +92,7 @@ export function TopBar() {
 
   return (
     <>
-    <div className="flex items-center gap-3 px-3 sm:px-7 py-3 sm:py-3.5 border-b border-border sticky top-0 z-30 bg-background/80 backdrop-blur">
+    <div ref={barRef} className="flex items-center gap-3 px-3 sm:px-7 py-3 sm:py-3.5 border-b border-border sticky top-0 z-30 bg-background/80 backdrop-blur">
       <Link
         href="/dashboard"
         className="md:hidden flex items-center gap-2 shrink-0"
