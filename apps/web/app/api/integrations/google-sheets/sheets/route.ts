@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getGoogleSheetsAccessToken } from "@/lib/google-sheets-auth";
+import { getGoogleSheetsAccessToken, googleSheetsErrorResponse } from "@/lib/google-sheets-auth";
 import { googleSheetsApi } from "@/lib/google-sheets";
 
 export async function GET(request: Request) {
@@ -17,6 +17,6 @@ export async function GET(request: Request) {
     console.error("Google Sheets tab lookup failed", {
       message: error instanceof Error ? error.message : "Unknown error",
     });
-    return Response.json({ error: error instanceof Error ? error.message : "Google Sheets could not be reached." }, { status: 502 });
+    return googleSheetsErrorResponse(error, "Google Sheets could not be reached.", 502);
   }
 }

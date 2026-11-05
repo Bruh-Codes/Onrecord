@@ -47,16 +47,16 @@ function loadPicker(): Promise<void> {
 
 /** Google's own file picker when it's configured (OnRecord then sees only the
  *  file picked), otherwise a list of the owner's spreadsheets. */
-export function SheetPicker({ onPick, onError }: { onPick: (file: PickedSpreadsheet) => void; onError: (message: string) => void }) {
+export function SheetPicker({ onPick, onError }: { onPick: (file: PickedSpreadsheet) => void; onError: (message: string, reconnect?: boolean) => void }) {
 	const [files, setFiles] = useState<PickedSpreadsheet[] | null>(null);
 	const [opening, setOpening] = useState(false);
 
 	useEffect(() => {
 		if (GOOGLE_PICKER_ENABLED) return;
 		void fetch("/api/integrations/google-sheets/files")
-			.then(async (response) => ({ response, data: (await response.json()) as { files?: PickedSpreadsheet[]; error?: string } }))
+			.then(async (response) => ({ response, data: (await response.json()) as { files?: PickedSpreadsheet[]; error?: string; reconnect?: boolean } }))
 			.then(({ response, data }) => {
-				if (!response.ok) return onError(data.error ?? "Could not load your Google Sheets.");
+				if (!response.ok) return onError(data.error ?? "Could not load your Google Sheets.", data.reconnect);
 				setFiles(data.files ?? []);
 			})
 			.catch(() => onError("Could not load your Google Sheets."));
@@ -66,8 +66,8 @@ export function SheetPicker({ onPick, onError }: { onPick: (file: PickedSpreadsh
 		setOpening(true);
 		try {
 			const response = await fetch("/api/integrations/google-sheets/token");
-			const data = (await response.json()) as { accessToken?: string; error?: string };
-			if (!response.ok || !data.accessToken) throw new Error(data.error ?? "Connect Google Sheets first.");
+			const data = (await response.json()) as { accessToken?: string; error?: string; reconnect?: boolean };
+			if (!response.ok || !data.accessToken) return onError(data.error ?? "Connect Google Sheets first.", data.reconnect ?? true);
 			await loadPicker();
 			const picker = window.google!.picker;
 			const view = new picker.DocsView(picker.ViewId.SPREADSHEETS);

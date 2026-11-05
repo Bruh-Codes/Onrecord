@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SheetPicker, type PickedSpreadsheet } from "@/components/integrations/SheetPicker";
 import { useMe } from "@/lib/hooks/use-business";
 import { sheetApi } from "@/lib/sheet-sync";
+import { connectGoogleSheets } from "@/lib/google-sheets-connect";
 
 type Tab = { title: string; sheetId: number };
 
@@ -16,17 +17,27 @@ export default function ConnectSheetPage() {
 	const [tabs, setTabs] = useState<Tab[] | null>(null);
 	const [tab, setTab] = useState<Tab | null>(null);
 	const [error, setError] = useState("");
+	const [needsReconnect, setNeedsReconnect] = useState(false);
 	const [saving, setSaving] = useState(false);
-	const onError = useCallback((message: string) => setError(message), []);
+	const onError = useCallback((message: string, reconnect = false) => {
+		setError(message);
+		setNeedsReconnect(reconnect);
+	}, []);
+
+	async function reconnect() {
+		// Come straight back here once Google has granted access again.
+		const problem = await connectGoogleSheets("/apps/sheets/new");
+		if (problem) onError(problem);
+	}
 
 	async function pick(picked: PickedSpreadsheet) {
 		setFile(picked);
 		setTabs(null);
 		setTab(null);
-		setError("");
+		onError("");
 		const response = await fetch(`/api/integrations/google-sheets/sheets?spreadsheetId=${encodeURIComponent(picked.id)}`);
-		const data = (await response.json().catch(() => ({}))) as { sheets?: Tab[]; error?: string };
-		if (!response.ok) return setError(data.error ?? "Could not load the tabs in that spreadsheet.");
+		const data = (await response.json().catch(() => ({}))) as { sheets?: Tab[]; error?: string; reconnect?: boolean };
+		if (!response.ok) return onError(data.error ?? "Could not load the tabs in that spreadsheet.", data.reconnect);
 		setTabs(data.sheets ?? []);
 		if (data.sheets?.length === 1) setTab(data.sheets[0]);
 	}
@@ -86,7 +97,14 @@ export default function ConnectSheetPage() {
 
 			{error ? (
 				<p className="mt-5 text-[12.5px] text-destructive">
-					{error} <Link href="/apps" className="underline underline-offset-2">Check the Google connection</Link>
+					{error}{" "}
+					{needsReconnect ? (
+						<button type="button" onClick={() => void reconnect()} className="font-semibold underline underline-offset-2">
+							Reconnect Google
+						</button>
+					) : (
+						<Link href="/apps" className="underline underline-offset-2">Check the Google connection</Link>
+					)}
 				</p>
 			) : null}
 			<button

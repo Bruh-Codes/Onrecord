@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { auth } from "@/lib/auth";
-import { getGoogleSheetsAccessToken } from "@/lib/google-sheets-auth";
+import { getGoogleSheetsAccessToken, googleSheetsErrorResponse } from "@/lib/google-sheets-auth";
 import { googleSheetsApi } from "@/lib/google-sheets";
 
 type ImportBody = { spreadsheetId?: string; spreadsheetName?: string; sheetName?: string; businessId?: string; replaceDocumentId?: string };
@@ -92,6 +92,6 @@ export async function POST(request: Request) {
     return Response.json({ documentId: target.document_id, rows: data.values?.length ?? 0 });
    } catch (error) {
      console.error("Google Sheets import failed", error);
-     return Response.json({ error: error instanceof Error ? error.message : "The sheet could not be imported." }, { status: 502 });
+     return googleSheetsErrorResponse(error, "The sheet could not be imported.");
    }
 }

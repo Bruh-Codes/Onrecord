@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getGoogleSheetsAccessToken } from "@/lib/google-sheets-auth";
+import { getGoogleSheetsAccessToken, googleSheetsErrorResponse } from "@/lib/google-sheets-auth";
 import { googleApi } from "@/lib/google-sheets";
 
 export async function GET(request: Request) {
@@ -12,6 +12,6 @@ export async function GET(request: Request) {
     );
     return Response.json({ files: data.files ?? [] });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Google Sheets could not be reached." }, { status: 502 });
+    return googleSheetsErrorResponse(error, "Google Sheets could not be reached.", 502);
   }
 }
