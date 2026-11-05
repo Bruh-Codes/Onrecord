@@ -30,7 +30,7 @@ export function GoogleSheetsStatus() {
     return (
       <div className="flex items-center gap-2">
         <Badge tone="positive">Connected</Badge>
-        <Link href="/dashboard" className="text-[12px] underline underline-offset-2">Import data</Link>
+        <Link href="/documents" className="text-[12px] underline underline-offset-2">Import data</Link>
         <button type="button" onClick={() => void connect()} className="text-[12px] opacity-70 underline underline-offset-2">Reconnect</button>
       </div>
     );
