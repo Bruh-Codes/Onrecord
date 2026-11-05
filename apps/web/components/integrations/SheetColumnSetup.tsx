@@ -23,6 +23,27 @@ function dateText(iso: string) {
 	return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** An API that hasn't been updated yet sends the older, smaller preview. Fill the
+ *  newer fields from what it does send so the page still works during a deploy. */
+function withDefaults(preview: SheetPreview): SheetPreview {
+	const records = (preview.rows ?? []).map((row) => row.record).filter((record) => record !== null);
+	const sum = (direction: "in" | "out") =>
+		records.filter((record) => record.direction === direction).reduce((total, record) => total + record.amount_pesewas, 0);
+	const dates = records.map((record) => record.occurred_on).sort();
+	return {
+		...preview,
+		rows: preview.rows ?? [],
+		problems: preview.problems ?? [],
+		field_problems: preview.field_problems ?? (preview.problems ?? []).map((message) => ({ field: "columns", message })),
+		notes: preview.notes ?? [],
+		readable_rows: preview.readable_rows ?? records.length,
+		money_in_pesewas: preview.money_in_pesewas ?? sum("in"),
+		money_out_pesewas: preview.money_out_pesewas ?? sum("out"),
+		first_date: preview.first_date ?? dates[0] ?? null,
+		last_date: preview.last_date ?? dates[dates.length - 1] ?? null,
+	};
+}
+
 /** Two or three choices shown side by side, like a segmented switch. */
 function Choice<T extends string>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (next: T) => void }) {
 	return (
@@ -90,7 +111,7 @@ export function SheetColumnSetup({
 			sheetApi.preview(connectionId, mapping ?? undefined)
 				.then((next) => {
 					if (cancelled) return;
-					setPreview(next);
+					setPreview(withDefaults(next));
 					if (!mapping) {
 						setMapping(next.mapping);
 						setNoDates(next.mapping.columns.date == null && !!next.mapping.default_date);
