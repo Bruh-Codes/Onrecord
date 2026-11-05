@@ -17,6 +17,8 @@ export type LiveWaveformProps = HTMLAttributes<HTMLDivElement> & {
 	updateRate?: number;
 	mode?: "scrolling" | "static";
 	onError?: (error: Error) => void;
+	/** Draw from this stream instead of opening the microphone a second time. */
+	stream?: MediaStream | null;
 };
 
 export function LiveWaveform({
@@ -34,6 +36,7 @@ export function LiveWaveform({
 	updateRate = 30,
 	mode = "static",
 	onError,
+	stream: sharedStream,
 	className,
 	...props
 }: LiveWaveformProps) {
@@ -79,15 +82,19 @@ export function LiveWaveform({
 
 		async function connectMicrophone() {
 			try {
-				const stream = await navigator.mediaDevices.getUserMedia({
-					audio: {
-						autoGainControl: true,
-						echoCancellation: true,
-						noiseSuppression: true,
-					},
-				});
+				// Reuse the recorder's stream when given one: opening the mic twice
+				// fails on some devices and, on iOS Safari, silences the recording.
+				const stream =
+					sharedStream ??
+					(await navigator.mediaDevices.getUserMedia({
+						audio: {
+							autoGainControl: true,
+							echoCancellation: true,
+							noiseSuppression: true,
+						},
+					}));
 				if (cancelled) {
-					stream.getTracks().forEach((track) => track.stop());
+					if (!sharedStream) stream.getTracks().forEach((track) => track.stop());
 					return;
 				}
 
@@ -104,7 +111,7 @@ export function LiveWaveform({
 				analyser.fftSize = 256;
 				analyser.smoothingTimeConstant = 0.8;
 				audioContext.createMediaStreamSource(stream).connect(analyser);
-				streamRef.current = stream;
+				streamRef.current = sharedStream ? null : stream;
 				audioContextRef.current = audioContext;
 				analyserRef.current = analyser;
 			} catch (error) {
@@ -123,7 +130,7 @@ export function LiveWaveform({
 			}
 			audioContextRef.current = null;
 		};
-	}, [active, onError]);
+	}, [active, onError, sharedStream]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;

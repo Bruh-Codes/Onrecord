@@ -46,9 +46,9 @@ export class ApiError extends Error {
   }
 }
 
-export async function transcribeVoice(audio: Blob): Promise<string> {
+export async function transcribeVoice(audio: Blob, fileName = "recording.webm"): Promise<string> {
   const form = new FormData();
-  form.append("audio", audio, "recording.webm");
+  form.append("audio", audio, fileName);
   const response = await fetchWithTimeout("/api/voice/transcribe", {
     method: "POST",
     body: form,

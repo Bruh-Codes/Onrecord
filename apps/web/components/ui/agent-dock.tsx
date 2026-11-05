@@ -16,6 +16,12 @@ import { LiveWaveform } from "@/components/ui/live-waveform";
 import { ThinkingOrb } from "@/components/ui/thinking-orbs";
 import { ToolGroup } from "@/components/ui/tool-group";
 import { transcribeVoice } from "@/lib/api";
+import {
+	microphoneErrorMessage,
+	pickRecordingMimeType,
+	recordingFileName,
+	voiceUnsupportedReason,
+} from "@/lib/voice";
 import { ASK_ONA_EVENT } from "@/lib/ona";
 import {
 	activityStatusLabel,
@@ -115,6 +121,7 @@ export function AgentDock({
 	const [voiceError, setVoiceError] = useState<string | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaStreamRef = useRef<MediaStream | null>(null);
+	const [voiceStream, setVoiceStream] = useState<MediaStream | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
 	const voiceTextRef = useRef("");
 	const sendVoiceRef = useRef(false);
@@ -138,14 +145,40 @@ export function AgentDock({
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 	const [currentActivity, setCurrentActivity] = useState<OnaActivity>("thinking");
 	const historyPanelRef = useRef<HTMLDivElement>(null);
-	const handleVoiceError = useCallback(() => {
+	const releaseMicrophone = useCallback(() => {
+		const recorder = mediaRecorderRef.current;
 		mediaRecorderRef.current = null;
+		if (recorder && recorder.state !== "inactive") {
+			// Drop the recording without transcribing it.
+			recorder.onstop = null;
+			try {
+				recorder.stop();
+			} catch {
+				// Already stopped.
+			}
+		}
 		mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
 		mediaStreamRef.current = null;
-		setIsVoiceActive(false);
-		setIsTranscribing(false);
-		setVoiceError("Voice transcription failed. Please try again or type your message.");
+		setVoiceStream(null);
 	}, []);
+	const failVoice = useCallback(
+		(message: string) => {
+			releaseMicrophone();
+			setIsVoiceActive(false);
+			setIsTranscribing(false);
+			setVoiceError(message);
+		},
+		[releaseMicrophone],
+	);
+	const handleRecorderError = useCallback(() => {
+		failVoice("Recording stopped unexpectedly. Please try again or type your message.");
+	}, [failVoice]);
+	// The waveform is decoration: if it can't draw, keep recording.
+	const handleWaveformError = useCallback((error: unknown) => {
+		console.warn("Ona voice waveform unavailable", error);
+	}, []);
+
+	useEffect(() => releaseMicrophone, [releaseMicrophone]);
 
 	useEffect(() => {
 		if (sessionResetKey === 0 && initialMessages.length === 0) return;
@@ -292,6 +325,7 @@ export function AgentDock({
 	}
 
 	function collapseDock() {
+		releaseMicrophone();
 		setMode("idle");
 		setIsVoiceActive(false);
 		setIsTranscribing(false);
@@ -299,63 +333,95 @@ export function AgentDock({
 	}
 
 	async function startVoice() {
-		if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+		if (mediaRecorderRef.current) return;
+		setVoiceError(null);
+		const unsupported = voiceUnsupportedReason();
+		if (unsupported) {
+			setVoiceError(unsupported);
 			openComposer();
 			return;
 		}
 
+		let stream: MediaStream;
 		try {
-			setVoiceError(null);
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			const recorder = new MediaRecorder(stream);
-			audioChunksRef.current = [];
-			mediaStreamRef.current = stream;
-			mediaRecorderRef.current = recorder;
-			sendVoiceRef.current = false;
-			recorder.ondataavailable = (event) => {
-				if (event.data.size > 0) audioChunksRef.current.push(event.data);
-			};
-			recorder.onstop = async () => {
-				const shouldSend = sendVoiceRef.current;
-				const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-				mediaRecorderRef.current = null;
-				mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-				mediaStreamRef.current = null;
-				try {
-					const transcript = await transcribeVoice(audio);
-					setMessage(transcript);
-					voiceTextRef.current = transcript;
-					setIsTranscribing(false);
-					if (shouldSend && transcript.trim()) void submitMessage(transcript);
-					else {
-						setIsExpanded(true);
-						setMode("composing");
-						window.requestAnimationFrame(() => textareaRef.current?.focus());
-					}
-				} catch (error) {
-					handleVoiceError();
-					setVoiceError(error instanceof Error ? error.message : "Voice transcription failed.");
-					openComposer();
-				}
-			};
-			recorder.onerror = handleVoiceError;
-			recorder.start(250);
-			setMessage("");
-			setMode("idle");
-			setIsTranscribing(false);
-			setIsVoiceActive(true);
-		} catch {
-			handleVoiceError();
+			stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		} catch (error) {
+			console.warn("Ona voice: microphone unavailable", error);
+			failVoice(microphoneErrorMessage(error));
 			openComposer();
+			return;
 		}
+
+		let recorder: MediaRecorder;
+		try {
+			const mimeType = pickRecordingMimeType();
+			recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+		} catch (error) {
+			stream.getTracks().forEach((track) => track.stop());
+			console.warn("Ona voice: recorder unavailable", error);
+			failVoice(microphoneErrorMessage(error));
+			openComposer();
+			return;
+		}
+
+		audioChunksRef.current = [];
+		mediaStreamRef.current = stream;
+		mediaRecorderRef.current = recorder;
+		sendVoiceRef.current = false;
+		recorder.ondataavailable = (event) => {
+			if (event.data.size > 0) audioChunksRef.current.push(event.data);
+		};
+		recorder.onstop = async () => {
+			const shouldSend = sendVoiceRef.current;
+			const mimeType = recorder.mimeType || audioChunksRef.current[0]?.type || "audio/webm";
+			const audio = new Blob(audioChunksRef.current, { type: mimeType });
+			mediaRecorderRef.current = null;
+			releaseMicrophone();
+			if (audio.size === 0) {
+				failVoice("No sound was recorded. Check that your microphone is on and not muted, then try again.");
+				openComposer();
+				return;
+			}
+			try {
+				const transcript = await transcribeVoice(audio, recordingFileName(mimeType));
+				setMessage(transcript);
+				voiceTextRef.current = transcript;
+				setIsTranscribing(false);
+				if (shouldSend && transcript.trim()) void submitMessage(transcript);
+				else {
+					setIsExpanded(true);
+					setMode("composing");
+					window.requestAnimationFrame(() => textareaRef.current?.focus());
+				}
+			} catch (error) {
+				failVoice(error instanceof Error ? error.message : "Voice transcription failed.");
+				openComposer();
+			}
+		};
+		recorder.onerror = handleRecorderError;
+		try {
+			recorder.start(250);
+		} catch (error) {
+			console.warn("Ona voice: recorder failed to start", error);
+			failVoice(microphoneErrorMessage(error));
+			openComposer();
+			return;
+		}
+		setVoiceStream(stream);
+		setMessage("");
+		setMode("idle");
+		setIsExpanded(true);
+		setIsTranscribing(false);
+		setIsVoiceActive(true);
 	}
 
 	function stopVoice(send = false) {
 		sendVoiceRef.current = send;
-		if (!mediaRecorderRef.current) return;
+		const recorder = mediaRecorderRef.current;
+		if (!recorder || recorder.state === "inactive") return;
 		setIsVoiceActive(false);
 		setIsTranscribing(true);
-		mediaRecorderRef.current.stop();
+		recorder.stop();
 	}
 
 	async function submitMessage(text?: string) {
@@ -512,7 +578,8 @@ export function AgentDock({
 										className="min-w-0 flex-1"
 										fadeEdges={false}
 										height={32}
-										onError={handleVoiceError}
+										onError={handleWaveformError}
+										stream={voiceStream}
 									/>
 								)}
 								{isVoiceActive && (
@@ -798,7 +865,9 @@ export function AgentDock({
 												value={message}
 											/>
 											{voiceError && (
-												<p className="px-2 pb-1 text-xs text-destructive">{voiceError}</p>
+												<p className="px-2 pb-1 text-xs text-destructive" role="alert">
+													{voiceError}
+												</p>
 											)}
 										</div>
 										<div className="flex items-center justify-end gap-1.5">
@@ -846,6 +915,11 @@ export function AgentDock({
 											ref={textareaRef}
 											value={message}
 										/>
+										{voiceError && (
+											<p className="px-2 pb-1 text-xs text-destructive" role="alert">
+												{voiceError}
+											</p>
+										)}
 									</div>
 								</div>
 							)}
