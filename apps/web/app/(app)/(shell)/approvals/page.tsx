@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { SearchIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { PillButton } from "@/components/ui/PillButton";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -96,6 +97,8 @@ export default function ApprovalsPage() {
 	const items = approvals.data ?? [];
 	const [selectedState, setSelected] = useState<string | null>(null);
 	const [query, setQuery] = useState("");
+	// Which upload's decision drawer is open, and whether it opened from a Reject button.
+	const [drawer, setDrawer] = useState<{ id: string; intent: "decide" | "rejected" } | null>(null);
 	const needle = query.trim().toLowerCase();
 	const shown = needle
 		? items.filter((i) => `${i.business_name} ${i.filename}`.toLowerCase().includes(needle))
@@ -108,12 +111,7 @@ export default function ApprovalsPage() {
 	// Until /v1/me answers (it can't on the server), show a placeholder rather
 	// than the no-access message, so server and client render the same thing.
 	if (!me.data && !me.isError) {
-		return (
-			<div className="px-4 sm:px-10 py-8 max-w-[1200px] mx-auto">
-				<Skeleton className="h-8 w-48 mb-3" />
-				<Skeleton className="h-4 w-96" />
-			</div>
-		);
+		return <ApprovalsSkeleton column={column} />;
 	}
 	if (!allowed) {
 		return (
@@ -127,30 +125,36 @@ export default function ApprovalsPage() {
 	const list = (
 		<>
 			<div className="flex shrink-0 items-center border-b border-border p-3 lg:h-[67px]">
-				<input
-					type="search"
-					value={query}
-					onChange={(e) => setQuery(e.target.value)}
-					placeholder={`Search ${items.length} upload${items.length === 1 ? "" : "s"}`}
-					aria-label="Search uploads by business or file name"
-					className="w-full rounded-full border border-border bg-background px-3.5 py-1.5 text-[13px]"
-				/>
+				<label className="relative block w-full">
+					<SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground/60" />
+					<input
+						type="search"
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						placeholder={`Search ${items.length} upload${items.length === 1 ? "" : "s"}`}
+						aria-label="Search uploads by business or file name"
+						className="w-full rounded-full border border-foreground/20 bg-background py-2 pl-9 pr-3.5 text-[13.5px] text-foreground shadow-[inset_0_1px_2px_rgba(40,33,20,0.05)] transition-colors placeholder:text-foreground/70 hover:border-foreground/35 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+					/>
+				</label>
 			</div>
 			<ul className="m-0 flex-1 list-none overflow-y-auto overscroll-contain p-2 flex flex-col gap-1.5">
 				{shown.length === 0 && (
 					<li className="px-3 py-6 text-center text-[13px] text-foreground/55">No uploads match “{query}”.</li>
 				)}
 				{shown.map((item) => (
-					<li key={item.document_id}>
+					<li
+						key={item.document_id}
+						className={`rounded-[14px] border transition-colors ${
+							item.document_id === selectedId
+								? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
+								: "border-transparent bg-card hover:border-border hover:bg-accent/40"
+						}`}
+					>
 						<button
 							type="button"
 							onClick={() => setSelected(item.document_id)}
 							aria-current={item.document_id === selectedId ? "true" : undefined}
-							className={`w-full text-left rounded-[14px] border p-3 cursor-pointer transition-colors ${
-								item.document_id === selectedId
-									? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
-									: "border-transparent bg-card hover:border-border hover:bg-accent/40"
-							}`}
+							className="w-full text-left p-3 cursor-pointer"
 						>
 							<div className="flex items-start justify-between gap-3">
 								<div className="min-w-0">
@@ -171,6 +175,13 @@ export default function ApprovalsPage() {
 								</span>
 							</div>
 						</button>
+						{item.document_id === selectedId && tab === "open" && (
+							<QuickDecision
+								item={item}
+								compact
+								onReject={() => setDrawer({ id: item.document_id, intent: "rejected" })}
+							/>
+						)}
 					</li>
 				))}
 			</ul>
@@ -202,13 +213,9 @@ export default function ApprovalsPage() {
 			</div>
 
 			{approvals.isLoading && (
-				<div aria-busy="true" aria-label="Loading approvals" className="flex flex-col gap-3">
-					{[0, 1, 2].map((i) => (
-						<div key={i} className="rounded-[20px] border border-border bg-card p-5 space-y-2">
-							<Skeleton className="h-4 w-1/2" />
-							<Skeleton className="h-3 w-1/3" />
-						</div>
-					))}
+				<div aria-busy="true" aria-label="Loading approvals" className="flex flex-col gap-6">
+					<UploadsColumnSkeleton column={column} />
+					<DetailSkeleton />
 				</div>
 			)}
 			{approvals.isError && (
@@ -242,16 +249,162 @@ export default function ApprovalsPage() {
 								{list}
 							</aside>
 						)}
-					<ApprovalDetail key={selected.document_id} item={selected} />
+					<ApprovalDetail
+						key={selected.document_id}
+						item={selected}
+						drawerIntent={drawer?.id === selected.document_id ? drawer.intent : null}
+						onDrawer={(intent) => setDrawer(intent ? { id: selected.document_id, intent } : null)}
+					/>
 				</div>
 			)}
 		</div>
 	);
 }
 
-function ApprovalDetail({ item }: { item: ApprovalItem }) {
+/** Placeholder for the uploads column: the full-height second sidebar on wide screens, a card on phones. */
+function UploadsColumnSkeleton({ column }: { column: HTMLElement | null }) {
+	const body = (
+		<>
+			<div className="flex shrink-0 items-center border-b border-border p-3 lg:h-[67px]">
+				<Skeleton className="h-9 w-full rounded-full" />
+			</div>
+			<div className="flex flex-col gap-1.5 p-2">
+				{[0, 1, 2, 3, 4, 5].map((i) => (
+					<div key={i} className="space-y-2 rounded-[14px] p-3">
+						<div className="flex justify-between gap-3">
+							<Skeleton className="h-3.5 w-2/5" />
+							<Skeleton className="h-3 w-16" />
+						</div>
+						<Skeleton className="h-3 w-3/5" />
+						<Skeleton className="mt-3 h-3 w-4/5" />
+					</div>
+				))}
+			</div>
+		</>
+	);
+	return (
+		<>
+			{column &&
+				createPortal(
+					<aside aria-hidden className="flex w-[320px] flex-col overflow-hidden border-r border-border bg-card">
+						{body}
+					</aside>,
+					column,
+				)}
+			<div aria-hidden className="max-h-[45dvh] overflow-hidden rounded-[20px] border border-border bg-card lg:hidden">
+				{body}
+			</div>
+		</>
+	);
+}
+
+/** Placeholder for the open upload: title, actions, the four totals and the rows table. */
+function DetailSkeleton() {
+	return (
+		<div aria-hidden className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
+			<div className="flex items-start justify-between gap-4">
+				<div className="flex-1 space-y-2.5">
+					<Skeleton className="h-3 w-24" />
+					<Skeleton className="h-6 w-2/3 max-w-[340px]" />
+					<Skeleton className="h-3.5 w-1/2 max-w-[300px]" />
+				</div>
+				<Skeleton className="hidden h-10 w-36 rounded-full sm:block" />
+			</div>
+			<div className="mt-5 flex flex-wrap gap-2.5">
+				<Skeleton className="h-11 w-48 rounded-full" />
+				<Skeleton className="h-11 w-52 rounded-full" />
+			</div>
+			<div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+				{[0, 1, 2, 3].map((i) => (
+					<div key={i} className="space-y-2.5 rounded-[14px] border border-border p-3.5">
+						<Skeleton className="h-3 w-16" />
+						<Skeleton className="h-5 w-24" />
+					</div>
+				))}
+			</div>
+			<div className="mt-6 space-y-2">
+				<Skeleton className="h-3.5 w-11/12" />
+				<Skeleton className="h-3.5 w-2/3" />
+			</div>
+			<div className="mt-6 overflow-hidden rounded-[14px] border border-border">
+				<div className="h-10 bg-muted" />
+				{[0, 1, 2, 3, 4, 5].map((i) => (
+					<div key={i} className="flex items-center gap-4 border-t border-border px-4 py-3">
+						<Skeleton className="h-3.5 w-20" />
+						<Skeleton className="h-3.5 flex-1" />
+						<Skeleton className="h-3.5 w-16" />
+						<Skeleton className="h-3.5 w-20" />
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+/** Whole-page placeholder while we find out who is signed in. */
+function ApprovalsSkeleton({ column }: { column: HTMLElement | null }) {
+	return (
+		<div aria-busy="true" aria-label="Loading approvals" className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1400px] mx-auto">
+			<Skeleton className="mb-3 h-3 w-14" />
+			<Skeleton className="mb-3 h-8 w-48" />
+			<Skeleton className="mb-1.5 h-4 w-full max-w-[640px]" />
+			<Skeleton className="mb-5 h-4 w-2/3 max-w-[460px]" />
+			<Skeleton className="mb-5 h-10 w-48 rounded-full" />
+			<div className="flex flex-col gap-6">
+				<UploadsColumnSkeleton column={column} />
+				<DetailSkeleton />
+			</div>
+		</div>
+	);
+}
+
+/** Approve in one press, or open the drawer to reject with a note. */
+function QuickDecision({ item, compact = false, onReject }: { item: ApprovalItem; compact?: boolean; onReject: () => void }) {
+	const resolve = useResolveApproval();
+	const { toast } = useToast();
+	const approve = () =>
+		resolve.mutate(
+			{ documentId: item.document_id, decision: "approved", note: "Checked against the original file and approved." },
+			{
+				onSuccess: () =>
+					toast({ title: "Approved", description: `${item.business_name} has been notified.`, tone: "success" }),
+				onError: (error) =>
+					toast({
+						title: "Couldn't approve",
+						description: error instanceof ApiError ? error.message : "That didn't save. Try again.",
+						tone: "error",
+					}),
+			},
+		);
+	const size = compact ? "px-3 py-1.5 text-[12.5px]" : "";
+	return (
+		<div className={compact ? "flex gap-2 px-3 pb-3" : "contents"}>
+			<PillButton
+				variant="success"
+				onClick={approve}
+				disabled={resolve.isPending || item.waiting_on_owner}
+				title={item.waiting_on_owner ? "The owner hasn't checked these rows yet, so they can't be approved." : undefined}
+				className={`${size} ${compact ? "flex-1" : ""}`}
+			>
+				{resolve.isPending ? "Approving…" : "Approve"}
+			</PillButton>
+			<PillButton variant="danger" onClick={onReject} disabled={resolve.isPending} className={`${size} ${compact ? "flex-1" : ""}`}>
+				Reject
+			</PillButton>
+		</div>
+	);
+}
+
+function ApprovalDetail({
+	item,
+	drawerIntent,
+	onDrawer,
+}: {
+	item: ApprovalItem;
+	drawerIntent: "decide" | "rejected" | null;
+	onDrawer: (intent: "decide" | "rejected" | null) => void;
+}) {
 	const rows = useExtractedRows(item.document_id);
-	const [drawerOpen, setDrawerOpen] = useState(false);
 	const [fileError, setFileError] = useState<string | null>(null);
 	const [opening, setOpening] = useState(false);
 	const decided = item.review_status === "approved" || item.review_status === "rejected";
@@ -295,8 +448,11 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 			</div>
 			{fileError && <p className="text-[12.5px] text-destructive m-0 mb-2">{fileError}</p>}
 			<div className="flex flex-wrap gap-2 mb-3">
+				{!decided && <QuickDecision item={item} onReject={() => onDrawer("rejected")} />}
 				{!decided && (
-					<PillButton onClick={() => setDrawerOpen(true)}>Draft a note and decide</PillButton>
+					<PillButton variant="secondary" onClick={() => onDrawer("decide")}>
+						Draft a note and decide
+					</PillButton>
 				)}
 				<PillButton
 					variant="secondary"
@@ -392,7 +548,14 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 					{item.reviewer_note && <p className="m-0 mt-1 text-foreground/80">“{item.reviewer_note}”</p>}
 				</div>
 			)}
-			{!decided && <DecisionDrawer item={item} open={drawerOpen} onOpenChange={setDrawerOpen} />}
+			{!decided && (
+				<DecisionDrawer
+					item={item}
+					intent={drawerIntent ?? "decide"}
+					open={drawerIntent !== null}
+					onOpenChange={(open) => onDrawer(open ? (drawerIntent ?? "decide") : null)}
+				/>
+			)}
 		</section>
 	);
 }
@@ -400,10 +563,12 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 /** Approve or reject in a bottom drawer, with Ona's suggested note prefilled. */
 function DecisionDrawer({
 	item,
+	intent,
 	open,
 	onOpenChange,
 }: {
 	item: ApprovalItem;
+	intent: "decide" | "rejected";
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
@@ -448,7 +613,7 @@ function DecisionDrawer({
 			<DrawerContent aria-describedby="decision-drawer-description">
 				<div className="mx-auto flex w-full max-w-[640px] flex-col overflow-y-auto">
 					<DrawerHeader>
-						<DrawerTitle>Approve or reject {item.filename}</DrawerTitle>
+						<DrawerTitle>{intent === "rejected" ? `Reject ${item.filename}` : `Approve or reject ${item.filename}`}</DrawerTitle>
 						<DrawerDescription id="decision-drawer-description">
 							{item.business_name} · {reasonLabel(item)}
 						</DrawerDescription>
@@ -498,7 +663,7 @@ function DecisionDrawer({
 							<p className="m-0 mt-2 text-[12.5px] text-foreground/60">Ona couldn&apos;t suggest a note just now. Write your own, or try again.</p>
 						)}
 						<p className="m-0 mt-3 rounded-[12px] bg-muted px-3 py-2 text-[12.5px] text-foreground/75">
-							Nothing is sent until you press Approve or Reject. The owner then gets a notification with this note.
+							{intent === "rejected" ? "Nothing is sent until you press Reject." : "Nothing is sent until you press Approve or Reject."} The owner then gets a notification with this note.
 						</p>
 						{item.waiting_on_owner && (
 							<p className="m-0 mt-2 text-[12.5px] text-foreground/60">
@@ -524,14 +689,14 @@ function DecisionDrawer({
 						>
 							{resolve.isPending && resolve.variables?.decision === "rejected" ? "Rejecting…" : "Reject and tell the owner"}
 						</PillButton>
-						<PillButton
+						{intent === "decide" && <PillButton
 							variant="success"
 							onClick={() => decide("approved")}
 							disabled={!note.trim() || resolve.isPending || item.waiting_on_owner}
 							className={recommended === "approved" ? "ring-2 ring-positive/30" : ""}
 						>
 							{resolve.isPending && resolve.variables?.decision === "approved" ? "Approving…" : "Approve, count toward readiness"}
-						</PillButton>
+						</PillButton>}
 					</DrawerFooter>
 				</div>
 			</DrawerContent>
