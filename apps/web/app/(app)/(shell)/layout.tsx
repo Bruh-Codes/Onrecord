@@ -9,6 +9,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <div className="sticky top-0 h-dvh shrink-0 print:hidden">
         <Sidebar />
       </div>
+      {/* Pages can put a second, full-height column here (Approvals uses it for its upload list). */}
+      <div id="shell-secondary" className="hidden lg:flex h-dvh shrink-0 empty:hidden print:hidden" />
       <div className="app-shell-scroll flex-1 min-w-0 h-dvh overflow-y-auto pb-14 md:pb-0 print:h-auto print:overflow-visible print:pb-0">
         <div className="print:hidden">
           <TopBar />
