@@ -44,14 +44,25 @@ const PILLARS = [
 ];
 
 const RECORD_TYPES = [
-	"MoMo statements",
-	"Bank statements",
-	"MoMo SMS alerts",
-	"Receipts and invoices",
-	"Handwritten sales books",
-	"Excel or CSV sheets",
-	"Screenshots",
-	"Word documents",
+	{
+		label: "Proof lenders can check",
+		note: "Statements come straight from your MoMo provider or bank, so they carry the most weight with a lender.",
+		items: ["MoMo statements", "Bank statements"],
+		strong: true,
+	},
+	{
+		label: "Helps you understand your business",
+		note: "Sales books, receipts and sheets fill in what statements miss, like cash sales and what you spend it on. They're marked as your own records, so nobody mistakes them for bank proof.",
+		items: [
+			"Handwritten sales books",
+			"Receipts and invoices",
+			"MoMo SMS alerts",
+			"Excel or CSV sheets",
+			"Screenshots",
+			"Word documents",
+		],
+		strong: false,
+	},
 ];
 
 const LENDER_SEES = [
@@ -84,7 +95,7 @@ const FAQS = [
 	},
 	{
 		q: "What if my records are messy or handwritten?",
-		a: "That's normal. A photo of a sales book, a screenshot or a half-filled spreadsheet all work. Anything we can't read clearly is held for you to check instead of being guessed.",
+		a: "That's normal. A photo of a sales book, a screenshot or a half-filled spreadsheet all work, and they help you see how your business is doing. For lenders, MoMo and bank statements are the strongest proof, so add those when you can. Anything we can't read clearly is held for you to check instead of being guessed.",
 	},
 	{
 		q: "Who can see my profile?",
@@ -218,16 +229,34 @@ export default async function LandingPage() {
 								Any layout works. We read it, and you check the rows before
 								anything goes into your profile.
 							</p>
-							<ul className="flex flex-wrap gap-2 list-none p-0 m-0">
-								{RECORD_TYPES.map((r) => (
-									<li
-										key={r}
-										className="bg-card border border-border rounded-full px-3.5 py-1.5 text-[13px]"
-									>
-										{r}
-									</li>
+							<div className="grid gap-5">
+								{RECORD_TYPES.map((group) => (
+									<div key={group.label}>
+										<div className="flex items-center gap-2 mb-1">
+											<span
+												aria-hidden
+												className={`w-2 h-2 rounded-full ${group.strong ? "bg-primary" : "bg-foreground/30"}`}
+											/>
+											<h3 className="font-display text-[15px] m-0">
+												{group.label}
+											</h3>
+										</div>
+										<p className="text-[13px] leading-relaxed opacity-65 m-0 mb-2.5">
+											{group.note}
+										</p>
+										<ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+											{group.items.map((r) => (
+												<li
+													key={r}
+													className={`rounded-full px-3.5 py-1.5 text-[13px] border ${group.strong ? "bg-primary/10 border-primary/30" : "bg-card border-border"}`}
+												>
+													{r}
+												</li>
+											))}
+										</ul>
+									</div>
 								))}
-							</ul>
+							</div>
 						</div>
 						<div>
 							<div className="text-[11px] tracking-wider uppercase opacity-55 mb-3">
