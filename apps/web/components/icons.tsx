@@ -90,6 +90,15 @@ export function ReviewerIcon({ className }: IconProps) {
   );
 }
 
+export function ApprovalsIcon({ className }: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z" />
+      <path d="M8.8 12.2l2.2 2.2 4.2-4.4" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ className }: IconProps) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.6" className={className}>

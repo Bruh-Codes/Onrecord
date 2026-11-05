@@ -9,10 +9,13 @@ import {
 	HomeIcon,
 	MoneyIcon,
 	ReadinessIcon,
+	ApprovalsIcon,
 	SettingsIcon,
 	SummaryIcon,
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
+import { canReview } from "@/lib/approvals";
+import { useMe } from "@/lib/hooks/use-business";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
 
@@ -44,6 +47,12 @@ const NAV_GROUPS = [
 	},
 ];
 
+// Only admins and reviewers see this group (the API enforces it too).
+const REVIEW_GROUP = {
+	label: "Review",
+	items: [{ href: "/approvals", icon: <ApprovalsIcon />, label: "Approvals" }],
+};
+
 function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 	return (
 		<span
@@ -56,6 +65,8 @@ function Tooltip({ label, showClass }: { label: string; showClass: string }) {
 }
 
 export function Sidebar() {
+	const { data: me } = useMe();
+	const groups = canReview(me?.role) ? [...NAV_GROUPS, REVIEW_GROUP] : NAV_GROUPS;
 	const [collapsed, setCollapsed] = useState(true);
 	const [storageReady, setStorageReady] = useState(false);
 	const [width, setWidth] = useState(MAX_WIDTH);
@@ -158,7 +169,7 @@ export function Sidebar() {
 				</Link>
 
 				<div className="flex flex-1 flex-col">
-					{NAV_GROUPS.map((group, groupIndex) => (
+					{groups.map((group, groupIndex) => (
 						<div
 							key={group.label}
 							className={

@@ -8,6 +8,7 @@ from app.api.routers.analytics import router as analytics_router
 from app.api.routers.businesses import router as businesses_router
 from app.api.routers.document_review import router as document_review_router
 from app.api.routers.documents import router as documents_router
+from app.api.routers.approvals import router as approvals_router
 from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
 from app.api.routers.money import router as money_router
@@ -50,6 +51,7 @@ app.include_router(me_router)
 app.include_router(accounts_router)
 app.include_router(agent_router)
 app.include_router(documents_router)
+app.include_router(approvals_router)
 app.include_router(document_review_router)
 app.include_router(transactions_router)
 app.include_router(voice_router)

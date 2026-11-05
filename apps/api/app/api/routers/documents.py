@@ -33,6 +33,7 @@ from app.schemas.document import (
 )
 from app.models.enums import DocStatus, Role
 from app.services.audit import write_audit_event
+from app.services.notifications import sync_business_notifications
 from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["documents"])
@@ -135,6 +136,11 @@ async def resolve_evidence_review(
     document = await session.scalar(select(Document).where(Document.id == document_id, Document.deleted_at.is_(None)))
     if document is None:
         raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    # Reviewers decide only for businesses they hold a reviewer grant for;
+    # admins keep platform-wide access (require_business_access).
+    await require_business_access(document.business_id, claims, session)
+    if (document.quality_flags or {}).get("ai_ingest", {}).get("state") == "needs_review" and body.decision == "approved":
+        raise AppError("OWNER_CHECK_PENDING", "The owner hasn't checked these rows yet, so there is nothing to approve.", 409)
     before = (document.quality_flags or {}).get("evidence_review", {})
     review = dict(before)
     review.update({
@@ -159,6 +165,7 @@ async def resolve_evidence_review(
         before={"status": before.get("status"), "scoring_eligible": before.get("scoring_eligible")},
         after={"status": body.decision, "scoring_eligible": review["scoring_eligible"], "note": body.note},
     )
+    await session.run_sync(lambda sync: sync_business_notifications(sync, document.business_id))
     await session.commit()
     from app.workers.tasks import recompute
 
