@@ -14,6 +14,7 @@ import {
 } from "@/components/icons";
 import { NavLink } from "./NavLink";
 import icon from "@/public/icon.png";
+import iconDark from "@/public/icon-dark.png";
 
 const MAX_WIDTH = 230;
 const COLLAPSED_WIDTH = 60;
@@ -145,7 +146,8 @@ export function Sidebar() {
 						liveCollapsed ? "justify-center" : "gap-2 px-2"
 					}`}
 				>
-					<Image src={icon} alt="" width={26} height={26} />
+					<Image src={iconDark} alt="" width={26} height={26} className="dark:hidden" />
+					<Image src={icon} alt="" width={26} height={26} className="hidden dark:block" />
 					{!liveCollapsed && <span className="font-display">Onrecord</span>}
 					{liveCollapsed && (
 						<Tooltip
