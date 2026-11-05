@@ -505,8 +505,14 @@ function LandingFooter() {
 					</Link>
 				</nav>
 			</div>
-			<div className="max-w-[1080px] mx-auto px-6 sm:px-10 pb-8 text-[12px] opacity-50">
-				© {new Date().getFullYear()} OnRecord
+			<div className="max-w-[1080px] mx-auto px-6 sm:px-10 pb-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px]">
+				<span className="opacity-50">© {new Date().getFullYear()} OnRecord</span>
+				<Link href="/privacy" className="text-background opacity-50 hover:opacity-100">
+					Privacy
+				</Link>
+				<Link href="/terms" className="text-background opacity-50 hover:opacity-100">
+					Terms
+				</Link>
 			</div>
 		</footer>
 	);
