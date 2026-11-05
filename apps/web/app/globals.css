@@ -5,36 +5,37 @@
 
 :root {
   color-scheme: light;
-  --background: #fcfcfb;
-  --foreground: #141414;
+  --background: #fbfaf7;
+  --foreground: #1a1916;
   --card: #ffffff;
   --card-foreground: #141414;
-  --popover: #e5e5e3;
+  --popover: #ffffff;
   --popover-foreground: #141414;
   --primary: #1e6b45;
   --primary-foreground: #ffffff;
   --secondary: #c17d11;
   --secondary-foreground: #141414;
-  --muted: #ececea;
-  --muted-foreground: #5a5a57;
-  --accent: #e5e5e3;
+  --muted: #f3f1ec;
+  --muted-foreground: #5c5951;
+  --accent: #ece9e2;
   --accent-foreground: #141414;
-  --destructive: #a13327;
+  --destructive: #b03a2e;
   --destructive-foreground: #ffffff;
-  --border: rgba(20, 20, 20, 0.14);
-  --input: rgba(20, 20, 20, 0.14);
+  --border: rgba(40, 33, 20, 0.12);
+  --input: rgba(40, 33, 20, 0.16);
   --ring: #1e6b45;
   --radius: 0.75rem;
   --positive: #1e6b45;
   --positive-background: #e3f3e9;
-  --warning: #c17d11;
+  --warning: #a35f00;
+  --warning-background: #fbf0dc;
   --warning-foreground: #141414;
   --destructive-background: #fbe6e4;
-  --sidebar: #ececea;
+  --sidebar: #f3f1ea;
   --sidebar-foreground: #141414;
   --sidebar-primary: #1e6b45;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5e5e3;
+  --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #141414;
   --sidebar-border: rgba(20, 20, 20, 0.14);
   --sidebar-ring: #1e6b45;
@@ -69,6 +70,7 @@
   --warning: #e0a952;
   --warning-foreground: #131312;
   --destructive-background: #3a1f1c;
+  --warning-background: #3a2c14;
   --sidebar: #1e1e1c;
   --sidebar-foreground: #f2f2f0;
   --sidebar-primary: #5fcf94;
@@ -80,15 +82,15 @@
   --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* In light mode the sidebar is a quiet, slightly tinted panel so the page
-   stays the focus; in dark mode it sits a step darker than the page.
-   Redefining the tokens here makes everything inside it (links, tooltips,
-   dividers) follow without per-element colours. */
+/* In light mode the sidebar is warm paper, a shade deeper than the page, with
+   full-strength ink so links read as links. In dark mode it sits a step
+   darker than the page. Redefining the tokens here makes everything inside it
+   (links, tooltips, dividers) follow without per-element colours. */
 .sidebar-scope {
-  --background: #eeeeeb;
-  --foreground: #3a3a37;
-  --muted: #eeeeeb;
-  --border: rgba(20, 20, 20, 0.08);
+  --background: #f3f1ea;
+  --foreground: #1a1916;
+  --muted: #f3f1ea;
+  --border: rgba(40, 33, 20, 0.10);
   color: var(--foreground);
 }
 
@@ -127,6 +129,7 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive-background: var(--destructive-background);
+  --color-warning-background: var(--warning-background);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

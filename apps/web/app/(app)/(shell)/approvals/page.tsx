@@ -48,6 +48,16 @@ function reasonLabel(item: ApprovalItem): string {
 	return "Owner-confirmed rows";
 }
 
+/** Red for uploads that are wrong, amber for ones that just need a closer look. */
+function reasonTone(item: ApprovalItem): "bg-destructive" | "bg-warning" {
+	if (item.incomplete_read || item.balance_check === "balance_breaks" || item.document_status === "failed") return "bg-destructive";
+	return "bg-warning";
+}
+
+function Dot({ className }: { className: string }) {
+	return <span aria-hidden className={`inline-block h-2 w-2 shrink-0 rounded-full ${className}`} />;
+}
+
 function StatusBadges({ item }: { item: ApprovalItem }) {
 	return (
 		<div className="flex flex-wrap gap-1.5">
@@ -151,7 +161,9 @@ export default function ApprovalsPage() {
 									onClick={() => setSelected(item.document_id)}
 									aria-current={item.document_id === selectedId ? "true" : undefined}
 									className={`w-full text-left rounded-[16px] border p-4 cursor-pointer transition-colors ${
-										item.document_id === selectedId ? "border-foreground/40 bg-accent" : "border-border bg-card hover:bg-accent/60"
+										item.document_id === selectedId
+											? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
+											: "border-border bg-card hover:border-foreground/25"
 									}`}
 								>
 									<div className="flex items-start justify-between gap-3">
@@ -163,15 +175,14 @@ export default function ApprovalsPage() {
 											{dateTimeFormatter.format(new Date(item.reviewed_at ?? item.uploaded_at))}
 										</div>
 									</div>
-									<div className="mt-2 text-[12.5px]">
-										{tab === "open" ? (
-											<span className="text-destructive">{reasonLabel(item)}</span>
-										) : (
-											<span className={item.review_status === "approved" ? "text-positive" : "text-destructive"}>
-												{item.review_status === "approved" ? "Approved" : "Rejected"}
+									<div className="mt-2.5 flex items-center gap-2 text-[12.5px]">
+										<Dot className={tab === "open" ? reasonTone(item) : item.review_status === "approved" ? "bg-positive" : "bg-destructive"} />
+										<span>
+											<span className="font-medium text-foreground/85">
+												{tab === "open" ? reasonLabel(item) : item.review_status === "approved" ? "Approved" : "Rejected"}
 											</span>
-										)}
-										<span className="text-foreground/50"> · {item.transaction_count} transactions</span>
+											<span className="text-foreground/50"> · {item.transaction_count} transactions</span>
+										</span>
 									</div>
 								</button>
 							</li>
@@ -251,9 +262,9 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 					["Money in", formatGhs(item.money_in_pesewas)],
 					["Money out", formatGhs(item.money_out_pesewas)],
 				].map(([label, value]) => (
-					<div key={String(label)} className="rounded-[12px] bg-muted px-3 py-2.5">
+					<div key={String(label)} className="rounded-[12px] border border-border bg-card px-3 py-2.5">
 						<dt className="text-[11px] text-foreground/55">{label}</dt>
-						<dd className="m-0 font-semibold text-[15px]">{value}</dd>
+						<dd className={`m-0 font-semibold text-[15px] tabular-nums ${label === "Money in" ? "text-positive" : ""}`}>{value}</dd>
 					</div>
 				))}
 			</dl>
@@ -289,12 +300,12 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 				<p className="text-[13px] text-foreground/60 m-0">No rows were read from this file.</p>
 			)}
 			{allRows.length > 0 && (
-				<div className="rounded-[14px] bg-muted overflow-x-auto">
+				<div className="rounded-[14px] border border-border bg-card overflow-x-auto">
 					<table className="w-full border-collapse text-[12.5px]">
 						<thead>
-							<tr>
+							<tr className="bg-muted">
 								{["Date", "Description", "In", "Out", "Balance"].map((h) => (
-									<th key={h} className={`px-3 py-2 text-[10.5px] uppercase tracking-wider text-foreground/55 border-b border-foreground/12 ${h === "Date" || h === "Description" ? "text-left" : "text-right"}`}>
+									<th key={h} className={`px-3 py-2 text-[10.5px] uppercase tracking-wider text-foreground/55 border-b border-border ${h === "Date" || h === "Description" ? "text-left" : "text-right"}`}>
 										{h}
 									</th>
 								))}
