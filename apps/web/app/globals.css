@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: light;
-  --background: #fbfaf7;
+  --background: #fcfcfb;
   --foreground: #1a1916;
   --card: #ffffff;
   --card-foreground: #141414;
@@ -15,9 +15,9 @@
   --primary-foreground: #ffffff;
   --secondary: #c17d11;
   --secondary-foreground: #141414;
-  --muted: #f3f1ec;
+  --muted: #f3f3f1;
   --muted-foreground: #5c5951;
-  --accent: #ece9e2;
+  --accent: #ebebe8;
   --accent-foreground: #141414;
   --destructive: #b03a2e;
   --destructive-foreground: #ffffff;
@@ -31,7 +31,7 @@
   --warning-background: #fbf0dc;
   --warning-foreground: #141414;
   --destructive-background: #fbe6e4;
-  --sidebar: #f3f1ea;
+  --sidebar: #f6f6f4;
   --sidebar-foreground: #141414;
   --sidebar-primary: #1e6b45;
   --sidebar-primary-foreground: #ffffff;
@@ -82,14 +82,15 @@
   --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* In light mode the sidebar is warm paper, a shade deeper than the page, with
-   full-strength ink so links read as links. In dark mode it sits a step
-   darker than the page. Redefining the tokens here makes everything inside it
-   (links, tooltips, dividers) follow without per-element colours. */
+/* In light mode the sidebar is a near-white panel, a hair off the page, with
+   full-strength ink so links read as links; a border separates the two. In
+   dark mode it sits a step darker than the page. Redefining the tokens here
+   makes everything inside it (links, tooltips, dividers) follow without
+   per-element colours. */
 .sidebar-scope {
-  --background: #f3f1ea;
+  --background: #f6f6f4;
   --foreground: #1a1916;
-  --muted: #f3f1ea;
+  --muted: #f6f6f4;
   --border: rgba(40, 33, 20, 0.10);
   color: var(--foreground);
 }
