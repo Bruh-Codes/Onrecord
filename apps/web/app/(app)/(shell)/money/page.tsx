@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { AddRecordForm } from "@/components/money/AddRecordForm";
+import { AddRecordDrawer } from "@/components/money/AddRecordForm";
 import { FarmBreakdown } from "@/components/money/FarmBreakdown";
 import { LenderNumbers } from "@/components/money/LenderNumbers";
 import { MonthlyCashFlowChart } from "@/components/money/MonthlyCashFlowChart";
@@ -37,15 +37,17 @@ export default function MoneyPage() {
 	const addButton = (
 		<button
 			type="button"
-			onClick={() => setAdding((open) => !open)}
-			aria-expanded={adding}
+			onClick={() => setAdding(true)}
+			aria-haspopup="dialog"
 			className="rounded-full bg-foreground px-4 py-2 text-[13px] text-background cursor-pointer"
 		>
 			Add a record
 		</button>
 	);
-	const form = adding && businessId && (
-		<AddRecordForm
+	const form = businessId && (
+		<AddRecordDrawer
+			open={adding}
+			onOpenChange={setAdding}
 			businessId={businessId}
 			activities={tags.activities}
 			seasons={tags.seasons}
@@ -53,7 +55,6 @@ export default function MoneyPage() {
 				farm_activity: filter.farm_activity === "untagged" ? undefined : filter.farm_activity,
 				season: filter.season === "untagged" ? undefined : filter.season,
 			}}
-			onDone={() => setAdding(false)}
 		/>
 	);
 
