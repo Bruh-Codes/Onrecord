@@ -125,12 +125,12 @@ export function detectOnaActivity(message: string): OnaActivity {
 export function activityStatusLabel(activity: OnaActivity): string {
 	switch (activity) {
 		case "searching":
-			return "Searching the web...";
+			return "Searching the web…";
 		case "checking_data":
-			return "Checking your business data...";
+			return "Checking your business data…";
 		case "running_action":
-			return "Running action...";
+			return "Running action…";
 		default:
-			return "Thinking...";
+			return "Thinking…";
 	}
 }

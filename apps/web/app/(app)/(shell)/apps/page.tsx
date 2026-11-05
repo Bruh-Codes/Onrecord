@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AppsIcon, GoogleSheetsLogo } from "@/components/icons";
 import { GoogleSheetsStatus } from "@/components/integrations/GoogleSheetsStatus";
 import { SheetConnections } from "@/components/integrations/SheetConnections";
-import { APP_INTEGRATIONS } from "@/lib/mock-data";
+import { APP_INTEGRATIONS } from "@/lib/integrations";
 
 export default function IntegrationsPage() {
 	return (

@@ -23,7 +23,7 @@ def duplicate_document(existing_document_id: str) -> AppError:
 def file_too_large(max_bytes: int) -> AppError:
     return AppError(
         code="FILE_TOO_LARGE",
-        message=f"File exceeds the {max_bytes} byte limit.",
+        message=f"This file is too big. The limit is {max_bytes // (1024 * 1024)} MB.",
         http_status=413,
     )
 

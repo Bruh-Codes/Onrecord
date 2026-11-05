@@ -102,7 +102,7 @@ function SignupForm() {
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
 				<span className="font-display text-[19px]">
-					Onrecord
+					OnRecord
 				</span>
 			</div>
 

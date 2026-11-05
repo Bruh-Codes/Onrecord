@@ -61,7 +61,7 @@ export default function MoneyPage() {
 		return <Shell><MoneyPageSkeleton /></Shell>;
 	}
 	if (overall.isError || summary.isError || !data) {
-		return <Shell><p className="text-[13px] text-destructive">Couldn&apos;t load your money picture. Refresh to try again.</p></Shell>;
+		return <Shell><p className="text-[13px] text-destructive">Couldn&apos;t load your money. Refresh to try again.</p></Shell>;
 	}
 	if (!overall.data?.latest_on) {
 		return (
@@ -217,7 +217,7 @@ export default function MoneyPage() {
 			)}
 
 			<div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-[13px]">
-				<span>Need to show these figures to a bank, MFI or co-op?</span>
+				<span>Need to show these figures to a bank, microfinance lender or co-op?</span>
 				<Link href="/lender-summary" className="font-semibold underline underline-offset-2">Open lender summary</Link>
 			</div>
 
@@ -229,7 +229,7 @@ export default function MoneyPage() {
 }
 
 function categoryLabel(category: string): string {
-	if (category === "unclassified") return "Not categorised";
+	if (category === "unclassified") return "Not sorted yet";
 	return CATEGORY_LABELS[category] ?? category;
 }
 

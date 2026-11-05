@@ -70,7 +70,7 @@ function evidenceReviewMessage(document: Document): string | null {
 		| { status?: string; summary?: string }
 		| undefined;
 	if (!review || !["pending", "warning", "error", "rejected"].includes(review.status ?? "")) return null;
-	return review.summary || "We need you to check this file before it counts towards your loan file.";
+	return review.summary || "Check this file before it counts in your record.";
 }
 
 function isPartiallyUsable(document: Document) {
@@ -141,7 +141,7 @@ export function UploadedDocumentsList({
 	if (!documents || documents.length === 0) {
 		return (
 			<p className="text-[12.5px] opacity-60 py-4 m-0">
-				Nothing uploaded yet-files you add above will show up here.
+				Nothing uploaded yet. Files you add above will show up here.
 			</p>
 		);
 	}
@@ -259,7 +259,7 @@ export function UploadedDocumentsList({
 									setPendingDelete(null);
 								}}
 							>
-								{removingId === pendingDelete.id ? "Deleting..." : "Delete document"}
+								{removingId === pendingDelete.id ? "Deleting…" : "Delete document"}
 							</PillButton>
 						</div>
 					</div>

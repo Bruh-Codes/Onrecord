@@ -35,7 +35,7 @@ const NAV_GROUPS = [
 	{
 		label: "Financing",
 		items: [
-			{ href: "/readiness", icon: <ReadinessIcon />, label: "Loan readiness" },
+			{ href: "/readiness", icon: <ReadinessIcon />, label: "Readiness" },
 			{ href: "/lender-summary", icon: <SummaryIcon />, label: "Lender summary" },
 		],
 	},
@@ -154,17 +154,17 @@ export function Sidebar() {
 			>
 				<Link
 					href="/"
-					aria-label={liveCollapsed ? "Onrecord home" : undefined}
+					aria-label={liveCollapsed ? "OnRecord home" : undefined}
 					className={`group/logo relative flex items-center py-5 opacity-100 hover:opacity-100 ${
 						liveCollapsed ? "justify-center" : "gap-2 px-2"
 					}`}
 				>
 					<Image src={iconDark} alt="" width={26} height={26} className="dark:hidden" />
 					<Image src={icon} alt="" width={26} height={26} className="hidden dark:block" />
-					{!liveCollapsed && <span className="font-display">Onrecord</span>}
+					{!liveCollapsed && <span className="font-display">OnRecord</span>}
 					{liveCollapsed && (
 						<Tooltip
-							label="Onrecord home"
+							label="OnRecord home"
 							showClass="group-hover/logo:visible"
 						/>
 					)}

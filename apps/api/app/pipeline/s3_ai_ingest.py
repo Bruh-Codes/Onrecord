@@ -272,7 +272,7 @@ def ai_evidence_review(
     severity = "high" if reconciliation.status == "balance_breaks" else "medium"
     findings.insert(0, EvidenceFinding("BALANCE_CHECK", severity, reconciliation.note, "reconciliation"))
     status = "error" if reconciliation.status == "balance_breaks" else "warning"
-    summary = "Rows are visible in insights but held out of readiness scoring until reviewed."
+    summary = "We read rows from this file. Check them before they count in your record."
     return EvidenceReview(status, severity, False, summary, tuple(findings), reading.model, input_hash)
 
 

@@ -11,16 +11,16 @@ const STEPS = [
 	{
 		n: "1",
 		title: "Upload your records",
-		body: "MoMo statements, bank statements, receipts, handwritten ledgers-photos or PDFs. Nothing gets thrown away or 'edited'.",
+		body: "MoMo statements, bank statements, receipts, handwritten ledgers, as photos or PDFs. Nothing gets thrown away or edited.",
 	},
 	{
 		n: "2",
-		title: "We build the provable profile",
-		body: "Every figure is extracted, derived, or declared-each traceable to a source page. Statements must reconcile before they enter the ledger.",
+		title: "We build a record you can prove",
+		body: "We read every page. Each number links back to the document it came from, and we check that statement balances add up.",
 	},
 	{
 		n: "3",
-		title: "Share it with your lender",
+		title: "Show it to any lender you choose",
 		body: "A readable financial profile plus an honest list of what's still missing. Verifiable, not just pretty.",
 	},
 ];
@@ -28,15 +28,15 @@ const STEPS = [
 const PILLARS = [
 	{
 		title: "Never a made-up number",
-		body: "Three kinds of value-extracted, derived, declared-never mixed. Aggregation and scoring are deterministic code, not model output.",
+		body: "Figures you typed in are kept apart from figures read off statements. Totals and the score are worked out by fixed rules, not guessed by AI.",
 	},
 	{
 		title: "Proof over polish",
-		body: "Every figure carries where it came from. Fraud is actively screened and a server-side audit trail sits behind every profile.",
+		body: "Every figure shows where it came from, and every change is logged, so a lender can check it.",
 	},
 	{
 		title: "A score, not a decision",
-		body: "A readiness score measures how complete and consistent your file is. It's tooling for you and your lender-never a lending decision.",
+		body: "A readiness score shows how complete and consistent your record is. It is never a loan decision, and OnRecord doesn't lend.",
 	},
 ];
 
@@ -63,7 +63,7 @@ export default async function LandingPage() {
 				<Link href="/" className="inline-flex items-center gap-2 hover:opacity-100">
 					<Image
 						src={iconDark}
-						alt="Onrecord"
+						alt="OnRecord"
 						width={28}
 						height={28}
 						className="dark:hidden"
@@ -76,11 +76,11 @@ export default async function LandingPage() {
 						className="hidden dark:block"
 					/>
 					<span className="font-display text-[19px]">
-						Onrecord
+						OnRecord
 					</span>
 				</Link>
 				<Link
-					href="/signup"
+					href="/signup?mode=login"
 					className="ml-auto inline-flex items-center bg-muted border border-foreground/16 rounded-full px-4 py-2 text-[13.5px] hover:opacity-100"
 				>
 					Log in
@@ -93,10 +93,10 @@ export default async function LandingPage() {
 						Turn your business records into a lender-ready financial profile
 					</h1>
 					<p className="text-left sm:text-center text-[15.5px] sm:text-base leading-relaxed opacity-75 m-0 mb-8 max-w-[560px] mx-auto">
-						Onrecord turns a Ghanaian SME&apos;s real records-MoMo statements,
-						receipts, a handwritten sales book-into a clean,{" "}
+						OnRecord turns a Ghanaian small business&apos;s real records (MoMo statements,
+						receipts, a handwritten sales book) into a clear,{" "}
 						<strong className="font-semibold">provable</strong>, lender-ready
-						financial profile in under an hour.
+						financial record.
 					</p>
 
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
@@ -116,7 +116,7 @@ export default async function LandingPage() {
 					</div>
 
 					<p className="text-left sm:text-center text-[12px] opacity-50 mt-6 mb-0">
-						Built for GHS 20,000–200,000 · No bookkeeper needed · MoMo-first
+						For any small business in Ghana · No bookkeeper needed · Works with MoMo
 					</p>
 				</section>
 
@@ -147,7 +147,7 @@ export default async function LandingPage() {
 				<section className="bg-muted border-y border-border py-14 sm:py-20">
 					<div className="max-w-[560px] mx-auto text-center px-6 mb-10 sm:mb-12">
 						<div className="text-[11px] tracking-wider uppercase opacity-55 mb-3">
-							Built on a trust model
+							Built so lenders can check it
 						</div>
 						<h2 className="font-display text-[26px] sm:text-[32px] leading-tight m-0">
 							Lenders can&apos;t trust what they can&apos;t trace
@@ -173,7 +173,7 @@ export default async function LandingPage() {
 					</h2>
 					<p className="text-[15px] opacity-75 m-0 mb-7">
 						Create your profile today and go to your first lender meeting with
-						receipts-not charm.
+						receipts, not charm.
 					</p>
 					<Link
 						href="/signup"

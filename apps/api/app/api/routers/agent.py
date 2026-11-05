@@ -141,7 +141,7 @@ _PAGE_NAMES = {
     "/money": "Money",
     "/overview": "Business health",
     "/documents": "Records",
-    "/readiness": "Loan readiness",
+    "/readiness": "Readiness",
     "/lender-summary": "Lender summary",
     "/apps": "Integrations",
     "/settings": "Settings",

@@ -85,10 +85,10 @@ export function TopBar() {
       <Link
         href="/dashboard"
         className="md:hidden flex items-center gap-2 shrink-0"
-        aria-label="Onrecord home"
+        aria-label="OnRecord home"
       >
         <Image src={theme === "light" ? iconDark : icon} alt="" width={26} height={26} />
-        <span className="font-display text-[16px] hidden sm:inline">Onrecord</span>
+        <span className="font-display text-[16px] hidden sm:inline">OnRecord</span>
       </Link>
 
 
@@ -264,7 +264,7 @@ export function TopBar() {
                 className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:bg-foreground hover:text-background cursor-pointer disabled:opacity-60"
               >
                 <LogOutIcon />
-                {isLoading ? "Logging out..." : "Log out"}
+                {isLoading ? "Logging out…" : "Log out"}
               </button>
             </div>
           )}

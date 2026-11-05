@@ -55,8 +55,8 @@ export default function DocumentsPage() {
 			<p className="text-sm opacity-70 m-0 mb-5">
 				Add anything that shows money moving through your business: MoMo or
 				bank statements (PDF or screenshots), receipts, invoices, or a photo of
-				your record book. We read them and build your money picture and loan
-				file from them.
+				your record book. We read them and turn them into one clear record of
+				your business.
 			</p>
 			{duplicateDocumentId && duplicateSheet && (
 				<GoogleSheetReplacement

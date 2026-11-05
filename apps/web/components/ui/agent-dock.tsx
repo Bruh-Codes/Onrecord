@@ -789,10 +789,10 @@ export function AgentDock({
 												onKeyDown={handleTextareaKeyDown}
 												placeholder={
 													mode === "working"
-														? "Thinking..."
+														? "Thinking…"
 														: isTranscribing
-															? "Transcribing..."
-															: "Ask Ona about your money or loan file…"
+															? "Transcribing…"
+															: "Ask Ona about your money or your record…"
 												}
 												ref={textareaRef}
 												value={message}
@@ -840,8 +840,8 @@ export function AgentDock({
 											onKeyDown={handleTextareaKeyDown}
 											placeholder={
 												isTranscribing
-													? "Transcribing..."
-													: "Ask Ona about your money or loan file…"
+													? "Transcribing…"
+													: "Ask Ona about your money or your record…"
 											}
 											ref={textareaRef}
 											value={message}

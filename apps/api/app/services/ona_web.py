@@ -295,7 +295,7 @@ async def _duckduckgo_html_lite(*, client: httpx.AsyncClient | None, query: str,
         response = await client.post(
             "https://html.duckduckgo.com/html/",
             data={"q": query},
-            headers={"User-Agent": "Onrecord-Ona/1.0 (business assistant)"},
+            headers={"User-Agent": "OnRecord-Ona/1.0 (business assistant)"},
         )
         response.raise_for_status()
         html = response.text

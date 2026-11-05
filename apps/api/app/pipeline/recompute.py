@@ -31,6 +31,12 @@ RULE_PACK_ID = "gh_mfi_working_capital_v1"
 _ACTIVE_GAP_STATUSES = [GapStatus.OPEN, GapStatus.ANSWERED, GapStatus.DOCUMENT_RECEIVED]
 
 
+def _human_date(iso: str) -> str:
+    """'2026-02-03' -> '3 Feb 2026', the way owners write dates."""
+    d = date.fromisoformat(iso[:10])
+    return f"{d.day} {d.strftime('%b %Y')}"
+
+
 def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     """Recompute coverage, indicators, checklist, gaps and score for a business."""
     business = db.get(Business, business_id)
@@ -433,10 +439,10 @@ def _sync_missing_period_gaps(db: Session, business_id: uuid.UUID, coverage: dic
                         kind="missing_period",
                         severity="major",
                         code=code,
-                        title=f"Statement coverage gap: {hole['from']} – {hole['to']}",
+                        title=f"Statement missing for {_human_date(hole['from'])} – {_human_date(hole['to'])}",
                         detail=(
-                            f"Request a statement covering {hole['from']} to {hole['to']} from your provider "
-                            "and upload it here promptly-statements expire 24 hours after generation."
+                            f"Ask your bank or MoMo provider for a statement covering {_human_date(hole['from'])} "
+                            f"to {_human_date(hole['to'])} and upload it on Records."
                         ),
                         target_ref={"account_id": account["account_id"], "from": hole["from"], "to": hole["to"]},
                     )

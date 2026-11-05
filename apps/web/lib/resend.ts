@@ -51,14 +51,14 @@ export async function sendPasswordResetEmail({
 		);
 	}
 
-	const subject = "Reset your Onrecord password";
+	const subject = "Reset your OnRecord password";
 	const html = `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#f6f6f4;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f4;padding:32px 16px;">
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px;border:1px solid #e5e5e0;">
-          <tr><td style="font-size:19px;font-weight:600;color:#1a1a1a;padding-bottom:8px;">Onrecord</td></tr>
+          <tr><td style="font-size:19px;font-weight:600;color:#1a1a1a;padding-bottom:8px;">OnRecord</td></tr>
           <tr><td style="color:#555;font-size:14px;line-height:1.6;padding-bottom:24px;">
             Hi ${escapeHtml(name)},<br/><br/>
             We got a request to reset your password. Click the button below to
