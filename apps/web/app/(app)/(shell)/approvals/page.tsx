@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/Badge";
 import { PillButton } from "@/components/ui/PillButton";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -72,6 +73,21 @@ function StatusBadges({ item }: { item: ApprovalItem }) {
 	);
 }
 
+const WIDE = "(min-width: 1024px)";
+
+/** True on screens wide enough for the list to become its own full-height column. */
+function useWideScreen(): boolean {
+	return useSyncExternalStore(
+		(onChange) => {
+			const query = window.matchMedia(WIDE);
+			query.addEventListener("change", onChange);
+			return () => query.removeEventListener("change", onChange);
+		},
+		() => window.matchMedia(WIDE).matches,
+		() => false,
+	);
+}
+
 export default function ApprovalsPage() {
 	const me = useMe();
 	const allowed = canReview(me.data?.role);
@@ -86,6 +102,8 @@ export default function ApprovalsPage() {
 		: items;
 	const selectedId = items.some((i) => i.document_id === selectedState) ? selectedState : (items[0]?.document_id ?? null);
 	const selected = items.find((i) => i.document_id === selectedId) ?? null;
+	const wide = useWideScreen();
+	const column = wide && typeof document !== "undefined" ? document.getElementById("shell-secondary") : null;
 
 	// Until /v1/me answers (it can't on the server), show a placeholder rather
 	// than the no-access message, so server and client render the same thing.
@@ -106,8 +124,61 @@ export default function ApprovalsPage() {
 		);
 	}
 
+	const list = (
+		<>
+			<div className="border-b border-border p-3">
+				<input
+					type="search"
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
+					placeholder={`Search ${items.length} upload${items.length === 1 ? "" : "s"}`}
+					aria-label="Search uploads by business or file name"
+					className="w-full rounded-full border border-border bg-background px-3.5 py-1.5 text-[13px]"
+				/>
+			</div>
+			<ul className="m-0 flex-1 list-none overflow-y-auto overscroll-contain p-2 flex flex-col gap-1.5">
+				{shown.length === 0 && (
+					<li className="px-3 py-6 text-center text-[13px] text-foreground/55">No uploads match “{query}”.</li>
+				)}
+				{shown.map((item) => (
+					<li key={item.document_id}>
+						<button
+							type="button"
+							onClick={() => setSelected(item.document_id)}
+							aria-current={item.document_id === selectedId ? "true" : undefined}
+							className={`w-full text-left rounded-[14px] border p-3 cursor-pointer transition-colors ${
+								item.document_id === selectedId
+									? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
+									: "border-transparent bg-card hover:border-border hover:bg-accent/40"
+							}`}
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<div className="font-semibold text-[14px] truncate">{item.business_name}</div>
+									<div className="text-[12.5px] text-foreground/60 truncate">{item.filename}</div>
+								</div>
+								<div className="text-[11.5px] text-foreground/50 shrink-0">
+									{dateTimeFormatter.format(new Date(item.reviewed_at ?? item.uploaded_at))}
+								</div>
+							</div>
+							<div className="mt-2.5 flex items-center gap-2 text-[12.5px]">
+								<Dot className={tab === "open" ? reasonTone(item) : item.review_status === "approved" ? "bg-positive" : "bg-destructive"} />
+								<span>
+									<span className="font-medium text-foreground/85">
+										{tab === "open" ? reasonLabel(item) : item.review_status === "approved" ? "Approved" : "Rejected"}
+									</span>
+									<span className="text-foreground/50"> · {item.transaction_count} transactions</span>
+								</span>
+							</div>
+						</button>
+					</li>
+				))}
+			</ul>
+		</>
+	);
+
 	return (
-		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 lg:pb-4 max-w-[1400px] mx-auto">
+		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1400px] mx-auto">
 			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">Review</div>
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">Approvals</h1>
 			<p className="text-sm opacity-75 m-0 mb-5 max-w-[720px]">
@@ -157,61 +228,26 @@ export default function ApprovalsPage() {
 			)}
 
 			{selected && (
-				<div className="grid gap-6 items-start grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
-					{/* A second sidebar: its own scroll, so a long queue never pushes the detail down. */}
-					<aside
-						aria-label="Uploads"
-						className="flex flex-col rounded-[20px] border border-border bg-card max-h-[45dvh] lg:max-h-none lg:sticky lg:top-[calc(var(--topbar-h,65px)+16px)] lg:h-[calc(100dvh-var(--topbar-h,65px)-32px)]"
-					>
-						<div className="border-b border-border p-3">
-							<input
-								type="search"
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								placeholder={`Search ${items.length} upload${items.length === 1 ? "" : "s"}`}
-								aria-label="Search uploads by business or file name"
-								className="w-full rounded-full border border-border bg-background px-3.5 py-1.5 text-[13px]"
-							/>
-						</div>
-						<ul className="m-0 flex-1 list-none overflow-y-auto overscroll-contain p-2 flex flex-col gap-1.5">
-							{shown.length === 0 && (
-								<li className="px-3 py-6 text-center text-[13px] text-foreground/55">No uploads match “{query}”.</li>
-							)}
-						{shown.map((item) => (
-							<li key={item.document_id}>
-								<button
-									type="button"
-									onClick={() => setSelected(item.document_id)}
-									aria-current={item.document_id === selectedId ? "true" : undefined}
-									className={`w-full text-left rounded-[14px] border p-3 cursor-pointer transition-colors ${
-										item.document_id === selectedId
-											? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
-											: "border-transparent bg-card hover:border-border hover:bg-accent/40"
-									}`}
-								>
-									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0">
-											<div className="font-semibold text-[14px] truncate">{item.business_name}</div>
-											<div className="text-[12.5px] text-foreground/60 truncate">{item.filename}</div>
-										</div>
-										<div className="text-[11.5px] text-foreground/50 shrink-0">
-											{dateTimeFormatter.format(new Date(item.reviewed_at ?? item.uploaded_at))}
-										</div>
-									</div>
-									<div className="mt-2.5 flex items-center gap-2 text-[12.5px]">
-										<Dot className={tab === "open" ? reasonTone(item) : item.review_status === "approved" ? "bg-positive" : "bg-destructive"} />
-										<span>
-											<span className="font-medium text-foreground/85">
-												{tab === "open" ? reasonLabel(item) : item.review_status === "approved" ? "Approved" : "Rejected"}
-											</span>
-											<span className="text-foreground/50"> · {item.transaction_count} transactions</span>
+				<div className="grid gap-6 items-start grid-cols-1">
+					{column
+						? createPortal(
+								// Wide screens: a second sidebar, full height beside the main one.
+								<aside aria-label="Uploads" className="flex w-[320px] flex-col border-r border-border bg-card">
+									<div className="flex items-center justify-between gap-2 h-[67px] shrink-0 border-b border-border px-4">
+										<span className="text-[14px] font-semibold">{tab === "open" ? "Waiting" : "Decided"}</span>
+										<span className="text-[12px] text-foreground/55">
+											{items.length} upload{items.length === 1 ? "" : "s"}
 										</span>
 									</div>
-								</button>
-							</li>
-						))}
-						</ul>
-					</aside>
+									{list}
+								</aside>,
+								column,
+							)
+						: (
+							<aside aria-label="Uploads" className="flex max-h-[45dvh] flex-col rounded-[20px] border border-border bg-card">
+								{list}
+							</aside>
+						)}
 					<ApprovalDetail key={selected.document_id} item={selected} />
 				</div>
 			)}
