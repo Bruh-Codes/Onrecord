@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getGoogleSheetsAccessToken } from "@/lib/google-sheets-auth";
+import { getGoogleSheetsAccessToken, googleSheetsErrorResponse } from "@/lib/google-sheets-auth";
 
 // Google's file picker runs in the browser and needs the owner's own access token.
 export async function GET(request: Request) {
@@ -7,6 +7,6 @@ export async function GET(request: Request) {
   try {
     return Response.json({ accessToken: await getGoogleSheetsAccessToken(request) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Google is not connected." }, { status: 409 });
+    return googleSheetsErrorResponse(error, "Google is not connected.", 409);
   }
 }

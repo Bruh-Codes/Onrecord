@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { sendPasswordResetEmail } from "@/lib/resend";
 import { dash } from "@better-auth/infra";
 import { adminHub } from "@/lib/admin-hub";
+import { refreshGoogleAccessToken } from "@/lib/google-oauth";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -121,6 +122,9 @@ export const auth = betterAuth({
 			// Refresh name + avatar from Google's profile on every sign-in, so the
 			// topbar avatar shows the Google picture instead of a bare initial.
 			overrideUserInfoOnSignIn: true,
+			// Same request as Better Auth's default, but logs Google's reason
+			// (invalid_grant, invalid_client, ...) when a refresh fails.
+			refreshAccessToken: refreshGoogleAccessToken,
 		},
 	},
 	verification: {
