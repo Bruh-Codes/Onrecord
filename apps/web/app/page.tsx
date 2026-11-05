@@ -1,6 +1,9 @@
 import { Footer } from "@/components/ui/Footer";
 import Image from "next/image";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import icon from "@/public/icon.png";
 import iconDark from "@/public/icon-dark.png";
 
@@ -37,7 +40,23 @@ const PILLARS = [
 	},
 ];
 
+async function hasSession() {
+	try {
+		return Boolean(await auth.api.getSession({ headers: await headers() }));
+	} catch {
+		// If auth is unreachable, still show the landing page.
+		return false;
+	}
+}
+
 export default async function LandingPage() {
+	// Signed-in visitors go straight into the app. /dashboard is where login
+	// sends everyone; the (app) layout then sends owners without a business
+	// to /setup, and reviewers/admins stay on /dashboard as they would after login.
+	if (await hasSession()) {
+		redirect("/dashboard");
+	}
+
 	return (
 		<div className="min-h-dvh flex flex-col bg-background text-foreground">
 			<header className="flex items-center px-6 sm:px-10 py-5">
