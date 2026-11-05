@@ -8,6 +8,7 @@ across every business the caller may review and serves the original file.
 """
 
 import asyncio
+import logging
 import mimetypes
 import uuid
 from datetime import date, datetime
@@ -20,6 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Claims, require_business_access, require_role
+from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import AppError, not_found
 from app.models.access import BusinessAccess
@@ -27,9 +29,12 @@ from app.models.business import Business
 from app.models.document import Document
 from app.models.enums import DocStatus, Role
 from app.models.transaction import Transaction
+from app.services.ona import answer_question, build_business_snapshot
+from app.services.ona_review import DRAFT_REQUEST, parse_draft, reviewer_context, template_draft
 from app.services.storage import StorageBackend, get_storage_backend
 
 router = APIRouter(tags=["approvals"])
+logger = logging.getLogger(__name__)
 
 # Still being read: nothing for a reviewer to decide yet.
 _IN_PROGRESS = {DocStatus.RECEIVED, DocStatus.CLASSIFIED}
@@ -193,6 +198,45 @@ async def list_approvals(
             entry["count"] += int(count)
             entry[direction.value] += int(amount or 0)
     return [_item(document, business, totals.get(document.id, {})) for document, business in pairs]
+
+
+class DraftNote(BaseModel):
+    recommendation: Literal["approved", "rejected"]
+    note: str
+    source: Literal["ona", "template"]
+
+
+@router.post("/v1/approvals/{document_id}/draft-note", response_model=DraftNote)
+async def draft_note(
+    document_id: uuid.UUID,
+    claims: Claims = Depends(require_role(Role.REVIEWER, Role.ADMIN)),
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> DraftNote:
+    """Ona's suggested decision and note for an upload. Nothing is saved or
+    sent: the reviewer edits it and presses Approve or Reject themselves."""
+    document = await session.scalar(select(Document).where(Document.id == document_id, Document.deleted_at.is_(None)))
+    if document is None:
+        raise not_found("DOCUMENT_NOT_FOUND", "No document with that id.")
+    await require_business_access(document.business_id, claims, session)
+
+    context = await reviewer_context(session, document.business_id, document.id)
+    snapshot = await build_business_snapshot(session, document.business_id)
+    snapshot["current_page"] = "Approvals"
+    snapshot["reviewer_context"] = context
+    try:
+        answer = await answer_question(
+            settings=settings, session=session, business_id=document.business_id,
+            message=DRAFT_REQUEST, snapshot=snapshot, history=(),
+        )
+        parsed = None if answer.error else parse_draft(answer.answer)
+    except Exception:  # Ona being down must not block a review
+        logger.warning("Draft note from Ona failed", exc_info=True)
+        parsed = None
+    if parsed:
+        return DraftNote(recommendation=parsed[0], note=parsed[1], source="ona")
+    recommendation, note = template_draft(context)
+    return DraftNote(recommendation=recommendation, note=note, source="template")
 
 
 @router.get("/v1/approvals/{document_id}/file")
