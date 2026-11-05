@@ -3,7 +3,11 @@ from datetime import date
 
 from app.models.enums import CategorySource, Direction
 from app.services.sheet_sync import categories
-from app.services.sheet_sync.detect import mapping_problems, propose_mapping
+from app.services.sheet_sync.detect import (
+    field_problems,
+    mapping_problems,
+    propose_mapping,
+)
 from app.services.sheet_sync.parsing import (
     parse_amount,
     parse_date,
@@ -121,7 +125,7 @@ def test_column_guess_from_data_when_there_is_no_header():
 def test_mapping_problems_are_plain_words():
     assert "date" in mapping_problems({"columns": {"amount": 1}}, 3)[0]
     assert any("amount" in problem for problem in mapping_problems({"columns": {"date": 0}}, 3))
-    assert any("two things" in p for p in mapping_problems({"columns": {"date": 0, "amount": 0}}, 3))
+    assert any("already used" in p for p in mapping_problems({"columns": {"date": 0, "amount": 0}}, 3))
 
 
 def test_categories_from_the_sheet_or_keywords():
@@ -133,3 +137,55 @@ def test_categories_from_the_sheet_or_keywords():
     assert sale.category_l1 == "revenue"
     unknown = categories.resolve(Direction.OUT, None, "Kwame")
     assert unknown.category_l1 == "unknown" and unknown.label is None
+
+
+DEMO = [
+    [],
+    ["Tomato farming expenses"],
+    ["DEMO DATA - fictional expenses for OnRecord testing; not a bank statement."],
+    ["Farmer: Yaw Mensah. Period: September 2026. Currency: GHS."],
+    [],
+    ["Total expenses (GHS)", 6800],
+    [],
+    [],
+    ["Date", "Description", "Category", "Payment method", "Reference", "Quantity", "Unit cost (GHS)", "Amount (GHS)"],
+    ["", "Tractor ploughing service", "Land preparation", "MoMo", "DEMO-001", 2, 400, 800],
+    ["", "Tomato seed packs", "Seeds", "MoMo", "DEMO-002", 5, 90, 450],
+    ["", "Compost bags", "Fertilizer", "Cash", "DEMO-004", 10, 35, 350],
+]
+
+
+def test_unit_cost_is_not_taken_for_money_out():
+    mapping = propose_mapping(DEMO, today=TODAY, names=("farming_expenses_demo", "Farm Expenses"))
+    assert mapping["header_row"] == 9
+    assert mapping["columns"]["amount"] == 7
+    assert mapping["columns"]["money_out"] is None and mapping["columns"]["money_in"] is None
+    assert mapping["default_direction"] == "out"
+    assert mapping_problems(mapping, 8) == []
+
+
+def test_a_sheet_without_dates_says_so_and_can_use_one_date():
+    mapping = propose_mapping(DEMO, today=TODAY, names=("farming_expenses_demo", "Farm Expenses"))
+    rows = parse_rows(DEMO, mapping, today=TODAY)
+    assert len(rows) == 3 and all(row.issues == ["No date in this row."] for row in rows)
+    rows = parse_rows(DEMO, {**mapping, "default_date": "2026-09-30"}, today=TODAY)
+    assert [row.record["amount_pesewas"] for row in rows] == [80000, 45000, 35000]
+    assert all(row.record["occurred_on"] == "2026-09-30" and row.record["direction"] == "out" for row in rows)
+
+
+def test_unreadable_date_names_the_cell():
+    mapping = {"header_row": 0, "columns": {"date": 0, "amount": 1}, "default_direction": "in"}
+    row = parse_row(["sometime", 100], 1, mapping, today=TODAY)
+    assert "sometime" in row.issues[0]
+
+
+def test_date_order_and_a_sales_tab_are_guessed():
+    rows = [["Date", "Item", "Amount"], ["10/31/2026", "Rice", 300], ["10/30/2026", "Beans", 120]]
+    mapping = propose_mapping(rows, today=TODAY, names=("Shop", "Sales"))
+    assert mapping["date_order"] == "mdy" and mapping["default_direction"] == "in"
+
+
+def test_problems_point_at_their_question():
+    problems = field_problems({"columns": {"date": 0, "amount": 1, "money_out": 2}}, 3)
+    assert problems[0]["field"] == "amount"
+    assert field_problems({"columns": {"amount": 1}, "default_date": "2026-09-30"}, 3) == []

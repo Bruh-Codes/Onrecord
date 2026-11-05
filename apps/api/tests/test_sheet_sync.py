@@ -265,3 +265,43 @@ async def test_large_amounts_after_the_first_import_wait_for_a_look(client, shee
     assert pending["review_reason"] == "large_amount" and pending["actions"] == ["add", "skip"]
     await client.post(f"/v1/sheet-rows/{pending['id']}/review", headers=headers, json={"action": "add"})
     assert ("Big order", 500000) in await _ledger(client, headers, bid)
+
+
+async def test_undated_costs_tab_switches_tab_and_uses_one_date(client, sheet, run_worker, monkeypatch):
+    headers, bid = await _owner(client)
+    tabs = {0: "Cash book", 7: "Farm Expenses"}
+    monkeypatch.setattr(google, "tab_title", lambda token, sid, gid: tabs[gid])
+    monkeypatch.setattr(google, "tabs", lambda token, sid: [
+        {"sheet_gid": gid, "title": title, "row_count": 100} for gid, title in tabs.items()
+    ])
+    connection = await _connect(client, headers, bid, sheet, [HEADER, [_d(2), "Sold rice", 300, "", ""]])
+    listed = (await client.get(f"/v1/sheet-connections/{connection['id']}/tabs", headers=headers)).json()
+    assert [tab["title"] for tab in listed] == ["Cash book", "Farm Expenses"]
+
+    sheet.set([
+        ["Tomato farming expenses"],
+        ["Date", "Description", "Quantity", "Unit cost (GHS)", "Amount (GHS)"],
+        ["", "Tractor ploughing", 2, 400, 800],
+        ["", "Seed packs", 5, 90, 450],
+    ])
+    switched = await client.put(f"/v1/sheet-connections/{connection['id']}/tab", headers=headers, json={"sheet_gid": 7})
+    assert switched.status_code == 200, switched.text
+    assert switched.json()["sheet_title"] == "Farm Expenses"
+    mapping = switched.json()["mapping"]
+    assert mapping["columns"]["amount"] == 4 and mapping["columns"]["money_out"] is None
+    assert mapping["default_direction"] == "out"
+
+    preview = (await client.post(f"/v1/sheet-connections/{connection['id']}/preview", headers=headers, json={})).json()
+    assert preview["readable_rows"] == 0 and preview["notes"][0]["field"] == "date"
+    assert "no dates" in preview["notes"][0]["message"]
+
+    dated = {**mapping, "default_date": _d(10)[6:] + "-" + _d(10)[3:5] + "-" + _d(10)[:2]}
+    preview = (await client.post(f"/v1/sheet-connections/{connection['id']}/preview", headers=headers, json={"mapping": dated})).json()
+    assert preview["readable_rows"] == 2 and preview["money_out_pesewas"] == 125000 and preview["field_problems"] == []
+    confirmed = await client.put(f"/v1/sheet-connections/{connection['id']}/mapping", headers=headers, json={"mapping": dated})
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["mapping"]["default_date"] == dated["default_date"]
+    assert await _ledger(client, headers, bid) == [("Seed packs", 45000), ("Tractor ploughing", 80000)]
+
+    late = await client.put(f"/v1/sheet-connections/{connection['id']}/tab", headers=headers, json={"sheet_gid": 0})
+    assert late.status_code == 409

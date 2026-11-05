@@ -29,6 +29,8 @@ export type SheetMapping = {
 	columns: Partial<Record<SheetField, number | null>>;
 	default_direction: "in" | "out" | null;
 	date_order: "dmy" | "mdy";
+	/** Used for rows whose date cell is empty (sheets that keep no dates). */
+	default_date?: string | null;
 };
 
 export type SheetStatus = "needs_mapping" | "active" | "paused" | "needs_attention" | "disconnected";
@@ -93,7 +95,18 @@ export type SheetPreview = {
 	rows: { row_number: number; values: string[]; record: SheetRecord | null; issues: string[] }[];
 	problems: string[];
 	data_rows: number;
+	/** The same problems, tied to the question they belong to. */
+	field_problems: { field: string; message: string }[];
+	/** What the rows themselves say, such as a date column with nothing in it. */
+	notes: { field: string; message: string }[];
+	readable_rows: number;
+	money_in_pesewas: number;
+	money_out_pesewas: number;
+	first_date: string | null;
+	last_date: string | null;
 };
+
+export type SheetTab = { sheet_gid: number; title: string; row_count: number | null };
 
 const json = (body: unknown) => ({ body: JSON.stringify(body) });
 
@@ -104,6 +117,9 @@ export const sheetApi = {
 	get: (id: string) => request<SheetConnectionDetail>(`/v1/sheet-connections/${id}`),
 	preview: (id: string, mapping?: SheetMapping) =>
 		request<SheetPreview>(`/v1/sheet-connections/${id}/preview`, { method: "POST", ...json({ mapping: mapping ?? null }) }),
+	tabs: (id: string) => request<SheetTab[]>(`/v1/sheet-connections/${id}/tabs`),
+	changeTab: (id: string, sheetGid: number) =>
+		request<SheetConnection>(`/v1/sheet-connections/${id}/tab`, { method: "PUT", ...json({ sheet_gid: sheetGid }) }),
 	confirm: (id: string, mapping: SheetMapping) =>
 		request<SheetConnection>(`/v1/sheet-connections/${id}/mapping`, { method: "PUT", ...json({ mapping }) }),
 	sync: (id: string) => request<{ queued: boolean }>(`/v1/sheet-connections/${id}/sync`, { method: "POST" }),

@@ -31,10 +31,16 @@ from app.schemas.sheet_sync import (
     SheetPreviewRequest,
     SheetReviewAction,
     SheetRowOut,
+    SheetTab,
+    SheetTabChange,
 )
 from app.services.audit import write_audit_event
 from app.services.sheet_sync import google, review
-from app.services.sheet_sync.detect import mapping_problems, propose_mapping
+from app.services.sheet_sync.detect import (
+    field_problems,
+    mapping_problems,
+    propose_mapping,
+)
 from app.services.sheet_sync.parsing import cell_text, parse_rows
 
 router = APIRouter(tags=["sheet-sync"])
@@ -109,7 +115,7 @@ async def _counts(session: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID
 
 def _out(connection: SheetConnection, counts: dict[str, int]) -> dict:
     mapping = connection.mapping
-    clean = {key: mapping[key] for key in ("header_row", "columns", "default_direction", "date_order") if key in mapping} if mapping else None
+    clean = {key: mapping[key] for key in ("header_row", "columns", "default_direction", "date_order", "default_date") if key in mapping} if mapping else None
     return {
         **{column: getattr(connection, column) for column in (
             "id", "business_id", "spreadsheet_id", "spreadsheet_name", "sheet_gid", "sheet_title", "status",
@@ -134,19 +140,45 @@ def _column_names(width: int) -> list[str]:
     return [letters[index] if index < 26 else letters[index // 26 - 1] + letters[index % 26] for index in range(width)]
 
 
+def _guess(values: list[list], connection: SheetConnection) -> dict:
+    return propose_mapping(values, names=(connection.spreadsheet_name, connection.sheet_title))
+
+
 def _preview(values: list[list], mapping: dict) -> SheetPreview:
     width = max((len(row) for row in values[:200]), default=0)
     header_row = int(mapping.get("header_row") or 0)
     header = [cell_text(value) for value in values[header_row - 1]] if 0 < header_row <= len(values) else []
     parsed = parse_rows(values, mapping)
+    readable = [row.record for row in parsed if row.record]
+    dates = sorted(record["occurred_on"] for record in readable)
+    columns = _column_names(width)
+    notes = []
+    date_index = (mapping.get("columns") or {}).get("date")
+    undated = sum(1 for row in parsed if "No date in this row." in row.issues)
+    if parsed and undated == len(parsed):
+        where = f"Column {columns[date_index]}" if date_index is not None and date_index < width else "Your sheet"
+        notes.append({"field": "date", "message": f"{where} has no dates in it. Add them in your sheet, or pick one date for every row."})
+    elif undated:
+        notes.append({"field": "date", "message": f"{undated} row{'s' if undated != 1 else ''} have no date. Pick a date to use for them, or fill them in your sheet."})
+    unclear = sum(1 for row in parsed if any("money in or money out" in issue for issue in row.issues))
+    if unclear:
+        notes.append({"field": "direction", "message": "Tell OnRecord whether these rows are money in or money out."})
+    problems = field_problems(mapping, width)
     return SheetPreview(
         mapping=SheetMapping.model_validate({**mapping, "columns": {k: v for k, v in mapping["columns"].items()}}),
         header=header + [""] * (width - len(header)),
-        columns=_column_names(width),
+        columns=columns,
         rows=[PreviewRow(row_number=row.row_number, values=row.values, record=row.record, issues=row.issues)
               for row in parsed[:_PREVIEW_ROWS]],
-        problems=mapping_problems(mapping, width),
+        problems=[problem["message"] for problem in problems],
         data_rows=len(parsed),
+        field_problems=problems,
+        notes=notes,
+        readable_rows=len(readable),
+        money_in_pesewas=sum(record["amount_pesewas"] for record in readable if record["direction"] == "in"),
+        money_out_pesewas=sum(record["amount_pesewas"] for record in readable if record["direction"] == "out"),
+        first_date=dates[0] if dates else None,
+        last_date=dates[-1] if dates else None,
     )
 
 
@@ -185,7 +217,7 @@ async def create_connection(
     values = await _read(session, connection, claims.user_id)
     if not any(any(cell_text(cell) for cell in row) for row in values):
         raise AppError("SHEET_EMPTY", "That tab is empty. Choose the tab where you keep your records.", 422)
-    connection.mapping = propose_mapping(values)
+    connection.mapping = _guess(values, connection)
     session.add(connection)
     await session.flush()
     await write_audit_event(session, business_id=business_id, actor=claims.user_id, action="sheet_connection.create",
@@ -228,13 +260,65 @@ async def preview_connection(
     connection = await _connection(session, connection_id, claims)
     values = await _read(session, connection, connection.connected_by)
     if body.mapping:
-        mapping = body.mapping.model_dump()
+        mapping = body.mapping.model_dump(mode="json")
     elif connection.mapping and not (connection.status == "needs_mapping" and connection.mapping_confirmed_at):
         mapping = connection.mapping
     else:
         # First setup, or the columns changed since the owner last confirmed them.
-        mapping = propose_mapping(values)
+        mapping = _guess(values, connection)
     return _preview(values, mapping)
+
+
+@router.get("/v1/sheet-connections/{connection_id}/tabs", response_model=list[SheetTab])
+async def list_tabs(
+    connection_id: uuid.UUID,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    connection = await _connection(session, connection_id, claims)
+    token = await _token(session, connection.connected_by)
+    try:
+        return await asyncio.to_thread(google.tabs, token, connection.spreadsheet_id)
+    except google.GoogleSheetError as error:
+        raise _google_error(error) from error
+
+
+@router.put("/v1/sheet-connections/{connection_id}/tab", response_model=SheetConnectionOut)
+async def change_tab(
+    connection_id: uuid.UUID,
+    body: SheetTabChange,
+    claims: Claims = Depends(verify_token),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Read a different tab of the same spreadsheet. Only before anything was read from it."""
+    connection = await _connection(session, connection_id, claims)
+    _owner_only(claims)
+    if connection.last_synced_at is not None:
+        raise AppError("SHEET_ALREADY_SYNCING",
+                       "Records from this tab are already in OnRecord. Connect the other tab as its own sheet.", 409)
+    if body.sheet_gid == connection.sheet_gid:
+        return _out(connection, {})
+    taken = await session.scalar(select(SheetConnection.id).where(
+        SheetConnection.business_id == connection.business_id,
+        SheetConnection.spreadsheet_id == connection.spreadsheet_id,
+        SheetConnection.sheet_gid == body.sheet_gid, SheetConnection.status != "disconnected",
+        SheetConnection.id != connection.id,
+    ))
+    if taken is not None:
+        raise AppError("SHEET_TAB_CONNECTED", "That tab is already connected.", 409)
+    previous = connection.sheet_title
+    connection.sheet_gid = body.sheet_gid
+    values = await _read(session, connection, connection.connected_by)
+    if not any(any(cell_text(cell) for cell in row) for row in values):
+        raise AppError("SHEET_EMPTY", "That tab is empty. Choose the tab where you keep your records.", 422)
+    connection.mapping = _guess(values, connection)
+    connection.mapping_confirmed_at = None
+    connection.status, connection.last_error = "needs_mapping", None
+    await write_audit_event(session, business_id=connection.business_id, actor=claims.user_id,
+                            action="sheet_connection.tab", target=f"sheet_connection:{connection.id}",
+                            before={"sheet_title": previous}, after={"sheet_title": connection.sheet_title})
+    await session.commit()
+    return _out(connection, {})
 
 
 @router.put("/v1/sheet-connections/{connection_id}/mapping", response_model=SheetConnectionOut)
@@ -246,7 +330,7 @@ async def confirm_mapping(
 ) -> dict:
     connection = await _connection(session, connection_id, claims)
     _owner_only(claims)
-    mapping = body.mapping.model_dump()
+    mapping = body.mapping.model_dump(mode="json")
     values = await _read(session, connection, connection.connected_by)
     problems = mapping_problems(mapping, max((len(row) for row in values[:200]), default=0))
     if problems:
