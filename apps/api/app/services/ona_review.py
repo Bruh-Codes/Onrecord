@@ -122,7 +122,7 @@ def template_draft(context: dict[str, Any]) -> tuple[str, str]:
     name = upload.get("filename") or "this file"
     if "READ_TRUNCATED" in findings or upload.get("reader_marked_truncated"):
         return "rejected", (
-            f"We could only read part of {name}, so it can't count toward your loan readiness yet. "
+            f"We could only read part of {name}, so it can't count in your record yet. "
             "Please upload the full statement again, or split it into shorter date ranges."
         )
     if balance == "balance_breaks":
@@ -130,7 +130,7 @@ def template_draft(context: dict[str, Any]) -> tuple[str, str]:
             f"Some balances in {name} don't follow on from the row before, so we couldn't confirm the rows are right. "
             "Please upload the original statement from your provider (PDF) rather than a screenshot or edited copy."
         )
-    return "approved", f"We checked the rows in {name} against the file and they match. They now count toward your loan readiness."
+    return "approved", f"We checked the rows in {name} against the file and they match. They now count in your record."
 
 
 def parse_draft(text: str) -> tuple[str, str] | None:

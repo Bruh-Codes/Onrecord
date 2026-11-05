@@ -9,7 +9,7 @@ export function GetStartedCard({ hasData = false, googleSheets }: { hasData?: bo
 			</h2>
 			<p className="text-[13.5px] opacity-70 m-0 mb-6">
 				{hasData
-					? "The more months your records cover, the stronger your loan file."
+					? "The more months your records cover, the stronger your record looks to a lender."
 					: "A MoMo or bank statement covering your last 6 to 12 months is the best place to start."}
 			</p>
 			<div className="flex gap-5 flex-wrap">

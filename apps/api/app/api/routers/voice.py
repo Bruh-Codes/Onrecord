@@ -44,10 +44,10 @@ async def transcribe_voice(
                 },
             )
     except httpx.HTTPError as error:
-        raise AppError("VOICE_PROVIDER_UNAVAILABLE", "Groq voice transcription is unavailable.", 503) from error
+        raise AppError("VOICE_PROVIDER_UNAVAILABLE", "Voice notes aren't working right now. Please type instead.", 503) from error
 
     if not response.is_success:
         detail = response.json().get("error", {}).get("message") if response.headers.get("content-type", "").startswith("application/json") else None
-        raise AppError("VOICE_PROVIDER_ERROR", detail or "Groq could not transcribe the recording.", 502)
+        raise AppError("VOICE_PROVIDER_ERROR", detail or "We couldn't make out that recording. Please try again or type instead.", 502)
 
     return {"text": response.json().get("text", "").strip()}

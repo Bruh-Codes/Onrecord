@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { GoogleSheetsConnect } from "@/components/integrations/GoogleSheetsConnect";
-import { useAppState } from "@/lib/app-state";
 import { authClient } from "@/lib/auth-client";
 import { formatGhs } from "@/lib/format";
 import {
@@ -21,7 +20,6 @@ import { BAND_LABELS, buildNextSteps } from "@/lib/readiness";
 import { HomePageSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 export default function HomePage() {
-	const state = useAppState();
 	const { data: session } = authClient.useSession();
 	const ownerFirstName = session?.user?.name?.split(" ")[0];
 	const { businessId } = useMe();
@@ -60,19 +58,13 @@ export default function HomePage() {
 
 	return (
 		<div className="px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[1100px]">
-			{state.draftMode && (
-				<div className="bg-accent text-[#2a2a2a] text-[12.5px] px-4 py-2.5 rounded-xl mb-4.5">
-					Draft mode is on-this profile is not visible to reviewers yet. Turn it
-					off when you&apos;re ready to share.
-				</div>
-			)}
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">
 				{isNewUser ? "Welcome" : "Welcome back"}{ownerFirstName ? `, ${ownerFirstName}` : ""}!
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6">
 				{isNewUser
 					? "Start by adding your MoMo or bank statements. We'll turn them into a record a lender can read."
-					: "Here's where your money and your loan file stand."}
+					: "Here's your money and how ready your record is to show a lender."}
 			</p>
 
 			{awaitingReview > 0 && (
@@ -100,7 +92,7 @@ export default function HomePage() {
 						</div>
 					</Link>
 					<Link href="/readiness" className="rounded-2xl border border-border bg-card p-4 no-underline text-foreground hover:border-foreground/30">
-						<div className="text-[12.5px] text-foreground/60">Loan readiness</div>
+						<div className="text-[12.5px] text-foreground/60">Readiness</div>
 						<div className="mt-1 font-display text-[24px] leading-tight tabular-nums">
 							{score.isLoading ? <Skeleton className="mt-1 h-6 w-20" /> : <>{score.data ? `${Math.round(score.data.total)}` : "—"}
 							<span className="text-[14px] text-foreground/50"> / 100</span></>}
@@ -127,7 +119,7 @@ export default function HomePage() {
 			{!isNewUser && nextSteps.length > 0 && (
 				<section className="mb-6 rounded-2xl border border-border bg-card p-4 sm:p-5">
 					<div className="mb-2 flex items-baseline justify-between gap-3">
-						<h2 className="m-0 text-[15px] font-semibold font-[family-name:var(--body-font)]">Next steps for your loan file</h2>
+						<h2 className="m-0 text-[15px] font-semibold font-[family-name:var(--body-font)]">Next steps for your record</h2>
 						<Link href="/readiness" className="text-[12.5px] underline underline-offset-2">See all</Link>
 					</div>
 					<ul className="m-0 list-none p-0">

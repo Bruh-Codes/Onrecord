@@ -140,7 +140,7 @@ async def get_score(
         .limit(1)
     )
     if row is None:
-        raise not_found("SCORE_NOT_FOUND", "No score has been computed yet for this business. Trigger a recompute.")
+        raise not_found("SCORE_NOT_FOUND", "Your score appears after your first statement is read.")
     return ReadinessScoreOut.model_validate(row)
 
 

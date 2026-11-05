@@ -182,7 +182,7 @@ export default function ApprovalsPage() {
 			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">Review</div>
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">Approvals</h1>
 			<p className="text-sm opacity-75 m-0 mb-5 max-w-[720px]">
-				Uploads we couldn&apos;t fully trust are kept out of loan readiness until someone checks them. Compare the rows
+				Uploads we couldn&apos;t fully trust are kept out of the owner&apos;s record until someone checks them. Compare the rows
 				with the original file, then approve them or send them back to the owner with a note.
 			</p>
 

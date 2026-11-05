@@ -221,7 +221,7 @@ export function UploadDropzone({
 				<UploadIcon className="text-foreground/60 group-hover:text-foreground transition-all" />
 				<span className="text-[13.5px] font-semibold text-foreground/60 group-hover:text-foreground transition-all">
 					{businessError
-						? "Upload unavailable-your business profile could not be loaded"
+						? "Upload unavailable. Your business profile couldn't be loaded"
 						: uploadReady
 							? "Upload anything: a MoMo or bank statement, a screenshot, a receipt photo, a spreadsheet"
 							: "Preparing your secure upload"}
@@ -327,7 +327,7 @@ export function UploadDropzone({
 			)}
 			{batchProcessingComplete && (
 				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
-					All files processed. Taking you to Documents…
+					All files processed. Taking you to Records…
 				</div>
 			)}
 			{upload.isPending && (

@@ -150,7 +150,7 @@ export function SheetColumnSetup({ connectionId, onDone, onCancel }: { connectio
 					onClick={() => void save()}
 					className="rounded-full bg-foreground px-5 py-2.5 text-[13.5px] text-background disabled:cursor-not-allowed disabled:opacity-40"
 				>
-					{confirm.isPending ? "Saving..." : "Looks right, start syncing"}
+					{confirm.isPending ? "Saving…" : "Looks right, start syncing"}
 				</button>
 				{onCancel ? <button type="button" onClick={onCancel} className="text-[13px] underline underline-offset-2">Cancel</button> : null}
 			</div>

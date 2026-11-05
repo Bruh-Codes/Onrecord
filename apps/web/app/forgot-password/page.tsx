@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
 				<Link href="/" className="hover:opacity-100">
-					<span className="font-display text-[19px]">Onrecord</span>
+					<span className="font-display text-[19px]">OnRecord</span>
 				</Link>
 			</div>
 
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
 									reset link in your inbox shortly. Check the spam folder too.`}
 							</div>
 							<Link
-								href="/signup"
+								href="/signup?mode=login"
 								className="w-full inline-flex items-center justify-center text-background font-display text-[14.5px] p-3.5 rounded-full"
 								style={{ background: "var(--foreground)", color: "var(--background)" }}
 							>
@@ -114,7 +114,7 @@ export default function ForgotPasswordPage() {
 
 							<p className="text-center text-[12.5px] mt-4 mb-0">
 								<Link
-									href="/signup"
+									href="/signup?mode=login"
 									className="opacity-70 hover:opacity-100"
 								>
 									Remembered it? Log in

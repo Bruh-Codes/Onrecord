@@ -96,7 +96,7 @@ export default function LenderSummaryPage() {
 					<header className="flex flex-wrap items-start justify-between gap-6">
 						<div className="flex items-center gap-2.5">
 							<Image src={iconDark} alt="" width={22} height={22} />
-							<span className="font-display text-[15px]">Onrecord</span>
+							<span className="font-display text-[15px]">OnRecord</span>
 						</div>
 						<div className="text-right text-[11.5px] leading-relaxed text-foreground/60">
 							<div className="font-semibold uppercase tracking-[0.12em] text-foreground/80">Financial record summary</div>
@@ -261,14 +261,14 @@ export default function LenderSummaryPage() {
 
 					<footer className="mt-9 border-t border-border pt-4 text-[10.5px] leading-relaxed text-foreground/55">
 						<p className="m-0">
-							Prepared with Onrecord from bank and MoMo statements and other records the owner uploaded and confirmed. Records the owner typed
+							Prepared with OnRecord from bank and MoMo statements and other records the owner uploaded and confirmed. Records the owner typed
 							in themselves, such as cash sales, are counted and marked as typed in. Transfers between the owner&apos;s own accounts are left
 							out. Tax payments are those the records show and are not a tax clearance. This is a summary of records, not an audited
 							statement or a credit decision.
 						</p>
 						<p className="m-0 mt-2 flex justify-between gap-4 text-foreground/45">
 							<span>Ref {reference}</span>
-							<span>Onrecord · financial records for small businesses in Ghana</span>
+							<span>OnRecord · financial records for small businesses in Ghana</span>
 						</p>
 					</footer>
 				</div>

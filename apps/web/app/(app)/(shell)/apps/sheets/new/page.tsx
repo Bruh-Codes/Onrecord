@@ -95,7 +95,7 @@ export default function ConnectSheetPage() {
 				onClick={() => void connect()}
 				className="mt-6 rounded-full bg-foreground px-5 py-2.5 text-[13.5px] text-background disabled:cursor-not-allowed disabled:opacity-40"
 			>
-				{saving ? "Reading your sheet..." : "Next: check the columns"}
+				{saving ? "Reading your sheet…" : "Next: check the columns"}
 			</button>
 		</div>
 	);

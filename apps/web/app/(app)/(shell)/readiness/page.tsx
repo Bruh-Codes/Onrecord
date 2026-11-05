@@ -35,7 +35,7 @@ const PILLARS = [
 		label: "Proof",
 		weight: 15,
 		description:
-			"How much of your money is backed by a bank or MoMo statement. Receipts count for part, records you typed in for a quarter.",
+			"How much of your money is backed by a bank or MoMo statement. Receipts count for part, records you typed in count for a quarter as much.",
 	},
 ] as const;
 
@@ -56,10 +56,10 @@ export default function ReadinessPage() {
 		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[1000px]">
 			<div className="mb-6 flex flex-wrap items-end justify-between gap-4">
 				<div>
-					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Loan readiness</h1>
+					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Readiness</h1>
 					<p className="text-sm opacity-70 m-0 max-w-[620px]">
-						How complete your record is for a bank or microfinance lender, and
-						what to do next. This is not a lending decision.
+						How complete your record is for a bank, microfinance or co-op lender,
+						and what to do next. OnRecord doesn&apos;t lend or make loan decisions.
 					</p>
 				</div>
 				<Link

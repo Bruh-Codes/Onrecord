@@ -76,7 +76,7 @@ export default function ReviewerQueuePage() {
 			) : null}
 			{queue.isError ? (
 				<div className="rounded-[20px] border border-destructive/30 bg-destructive-background p-6 text-sm text-destructive">
-					We could not load the classification queue. Try refreshing the page.
+					We couldn&apos;t load the transactions to sort. Try refreshing the page.
 				</div>
 			) : null}
 			{!queue.isLoading && !queue.isError && items.length === 0 ? (
@@ -106,7 +106,7 @@ export default function ReviewerQueuePage() {
 						/>
 						{saved && (
 							<div className="mt-3 text-xs text-positive">
-								Saved. Your money and health pages are updating.
+								Saved. Your Money page is updating.
 							</div>
 						)}
 					</div>

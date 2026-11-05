@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, pool } from "@/lib/auth";
-import { AppStateProvider } from "@/lib/app-state";
 
 export default async function AppLayout({
 	children,
@@ -35,5 +34,5 @@ export default async function AppLayout({
 		}
 	}
 
-	return <AppStateProvider>{children}</AppStateProvider>;
+	return children;
 }

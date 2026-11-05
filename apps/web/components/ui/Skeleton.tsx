@@ -96,7 +96,7 @@ export function PanelSkeleton({ rows = 3 }: { rows?: number }) {
 /** Money page body under its title. */
 export function MoneyPageSkeleton() {
 	return (
-		<div aria-busy="true" aria-label="Loading your money picture">
+		<div aria-busy="true" aria-label="Loading your money">
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				{[0, 1, 2, 3].map((i) => <StatCardSkeleton key={i} />)}
 			</div>

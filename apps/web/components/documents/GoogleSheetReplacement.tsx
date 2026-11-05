@@ -56,7 +56,7 @@ export function GoogleSheetReplacement({
 				onClick={() => void replaceSheet()}
 				className="shrink-0 rounded-full bg-foreground px-3.5 py-2 text-background disabled:opacity-50"
 			>
-				{status === "importing" ? "Replacing..." : "Replace existing"}
+				{status === "importing" ? "Replacing…" : "Replace existing"}
 			</button>
 		</div>
 	);

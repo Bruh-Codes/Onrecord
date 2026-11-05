@@ -5,9 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
-	title: "Onrecord - SME Credit Readiness Assistant",
+	title: "OnRecord · Financial records lenders can trust",
 	description:
-		"Turn a folder of business records into a lender-ready financial profile.",
+		"Turn your business records into a clear financial record any lender can check.",
 };
 
 export default function RootLayout({

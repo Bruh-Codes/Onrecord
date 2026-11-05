@@ -19,7 +19,7 @@ from app.api.routers.voice import router as voice_router
 from app.config import get_settings
 from app.errors import AppError
 
-app = FastAPI(title="Onrecord Credit Readiness API")
+app = FastAPI(title="OnRecord API")
 
 app.add_middleware(
     CORSMiddleware,

@@ -100,7 +100,7 @@ export function TransactionsList({
 					{Object.entries(CATEGORY_LABELS).filter(([value]) => value !== "unknown").map(([value, label]) => (
 						<option key={value} value={value}>{label}</option>
 					))}
-					<option value="unclassified">Not categorised</option>
+					<option value="unclassified">Not sorted yet</option>
 				</select>
 				<select
 					aria-label="Sort"
@@ -130,7 +130,7 @@ export function TransactionsList({
 								<div className="truncate text-[12px] text-foreground/55">
 									{[
 										row.counterparty ? row.description : null,
-										row.internal_transfer ? "Own transfer" : row.hand_entered ? row.category_l2 : CATEGORY_LABELS[row.category_l1 ?? ""] ?? "Not categorised",
+										row.internal_transfer ? "Own transfer" : row.hand_entered ? row.category_l2 : CATEGORY_LABELS[row.category_l1 ?? ""] ?? "Not sorted yet",
 										row.fee_pesewas ? `fees ${formatGhs(row.fee_pesewas)}` : null,
 										row.hand_entered ? "Typed in by you" : row.document_name,
 									].filter(Boolean).join(" · ")}

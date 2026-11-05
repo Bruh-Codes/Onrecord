@@ -94,7 +94,7 @@ export function SheetPicker({ onPick, onError }: { onPick: (file: PickedSpreadsh
 	if (GOOGLE_PICKER_ENABLED) {
 		return (
 			<button type="button" onClick={() => void openPicker()} disabled={opening} className="self-start rounded-full bg-foreground px-4.5 py-2.5 text-[13px] text-background disabled:opacity-50">
-				{opening ? "Opening Google Drive..." : "Choose from Google Drive"}
+				{opening ? "Opening Google Drive…" : "Choose from Google Drive"}
 			</button>
 		);
 	}

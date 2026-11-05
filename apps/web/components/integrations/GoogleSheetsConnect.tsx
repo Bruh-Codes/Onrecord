@@ -120,7 +120,7 @@ export function GoogleSheetsConnect() {
               {files.map((file) => <option key={file.id} value={file.id}>{file.name}</option>)}
             </select>
             <button type="button" disabled={!sheetName || status === "importing"} onClick={() => void importSheet()} className="shrink-0 bg-foreground text-background text-[13px] px-4 py-2 rounded-full disabled:opacity-40 disabled:cursor-not-allowed">
-              {status === "importing" ? "Importing..." : "Import"}
+              {status === "importing" ? "Importing…" : "Import"}
             </button>
           </div>
           {fileId && (
@@ -131,7 +131,7 @@ export function GoogleSheetsConnect() {
               onChange={(event) => setSheetName(event.target.value)}
               className="w-full text-[12px] px-2.5 py-2 rounded-lg bg-background border border-foreground/15 disabled:opacity-60"
             >
-              <option value="">{sheetsLoading ? "Loading sheet tabs..." : sheets.length === 0 ? "No sheet tabs found" : "Choose a sheet tab"}</option>
+              <option value="">{sheetsLoading ? "Loading sheet tabs…" : sheets.length === 0 ? "No sheet tabs found" : "Choose a sheet tab"}</option>
               {sheets.map((sheet) => <option key={sheet.sheetId} value={sheet.title}>{sheet.title}</option>)}
             </select>
           )}

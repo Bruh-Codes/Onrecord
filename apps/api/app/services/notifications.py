@@ -56,8 +56,8 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
             "kind": "classification",
             "dedupe_key": "classification_queue",
             "severity": "attention",
-            "title": "Transactions need classification",
-            "body": f"{len(pending)} transaction(s) totaling {_format_ghs(total)} need a category review.",
+            "title": "Some money needs sorting",
+            "body": f"{len(pending)} transaction{'' if len(pending) == 1 else 's'} ({_format_ghs(total)}) need{'s' if len(pending) == 1 else ''} you to say what {'it was' if len(pending) == 1 else 'they were'} for.",
             "href": "/reviewer",
             "data": {"count": len(pending), "amount_pesewas": total},
         })
@@ -67,9 +67,9 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
             "kind": "gaps",
             "dedupe_key": "open_gaps",
             "severity": "attention",
-            "title": "Readiness gaps need attention",
-            "body": f"{len(gaps)} open gap(s) are still blocking a lender-ready profile.",
-            "href": "/gaps",
+            "title": "Things to do on your record",
+            "body": f"{len(gaps)} item{'' if len(gaps) == 1 else 's'} still missing. See what to do on Readiness.",
+            "href": "/readiness",
             "data": {"count": len(gaps), "gap_ids": [str(gap.id) for gap in gaps]},
         })
 
@@ -79,7 +79,7 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
         if review_status == "approved":
             # Tell the owner once; a re-approval with a new note reopens it.
             note = review.get("reviewer_note") if isinstance(review.get("reviewer_note"), str) else ""
-            body = "A reviewer checked this file. Its records now count toward your loan readiness."
+            body = "A reviewer checked this file. Its records now count in your record."
             states.append({
                 "kind": "document_review",
                 "dedupe_key": f"document:{document.id}",
@@ -104,7 +104,7 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
             reason = (
                 review.get("summary")
                 if isinstance(review, dict) and isinstance(review.get("summary"), str)
-                else "The document needs review before it can support readiness scoring."
+                else "Check this file before it counts in your record."
             )
         states.append({
             "kind": "document_review",
