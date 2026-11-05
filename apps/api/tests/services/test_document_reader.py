@@ -74,12 +74,54 @@ def test_parse_reading_offsets_pages_and_ignores_unknown_enums():
     assert reading.rows[0].page == 10
 
 
+def _dated(day: str, **overrides):
+    payload = _payload(**overrides)
+    payload["transactions"] = [{**payload["transactions"][0], "occurred_on": day}]
+    return payload
+
+
 def test_merge_takes_opening_from_first_and_closing_from_last_part():
-    first = parse_reading(_payload(closing_balance=None), model="m")
-    last = parse_reading(_payload(opening_balance=None, closing_balance="99.00", confidence=0.6), model="m")
+    first = parse_reading(_dated("2026-01-02", closing_balance=None), model="m")
+    last = parse_reading(_dated("2026-01-20", opening_balance=None, closing_balance="99.00", confidence=0.6), model="m")
     merged = merge_readings([first, last], "m")
     assert merged.opening_balance == "10.00" and merged.closing_balance == "99.00"
     assert merged.confidence == 0.6 and len(merged.rows) == 2 and merged.chunks == 2
+
+
+def test_merge_follows_row_dates_for_newest_first_statements():
+    # MTN lists newest rows first, so the first part holds the latest rows.
+    newest = parse_reading(_dated("2026-01-20", opening_balance="50.00", closing_balance="99.00"), model="m")
+    oldest = parse_reading(_dated("2026-01-02", opening_balance="10.00", closing_balance="50.00"), model="m")
+    merged = merge_readings([newest, oldest], "m")
+    assert merged.opening_balance == "10.00" and merged.closing_balance == "99.00"
+
+
+def test_merge_drops_balances_when_the_span_is_ambiguous():
+    first = parse_reading(_dated("2026-01-02", opening_balance="10.00", closing_balance=None), model="m")
+    second = parse_reading(_dated("2026-01-02", opening_balance="12.00", closing_balance="20.00"), model="m")
+    merged = merge_readings([first, second], "m")
+    assert merged.opening_balance is None and merged.closing_balance is None
+
+
+def test_chunks_repeat_table_headers_and_keep_rows_whole(monkeypatch):
+    monkeypatch.setattr("app.services.document_reader.SOURCES_PER_CHUNK", 2)
+    cells = [DocumentCell(0, 0, "Date", 1, None, column_header=True), DocumentCell(0, 1, "BAL AFTER", 1, None, column_header=True)]
+    for row in range(1, 4):
+        cells += [DocumentCell(row, 0, f"2026-01-0{row}", 1, None), DocumentCell(row, 1, f"{row}0.00", 1, None)]
+    table = DocumentTable(page=1, row_count=4, column_count=2, cells=tuple(cells))
+    processed = ProcessedDocument(text="", page_count=1, structure={}, tables=(table,))
+    first, second = build_chunks(b"", "ledger.xlsx", processed)
+    assert "Column headers" not in first.content[0]["text"]
+    text = second.content[0]["text"]
+    assert text.startswith("Column headers") and "BAL AFTER" in text
+    # Headers are context only: they are not cited rows of the second chunk.
+    assert set(second.source_pages) == {"table:0:row:2", "table:0:row:3"}
+
+
+def test_balance_before_is_read():
+    payload = _payload()
+    payload["transactions"][0]["balance_before"] = "10.00"
+    assert parse_reading(payload, model="m").rows[0].balance_before == "10.00"
 
 
 def test_schema_requires_every_property():

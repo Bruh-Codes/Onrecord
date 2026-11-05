@@ -142,7 +142,8 @@ def _masked_label(label: str | None) -> str | None:
 
 
 def _row_fields(value: dict) -> dict:
-    return {key: value[key] for key in NormalizedRow.__dataclass_fields__}
+    # Rows staged before a field existed lack it; the dataclass default fills it in.
+    return {key: value[key] for key in NormalizedRow.__dataclass_fields__ if key in value}
 
 
 def _insert_transactions(

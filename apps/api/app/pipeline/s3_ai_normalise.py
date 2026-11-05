@@ -7,6 +7,7 @@ doctored statement is caught before it reaches the ledger.
 """
 
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -33,6 +34,7 @@ class NormalizedRow:
     category_l1: str
     page: int
     source_ref: str
+    balance_before_pesewas: int | None = None
 
     def as_json(self) -> dict:
         return {**asdict(self), "occurred_on": self.occurred_on.isoformat()}
@@ -101,22 +103,32 @@ def _normalize(row: ReadRow) -> NormalizedRow | None:
     except ValueError:
         return None
     amount = to_pesewas(row.amount)
-    if amount is None or amount <= 0 or row.direction not in ("in", "out"):
+    before, after = signed_balance(row.balance_before), signed_balance(row.balance_after)
+    direction = _direction_from_balances(before, after) or row.direction
+    if amount is None or amount <= 0 or direction not in ("in", "out"):
         return None
     return NormalizedRow(
         occurred_on=occurred_on,
         description=(mask_identifiers(row.description) or "")[:500],
         counterparty=(mask_identifiers(row.counterparty) or None),
         reference=row.reference[:120] if row.reference else None,
-        direction=row.direction,
+        direction=direction,
         amount_pesewas=amount,
         fee_pesewas=to_pesewas(row.fee) or 0,
         levy_pesewas=to_pesewas(row.levy) or 0,
-        balance_after_pesewas=signed_balance(row.balance_after),
+        balance_after_pesewas=after,
         category_l1=row.category,
         page=row.page,
         source_ref=row.source_ref[:120],
+        balance_before_pesewas=before,
     )
+
+
+def _direction_from_balances(before: int | None, after: int | None) -> str | None:
+    """A printed before/after pair settles direction; the reader only guesses it."""
+    if before is None or after is None or before == after:
+        return None
+    return "in" if after > before else "out"
 
 
 def signed_balance(text: str | None) -> int | None:
@@ -150,9 +162,32 @@ def _running_balance_breaks(rows: list[NormalizedRow]) -> tuple[int, bool]:
     """Count balance breaks, trying both chronological and newest-first order."""
     if sum(row.balance_after_pesewas is not None for row in rows) < 2:
         return 0, False
+    if all(row.balance_before_pesewas is not None for row in rows if row.balance_after_pesewas is not None):
+        return _linked_breaks(rows), True
     forward = _breaks_in_order(rows)
     backward = _breaks_in_order(list(reversed(rows)))
     return min(forward, backward), True
+
+
+def _linked_breaks(rows: list[NormalizedRow]) -> int:
+    """Check rows that print balance before and after without relying on their order.
+
+    Text extraction can reorder rows (some PDFs come out bottom-up within each
+    page), so instead of walking the list we link rows through their balances:
+    every row must agree with its own before/after pair, and every balance
+    before must be some other row's balance after, except at the chain's start.
+    """
+    rows = [row for row in rows if row.balance_after_pesewas is not None]
+    misread = sum(not _follows(row.balance_before_pesewas, row) for row in rows)
+    afters = Counter(row.balance_after_pesewas for row in rows)
+    unlinked = 0
+    for row in rows:
+        if afters[row.balance_before_pesewas] > 0:
+            afters[row.balance_before_pesewas] -= 1
+        else:
+            unlinked += 1
+    # One unlinked row is the statement's first transaction; more are gaps.
+    return misread + max(0, unlinked - 1)
 
 
 def _breaks_in_order(rows: list[NormalizedRow]) -> int:
@@ -162,7 +197,10 @@ def _breaks_in_order(rows: list[NormalizedRow]) -> int:
         if row.balance_after_pesewas is None:
             previous = None
             continue
-        if previous is not None and not _follows(previous, row):
+        # A row breaks if it doesn't follow the previous balance (a missing
+        # row) or its own printed before/after pair disagrees with its amount.
+        misread = row.balance_before_pesewas is not None and not _follows(row.balance_before_pesewas, row)
+        if misread or (previous is not None and not _follows(previous, row)):
             breaks += 1
         previous = row.balance_after_pesewas
     return breaks

@@ -9,6 +9,7 @@ def _row(amount="10.00", direction="in", balance=None, fee=None, levy=None, occu
         occurred_on=occurred_on, description=extra.get("description", "Payment"), counterparty=extra.get("counterparty"),
         reference=extra.get("reference"), direction=direction, amount=amount, fee=fee, levy=levy,
         balance_after=balance, category="unknown", page=1, source_ref="page:1",
+        balance_before=extra.get("before"),
     )
 
 
@@ -86,3 +87,44 @@ def test_opening_and_closing_balance_check():
 def test_rows_without_balances_are_unverifiable():
     rows, _ = normalize_rows(_reading([_row("100.00", "in"), _row("40.00", "out")]))
     assert reconcile(rows, None, None).status == "unverifiable"
+
+
+def test_direction_comes_from_printed_balances():
+    # The reader called a TRANSFER "in", but the balance went down.
+    rows, rejected = normalize_rows(_reading([_row("350", "in", balance="1562.15", fee="2.62", before="1914.77")]))
+    assert rejected == 0 and rows[0].direction == "out" and rows[0].balance_before_pesewas == 191477
+
+
+def test_misread_amount_breaks_against_its_own_balances():
+    rows, _ = normalize_rows(_reading([
+        _row("100", "in", balance="200.00", before="100.00", occurred_on="2026-03-04"),
+        _row("50", "out", balance="150.00", before="200.00", occurred_on="2026-03-05"),
+        _row("90", "out", balance="100.00", before="150.00", occurred_on="2026-03-06"),
+    ]))
+    result = reconcile(rows, None, None)
+    assert result.status == "balance_breaks" and result.balance_breaks == 1
+
+
+def test_missing_row_still_breaks_when_rows_print_balance_before():
+    rows, _ = normalize_rows(_reading([
+        _row("100", "in", balance="200.00", before="100.00", occurred_on="2026-03-04"),
+        _row("50", "out", balance="250.00", before="300.00", occurred_on="2026-03-06"),
+    ]))
+    assert reconcile(rows, None, None).status == "balance_breaks"
+
+
+def test_rows_staged_before_balance_before_existed_still_load():
+    from app.pipeline.s3_ai_ingest import _row_fields
+    from app.pipeline.s3_ai_normalise import NormalizedRow
+
+    rows, _ = normalize_rows(_reading([_row("10.00", "in", balance="20.00")]))
+    old = {key: value for key, value in rows[0].as_json().items() if key != "balance_before_pesewas"}
+    assert NormalizedRow.from_json(_row_fields(old)).balance_before_pesewas is None
+
+
+def test_rows_with_balance_before_reconcile_in_any_order():
+    # pypdf can return each page bottom-up, so pages zigzag in time.
+    page_one = [_row("10", "out", balance="80.00", before="90.00"), _row("10", "out", balance="70.00", before="80.00")]
+    page_two = [_row("10", "in", balance="90.00", before="80.00"), _row("20", "in", balance="80.00", before="60.00")]
+    rows, _ = normalize_rows(_reading([*reversed(page_one), *reversed(page_two)]))
+    assert reconcile(rows, None, None).status == "reconciled"

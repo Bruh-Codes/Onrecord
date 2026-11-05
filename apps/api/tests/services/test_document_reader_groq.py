@@ -95,3 +95,44 @@ def test_rate_limit_is_retried_and_truncation_is_reported(monkeypatch):
     ]
     reading = _reader(requests, responses).read(b"line", "pasted.txt", None)
     assert len(requests) == 2 and reading.truncated is True
+
+
+def _text_pdf(lines: list[list[tuple[int, str]]]) -> bytes:
+    """A one-page PDF whose lines are cells drawn at x positions, like a statement table."""
+    ops = ["BT /F1 9 Tf"]
+    for index, cells in enumerate(lines):
+        for x, text in cells:
+            ops.append(f"1 0 0 1 {x} {500 - index * 20} Tm ({text}) Tj")
+    ops.append("ET")
+    stream = "\n".join(ops).encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 900 600] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return bytes(out)
+
+
+def test_pdf_text_layer_keeps_each_table_row_on_one_line():
+    from app.services.document_reader_groq import _page_texts
+
+    columns = (40, 200, 330, 420, 520, 620)
+    rows = [
+        ["TRANSACTION DATE", "FROM NAME", "TRANS. TYPE", "AMOUNT", "BAL BEFORE", "BAL AFTER"],
+        ["30-Oct-2026", "EDITH DOH", "TRANSFER", "350", "1914.77", "1562.15"],
+    ]
+    text = _page_texts(_text_pdf([list(zip(columns, row)) for row in rows]))[0]
+    row_lines = [line for line in text.splitlines() if "30-Oct-2026" in line]
+    assert len(row_lines) == 1 and "1914.77" in row_lines[0] and "1562.15" in row_lines[0]
+    assert "      " not in row_lines[0]  # wide gaps are shortened
