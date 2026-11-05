@@ -10,6 +10,9 @@ class AgentAsk(BaseModel):
     # The app path the owner is looking at (e.g. "/readiness"), so Ona can
     # refer to what is on their screen.
     page: str | None = Field(default=None, max_length=80)
+    # The upload a reviewer has open on the Approvals page (must belong to
+    # this business). Only used for admin and reviewer accounts.
+    document_id: uuid.UUID | None = None
 
 
 class AgentReply(BaseModel):

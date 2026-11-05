@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { BellIcon, SunIcon, MoonIcon, LogOutIcon, ApprovalsIcon, SettingsIcon } from "@/components/icons";
-import { canReview } from "@/lib/approvals";
+import { canReview, useApprovalsSummary } from "@/lib/approvals";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
@@ -21,6 +21,7 @@ export function TopBar() {
   const isDark = theme === "dark";
   const { data: session } = authClient.useSession();
   const { businessId, data: me } = useMe();
+  const approvalsWaiting = useApprovalsSummary(canReview(me?.role)).data?.open ?? 0;
   const notifications = useNotifications(businessId);
   useSheetCatchUp(businessId);
   const markRead = useMarkNotificationRead(businessId);
@@ -131,7 +132,7 @@ export function TopBar() {
                   <div key={notification.id} className={`rounded-xl px-3 py-3 ${notification.read_at ? "opacity-60" : "bg-background"}`}>
                     <button type="button" onClick={() => void openNotification(notification.id, notification.href)} className="w-full text-left">
                       <div className="flex items-start gap-2">
-                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${notification.severity === "warning" ? "bg-warning" : notification.read_at ? "bg-foreground/20" : "bg-destructive"}`} />
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${notification.read_at ? "bg-foreground/20" : notification.severity === "warning" ? "bg-warning" : notification.severity === "info" ? "bg-positive" : "bg-destructive"}`} />
                         <div className="min-w-0">
                           <div className="text-[13px] font-semibold">{notification.title}</div>
                           <div className="mt-0.5 text-xs leading-relaxed text-foreground/65">{notification.body}</div>
@@ -181,9 +182,13 @@ export function TopBar() {
             disabled={isLoading}
             aria-haspopup="menu"
             aria-expanded={isDropdownOpen}
-            aria-label="Account menu"
-            className="rounded-full p-1 transition-colors hover:bg-muted cursor-pointer"
+            aria-label={approvalsWaiting > 0 ? `Account menu, ${approvalsWaiting} approvals waiting` : "Account menu"}
+            className="relative rounded-full p-1 transition-colors hover:bg-muted cursor-pointer"
           >
+            {approvalsWaiting > 0 && (
+              // Phones have no sidebar, so flag waiting approvals on the menu button.
+              <span aria-hidden className="md:hidden absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+            )}
             <span className="w-[30px] h-[30px] rounded-full bg-foreground text-background text-[13px] font-bold flex items-center justify-center">
               {session?.user?.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -244,6 +249,11 @@ export function TopBar() {
                 >
                   <ApprovalsIcon className="w-4 h-4" />
                   Approvals
+                  {approvalsWaiting > 0 && (
+                    <span className="ml-auto min-w-5 rounded-full bg-destructive px-1.5 text-center text-[11px] font-semibold leading-[18px] text-white">
+                      {approvalsWaiting > 99 ? "99+" : approvalsWaiting}
+                    </span>
+                  )}
                 </Link>
               )}
               <button

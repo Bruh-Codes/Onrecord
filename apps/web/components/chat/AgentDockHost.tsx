@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
 import type { AgentSessionSummary } from "@/lib/api-types";
 import { useMe } from "@/lib/hooks/use-business";
+import { useOnaFocus } from "@/lib/ona-focus";
 import avatarSrc from "@/public/Ona.jpg";
 
 function toConversationMessages(
@@ -20,7 +21,11 @@ function toConversationMessages(
 }
 
 export function AgentDockHost() {
-	const { businessId } = useMe();
+	const { businessId: ownBusinessId } = useMe();
+	// On Approvals, Ona talks about the upload the reviewer has open instead.
+	const focus = useOnaFocus();
+	const businessId = focus?.businessId ?? ownBusinessId;
+	const documentId = focus?.documentId;
 	const { toast } = useToast();
 	const sessionId = useRef<string | undefined>(undefined);
 	const [agentResponse, setAgentResponse] = useState("");
@@ -50,6 +55,18 @@ export function AgentDockHost() {
 		void refreshSessions();
 	}, [refreshSessions]);
 
+	// Chats belong to one business: switching business (or upload) starts fresh.
+	const focusKey = `${businessId ?? ""}:${documentId ?? ""}`;
+	const lastFocusKey = useRef(focusKey);
+	useEffect(() => {
+		if (lastFocusKey.current === focusKey) return;
+		lastFocusKey.current = focusKey;
+		sessionId.current = undefined;
+		setInitialMessages([]);
+		setPendingAction(null);
+		setSessionResetKey((key) => key + 1);
+	}, [focusKey]);
+
 	async function askOna(message: string) {
 		setWorkingActivity("thinking");
 		if (!businessId) {
@@ -62,7 +79,8 @@ export function AgentDockHost() {
 				message,
 				session_id: sessionId.current,
 				page: window.location.pathname,
-		});
+				...(documentId ? { document_id: documentId } : {}),
+			});
 			sessionId.current = reply.session_id;
 			const selectedTool = reply.used_tools.at(-1);
 			if (selectedTool) {
@@ -151,7 +169,7 @@ export function AgentDockHost() {
 			avatarSrc={avatarSrc}
 			chatSessions={chatSessions}
 			className="fixed inset-x-3 bottom-20 z-50 w-auto max-w-none md:inset-x-auto md:bottom-6 md:right-6 md:w-[calc(100vw-3rem)] md:max-w-md"
-			idleStatus="Your assistant"
+			idleStatus={focus ? `Reviewing ${focus.label}` : "Your assistant"}
 			agentResponse={agentResponse}
 			agentResponseKey={responseKey}
 			initialMessages={initialMessages}

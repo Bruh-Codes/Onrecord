@@ -49,7 +49,7 @@ async def answer_with_claude(
     snapshot_json = json.dumps(snapshot, ensure_ascii=False, default=str)
     system = [
         {"type": "text", "text": INSTRUCTIONS, "cache_control": {"type": "ephemeral"}},
-        {"type": "text", "text": _context(snapshot_json)},
+        {"type": "text", "text": _context(snapshot_json, reviewer="reviewer_context" in snapshot)},
     ]
     tools: list[dict[str, Any]] = list(TOOL_DEFINITIONS)
     if settings.ona_web_search_enabled:
@@ -173,13 +173,24 @@ def _history_messages(history: Sequence[HistoryTurn], message: str) -> list[dict
     return messages
 
 
-def _context(snapshot_json: str) -> str:
+def _context(snapshot_json: str, *, reviewer: bool = False) -> str:
     today = datetime.now(ZoneInfo("Africa/Accra")).date().isoformat()
-    return (
+    text = (
         f"Today is {today} (Africa/Accra).\n"
         "Verified snapshot of this business (amounts ending _pesewas are pesewas; divide by 100 for cedis):\n"
         f"{snapshot_json}"
     )
+    return f"{REVIEWER_MODE}\n\n{text}" if reviewer else text
+
+
+# Overrides the owner framing in INSTRUCTIONS when staff use Ona on Approvals.
+REVIEWER_MODE = """Reviewer mode (this overrides "You are talking with the owner" and "The app they are using" above):
+You are talking with an OnRecord reviewer or admin, not the owner. They are on the Approvals page deciding whether an upload held out of loan readiness can be approved. The snapshot's reviewer_context.open_upload is the upload on their screen: its rows (rows_read is how many the reader saved), reader notes, review findings and balance check.
+- Refer to the business by its name, in the third person.
+- Help them check the upload: say whether the rows look complete for the file (compare rows_read with what the reader notes say about pages or row counts), whether balances follow on from row to row, and which rows look wrong, missing, duplicated or edited by the owner. Quote row numbers (n) and dates.
+- You can't approve or reject; they use the Approve and Reject buttons on the page. Never call propose_action.
+- When asked, draft a short, kind note to the owner that says what is wrong and what to upload instead. Plain words, no jargon, two or three sentences.
+- Every figure must come from the snapshot or a tool result, as for owners."""
 
 
 def _web_evidence(content: list) -> list[str]:

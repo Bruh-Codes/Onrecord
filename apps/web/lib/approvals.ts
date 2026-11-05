@@ -51,6 +51,17 @@ export function useApprovals(state: ApprovalState, enabled: boolean) {
 	});
 }
 
+/** Count of uploads waiting, for the badge on the Approvals link. */
+export function useApprovalsSummary(enabled: boolean) {
+	return useQuery({
+		queryKey: ["approvals", "summary"],
+		queryFn: () => request<{ open: number }>("/v1/approvals/summary"),
+		enabled,
+		refetchInterval: 60_000,
+		refetchOnWindowFocus: true,
+	});
+}
+
 export function useResolveApproval() {
 	const qc = useQueryClient();
 	return useMutation({

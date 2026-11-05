@@ -77,6 +77,19 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
         review = (document.quality_flags or {}).get("evidence_review")
         review_status = review.get("status") if isinstance(review, dict) else None
         if review_status == "approved":
+            # Tell the owner once; a re-approval with a new note reopens it.
+            note = review.get("reviewer_note") if isinstance(review.get("reviewer_note"), str) else ""
+            body = "A reviewer checked this file. Its records now count toward your loan readiness."
+            states.append({
+                "kind": "document_review",
+                "dedupe_key": f"document:{document.id}",
+                "severity": "info",
+                "title": f"{document.filename} was approved",
+                "body": f"{body} Note: {note}" if note else body,
+                "href": "/documents",
+                "data": {"document_id": str(document.id), "review_status": "approved",
+                         "reviewed_at": review.get("reviewed_at"), "note": note},
+            })
             continue
         needs_attention = (
             document.status in {DocStatus.FAILED, DocStatus.RECONCILIATION_FAILED}
@@ -100,7 +113,10 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
             "title": f"{document.filename} wasn't approved" if review_status == "rejected" else f"Review {document.filename}",
             "body": reason,
             "href": "/documents",
-            "data": {"document_id": str(document.id), "status": document.status.value, "review_status": review_status},
+            "data": {
+                "document_id": str(document.id), "status": document.status.value, "review_status": review_status,
+                **({"reviewed_at": review.get("reviewed_at"), "note": review.get("reviewer_note")} if review_status == "rejected" else {}),
+            },
         })
 
     states.extend(sheet_review.notification_states(db, business_id))

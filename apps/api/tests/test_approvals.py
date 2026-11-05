@@ -42,6 +42,8 @@ async def test_admin_sees_held_upload_and_approves_it(client, db_ready, monkeypa
     _, business_id, document_id = await _unreconciled_and_owner_confirmed(client, db_ready, b"approve-me")
     admin = bearer_header(role="admin", user_id=uuid.uuid4())
 
+    before = (await client.get("/v1/approvals/summary", headers=admin)).json()["open"]
+    assert before >= 1
     queue = await client.get("/v1/approvals", headers=admin)
     assert queue.status_code == 200, queue.text
     item = next(i for i in queue.json() if i["document_id"] == document_id)
@@ -59,6 +61,17 @@ async def test_admin_sees_held_upload_and_approves_it(client, db_ready, monkeypa
     assert resolved.status_code == 200, resolved.text
     assert resolved.json()["scoring_eligible"] is True
     assert business_id in recomputed
+    assert (await client.get("/v1/approvals/summary", headers=admin)).json()["open"] == before - 1
+
+    async with async_sessionmaker(db_ready, expire_on_commit=False)() as session:
+        from sqlalchemy import select
+
+        note = (await session.scalars(select(Notification).where(
+            Notification.business_id == uuid.UUID(business_id), Notification.dedupe_key == f"document:{document_id}",
+        ))).one()
+    assert note.title.endswith("was approved")
+    assert note.read_at is None
+    assert "Checked against the PDF." in note.body
 
     open_ids = [i["document_id"] for i in (await client.get("/v1/approvals", headers=admin)).json()]
     assert document_id not in open_ids
@@ -74,6 +87,7 @@ async def test_reviewer_needs_a_grant_for_the_business(client, db_ready):
     reviewer = bearer_header(role="reviewer", user_id=reviewer_id)
 
     assert (await client.get("/v1/approvals", headers=reviewer)).json() == []
+    assert (await client.get("/v1/approvals/summary", headers=reviewer)).json() == {"open": 0}
     denied = await client.post(
         f"/v1/documents/{document_id}/evidence-review/resolve",
         json={"decision": "approved", "note": "ok"},
@@ -144,3 +158,62 @@ async def test_reviewer_can_open_the_original_file(client, db_ready):
     assert response.status_code == 200
     assert response.content == b"%PDF-1.4 fake"
     assert response.headers["content-type"].startswith("application/pdf")
+
+
+async def test_admin_asks_ona_about_the_open_upload(client, db_ready, monkeypatch):
+    from app.api.routers import agent as agent_router
+    from app.services.ona import OnaAnswer
+
+    seen: dict = {}
+
+    async def fake_answer(**kwargs):
+        seen.update(kwargs)
+        return OnaAnswer("Only 2 rows were read.", ("open_upload",), proposed_action="recompute_readiness")
+
+    monkeypatch.setattr(agent_router, "answer_question", fake_answer)
+    _, business_id, document_id = await _unreconciled_and_owner_confirmed(client, db_ready, b"ona-review")
+    admin = bearer_header(role="admin", user_id=uuid.uuid4())
+
+    reply = await client.post(
+        f"/v1/businesses/{business_id}/agent/messages",
+        json={"message": "Do these rows look complete?", "page": "/approvals", "document_id": document_id},
+        headers=admin,
+    )
+    assert reply.status_code == 200, reply.text
+    # Ona stays read-only for staff: no action button even if the model proposes one.
+    assert reply.json()["proposed_action"] is None
+
+    snapshot = seen["snapshot"]
+    assert snapshot["current_page"] == "Approvals"
+    upload = snapshot["reviewer_context"]["open_upload"]
+    assert upload["document_id"] == document_id
+    assert upload["rows_read"] == 2
+    assert upload["rows"][0]["amount"] == "GH¢100.00"
+    assert upload["balance_check"]["status"] == "balance_breaks"
+
+
+async def test_owner_chat_has_no_reviewer_context_and_reviewers_need_a_grant(client, db_ready, monkeypatch):
+    from app.api.routers import agent as agent_router
+    from app.services.ona import OnaAnswer
+
+    seen: dict = {}
+
+    async def fake_answer(**kwargs):
+        seen.update(kwargs)
+        return OnaAnswer("Hi.", ())
+
+    monkeypatch.setattr(agent_router, "answer_question", fake_answer)
+    owner, business_id, document_id = await _unreconciled_and_owner_confirmed(client, db_ready, b"ona-owner")
+    asked = await client.post(
+        f"/v1/businesses/{business_id}/agent/messages",
+        json={"message": "hello", "document_id": document_id}, headers=owner,
+    )
+    assert asked.status_code == 200, asked.text
+    assert "reviewer_context" not in seen["snapshot"]
+
+    reviewer = bearer_header(role="reviewer", user_id=uuid.uuid4())
+    denied = await client.post(
+        f"/v1/businesses/{business_id}/agent/messages",
+        json={"message": "check this", "document_id": document_id}, headers=reviewer,
+    )
+    assert denied.status_code == 403
