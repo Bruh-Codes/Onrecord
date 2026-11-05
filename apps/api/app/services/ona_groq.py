@@ -78,7 +78,7 @@ async def answer_with_groq(
     model = settings.ona_model or settings.groq_ona_model
     snapshot_json = json.dumps(snapshot, ensure_ascii=False, default=str)
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": f"{INSTRUCTIONS}\n\n{_context(snapshot_json)}"},
+        {"role": "system", "content": f"{INSTRUCTIONS}\n\n{_context(snapshot_json, reviewer='reviewer_context' in snapshot)}"},
         *_history_messages(history, message),
     ]
     tools = _function_tools(settings.ona_web_search_enabled)

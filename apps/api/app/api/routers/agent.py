@@ -12,7 +12,7 @@ from app.errors import AppError, not_found
 from app.models.agent import AgentMessage, AgentSession
 from app.models.audit import CostEvent
 from app.models.document import Document
-from app.models.enums import DocStatus
+from app.models.enums import DocStatus, Role
 from app.schemas.agent import (
     AgentAsk,
     AgentReply,
@@ -23,6 +23,7 @@ from app.schemas.agent import (
 )
 from app.services.audit import write_audit_event
 from app.services.ona import HistoryTurn, answer_question, build_business_snapshot
+from app.services.ona_review import reviewer_context
 
 router = APIRouter(tags=["agent"])
 _ACTION_LABELS = {
@@ -144,6 +145,7 @@ _PAGE_NAMES = {
     "/lender-summary": "Lender summary",
     "/apps": "Integrations",
     "/settings": "Settings",
+    "/approvals": "Approvals",
 }
 
 
@@ -162,6 +164,11 @@ async def ask_ona(
     page_name = _PAGE_NAMES.get((body.page or "").rstrip("/") or "/")
     if page_name:
         snapshot["current_page"] = page_name
+    reviewing = claims.role in (Role.ADMIN, Role.REVIEWER)
+    if reviewing:
+        # Staff asking about someone else's business: frame Ona for review,
+        # with the upload they have open, and keep it read-only.
+        snapshot["reviewer_context"] = await reviewer_context(session, business_id, body.document_id)
     answer = await answer_question(
         settings=settings,
         session=session,
@@ -176,7 +183,7 @@ async def ask_ona(
 
     session.add(AgentMessage(session_id=agent_session.id, role="owner", content=body.message.strip()))
     proposal: dict | None = None
-    if answer.proposed_action in _ACTION_LABELS:
+    if answer.proposed_action in _ACTION_LABELS and not reviewing:
         tool_message = AgentMessage(
             session_id=agent_session.id,
             role="tool",
@@ -230,6 +237,8 @@ async def confirm_ona_action(
     claims: Claims = Depends(require_business_access),
     session: AsyncSession = Depends(get_session),
 ) -> AgentReply:
+    if claims.role != Role.OWNER:
+        raise AppError("AGENT_ACTION_OWNER_ONLY", "Only the business owner can run Ona actions.", 403)
     proposal = await session.get(AgentMessage, proposal_id)
     if proposal is None or proposal.role != "tool" or proposal.tool_name not in _ACTION_LABELS:
         raise not_found("AGENT_ACTION_NOT_FOUND", "No pending Ona action with that id.")

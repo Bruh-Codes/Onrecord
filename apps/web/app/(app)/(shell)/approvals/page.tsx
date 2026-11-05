@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { PillButton } from "@/components/ui/PillButton";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -16,6 +16,8 @@ import {
 import { useExtractedRows } from "@/lib/document-review";
 import { formatGhs } from "@/lib/format";
 import { useMe } from "@/lib/hooks/use-business";
+import { askOna } from "@/lib/ona";
+import { setOnaFocus } from "@/lib/ona-focus";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -185,6 +187,12 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 	const notes = item.findings.filter((f) => f.code !== "BALANCE_CHECK" && f.code !== "READ_TRUNCATED");
 	const balanceFinding = item.findings.find((f) => f.code === "BALANCE_CHECK");
 
+	// Point the Ona bubble at this upload while it is open.
+	useEffect(() => {
+		setOnaFocus({ businessId: item.business_id, documentId: item.document_id, label: item.business_name });
+		return () => setOnaFocus(null);
+	}, [item.business_id, item.document_id, item.business_name]);
+
 	const decide = (decision: "approved" | "rejected") => {
 		if (!note.trim()) return;
 		resolve.mutate({ documentId: item.document_id, decision, note: note.trim() });
@@ -217,6 +225,24 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 				</PillButton>
 			</div>
 			{fileError && <p className="text-[12.5px] text-destructive m-0 mb-2">{fileError}</p>}
+			<div className="flex flex-wrap gap-2 mb-3">
+				<button
+					type="button"
+					onClick={() => askOna("Check this upload for me. Do the rows look complete for the file, do the balances follow on, and what should I look at before I decide?")}
+					className="rounded-full border border-border px-3 py-1 text-[12.5px] cursor-pointer hover:bg-accent"
+				>
+					Ask Ona to check this upload
+				</button>
+				{!decided && (
+					<button
+						type="button"
+						onClick={() => askOna("Draft a short, kind note to the owner explaining why this upload can't be approved yet and what they should upload instead.")}
+						className="rounded-full border border-border px-3 py-1 text-[12.5px] cursor-pointer hover:bg-accent"
+					>
+						Draft a note to the owner
+					</button>
+				)}
+			</div>
 			<StatusBadges item={item} />
 
 			<dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
