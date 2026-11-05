@@ -85,9 +85,9 @@
    Redefining the tokens here makes everything inside it (links, tooltips,
    dividers) follow without per-element colours. */
 .sidebar-scope {
-  --background: #f5f5f3;
+  --background: #eeeeeb;
   --foreground: #3a3a37;
-  --muted: #f5f5f3;
+  --muted: #eeeeeb;
   --border: rgba(20, 20, 20, 0.08);
   color: var(--foreground);
 }
