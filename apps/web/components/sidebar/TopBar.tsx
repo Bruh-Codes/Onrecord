@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BellIcon, SunIcon, MoonIcon, LogOutIcon, SettingsIcon } from "@/components/icons";
+import { BellIcon, SunIcon, MoonIcon, LogOutIcon, ApprovalsIcon, SettingsIcon } from "@/components/icons";
+import { canReview } from "@/lib/approvals";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
@@ -19,7 +20,7 @@ export function TopBar() {
   const router = useRouter();
   const isDark = theme === "dark";
   const { data: session } = authClient.useSession();
-  const { businessId } = useMe();
+  const { businessId, data: me } = useMe();
   const notifications = useNotifications(businessId);
   useSheetCatchUp(businessId);
   const markRead = useMarkNotificationRead(businessId);
@@ -234,6 +235,17 @@ export function TopBar() {
                 <SettingsIcon className="w-4 h-4" />
                 Settings
               </Link>
+              {canReview(me?.role) && (
+                <Link
+                  href="/approvals"
+                  role="menuitem"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-left no-underline text-foreground transition-colors hover:bg-foreground hover:text-background"
+                >
+                  <ApprovalsIcon className="w-4 h-4" />
+                  Approvals
+                </Link>
+              )}
               <button
                 type="button"
                 role="menuitem"

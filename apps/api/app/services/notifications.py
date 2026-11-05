@@ -76,19 +76,28 @@ def sync_business_notifications(db: Session, business_id: uuid.UUID) -> None:
     for document in documents:
         review = (document.quality_flags or {}).get("evidence_review")
         review_status = review.get("status") if isinstance(review, dict) else None
-        needs_attention = document.status in {DocStatus.FAILED, DocStatus.RECONCILIATION_FAILED} or review_status in {"warning", "error"}
+        if review_status == "approved":
+            continue
+        needs_attention = (
+            document.status in {DocStatus.FAILED, DocStatus.RECONCILIATION_FAILED}
+            or review_status in {"warning", "error", "rejected"}
+        )
         if not needs_attention:
             continue
-        reason = (
-            review.get("summary")
-            if isinstance(review, dict) and isinstance(review.get("summary"), str)
-            else "The document needs review before it can support readiness scoring."
-        )
+        if review_status == "rejected":
+            note = review.get("reviewer_note") if isinstance(review.get("reviewer_note"), str) else ""
+            reason = f"A reviewer didn't approve this file: {note}" if note else "A reviewer didn't approve this file."
+        else:
+            reason = (
+                review.get("summary")
+                if isinstance(review, dict) and isinstance(review.get("summary"), str)
+                else "The document needs review before it can support readiness scoring."
+            )
         states.append({
             "kind": "document_review",
             "dedupe_key": f"document:{document.id}",
             "severity": "warning" if review_status == "warning" else "attention",
-            "title": f"Review {document.filename}",
+            "title": f"{document.filename} wasn't approved" if review_status == "rejected" else f"Review {document.filename}",
             "body": reason,
             "href": "/documents",
             "data": {"document_id": str(document.id), "status": document.status.value, "review_status": review_status},
