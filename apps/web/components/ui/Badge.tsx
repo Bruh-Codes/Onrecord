@@ -3,7 +3,7 @@ type BadgeTone = "positive" | "negative" | "warning" | "neutral";
 const toneClasses: Record<BadgeTone, string> = {
   positive: "bg-positive-background text-positive",
   negative: "bg-destructive-background text-destructive",
-  warning: "bg-warning/15 text-foreground",
+  warning: "bg-warning-background text-warning",
   neutral: "bg-accent text-foreground/80",
 };
 

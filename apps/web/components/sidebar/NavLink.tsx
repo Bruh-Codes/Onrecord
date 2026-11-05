@@ -29,17 +29,17 @@ export function NavLink({
 				collapsed
 					? "mx-auto h-9 w-10 justify-center px-0"
 					: "gap-2.5 px-2.5 py-2"
-			} ${active ? "bg-foreground/8 font-semibold" : "opacity-80 hover:opacity-100 hover:bg-foreground/4"}`}
+			} ${active ? "bg-card font-semibold shadow-[0_1px_2px_rgba(40,33,20,0.08)] ring-1 ring-border dark:bg-foreground/8 dark:shadow-none dark:ring-0" : "text-foreground/85 hover:bg-foreground/5 hover:text-foreground dark:text-foreground dark:opacity-80 dark:hover:opacity-100"}`}
 		>
-			<span className="relative shrink-0">
+			<span className={`relative shrink-0 ${active ? "text-primary dark:text-current" : ""}`}>
 				{icon}
 				{collapsed && badge ? (
-					<span aria-hidden className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+					<span aria-hidden className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-background" />
 				) : null}
 			</span>
 			{!collapsed && children}
 			{!collapsed && badge ? (
-				<span className="ml-auto min-w-5 rounded-full bg-destructive px-1.5 py-px text-center text-[11px] font-semibold leading-[18px] text-white">
+				<span className="ml-auto min-w-5 rounded-full bg-warning px-1.5 py-px text-center text-[11px] font-semibold leading-[18px] text-white dark:text-warning-foreground">
 					{badge > 99 ? "99+" : badge}
 				</span>
 			) : null}
