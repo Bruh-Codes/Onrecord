@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { PillButton } from "@/components/ui/PillButton";
 import { useToast } from "@/components/ui/Toast";
 import { useAddRecord, useRecordCategories } from "@/lib/money";
 import { accraDate, parsePesewas } from "@/lib/money-input";
@@ -9,20 +11,39 @@ import { accraDate, parsePesewas } from "@/lib/money-input";
 const FIELD = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
 const LABEL = "grid gap-1.5 text-[12.5px] font-semibold";
 
-/** A cash sale or cost with no statement behind it, such as stock paid for in cash. */
-export function AddRecordForm({
+type AddRecordProps = {
+	businessId: string;
+	activities: string[];
+	seasons: string[];
+	defaults?: { farm_activity?: string; season?: string };
+};
+
+/**
+ * "Add a record" in a bottom drawer: a cash sale or cost with no statement
+ * behind it, such as stock paid for in cash. The drawer closes on save.
+ */
+export function AddRecordDrawer({
+	open,
+	onOpenChange,
+	...props
+}: AddRecordProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
+	return (
+		<Drawer open={open} onOpenChange={onOpenChange}>
+			<DrawerContent aria-describedby="add-record-description">
+				{/* The form mounts on open, so every open starts with a clean form. */}
+				<AddRecordForm {...props} onDone={() => onOpenChange(false)} />
+			</DrawerContent>
+		</Drawer>
+	);
+}
+
+function AddRecordForm({
 	businessId,
 	activities,
 	seasons,
 	defaults,
 	onDone,
-}: {
-	businessId: string;
-	activities: string[];
-	seasons: string[];
-	defaults?: { farm_activity?: string; season?: string };
-	onDone: () => void;
-}) {
+}: AddRecordProps & { onDone: () => void }) {
 	const { toast } = useToast();
 	const categories = useRecordCategories();
 	const add = useAddRecord(businessId);
@@ -64,22 +85,19 @@ export function AddRecordForm({
 			return;
 		}
 		toast({ title: "Record added", tone: "success" });
-		setAmount("");
-		setDescription("");
-		setCounterparty("");
 		onDone();
 	}
 
 	return (
-		<form onSubmit={save} className="mb-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<h2 className="m-0 text-[15px] font-semibold font-[family-name:var(--body-font)]">Add a record</h2>
-					<p className="m-0 mt-1 text-[12.5px] text-foreground/60">
+		<form onSubmit={save} className="mx-auto flex min-h-0 w-full max-w-[720px] flex-col">
+			<DrawerHeader className="sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+				<div className="grid gap-1">
+					<DrawerTitle className="font-[family-name:var(--body-font)]">Add a record</DrawerTitle>
+					<DrawerDescription id="add-record-description">
 						For cash sales and costs that aren&apos;t on a MoMo or bank statement. Lenders trust statements and receipts more, so upload those too when you have them.
-					</p>
+					</DrawerDescription>
 				</div>
-				<div className="flex rounded-full border border-border p-0.5" role="group" aria-label="Money in or out">
+				<div className="mt-2 flex shrink-0 self-start rounded-full border border-border p-0.5 sm:mt-0" role="group" aria-label="Money in or out">
 					{(["out", "in"] as const).map((value) => (
 						<button
 							key={value}
@@ -92,53 +110,55 @@ export function AddRecordForm({
 						</button>
 					))}
 				</div>
+			</DrawerHeader>
+
+			<div className="min-h-0 overflow-y-auto px-5 pt-2 pb-1">
+				<div className="grid gap-3 sm:grid-cols-2">
+					<label className={LABEL}>
+						Amount (GH¢)
+						<input className={FIELD} inputMode="decimal" placeholder="1350" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+					</label>
+					<label className={LABEL}>
+						Date
+						<input className={FIELD} type="date" max={accraDate()} value={date} onChange={(e) => setDate(e.target.value)} required />
+					</label>
+					<label className={LABEL}>
+						What was it for?
+						<select className={FIELD} value={category} onChange={(e) => setCategory(e.target.value)} required>
+							<option value="">Choose…</option>
+							{options.map((option) => <option key={option} value={option}>{option}</option>)}
+						</select>
+					</label>
+					<label className={LABEL}>
+						<span>Product or service <span className="font-normal text-foreground/50">(optional)</span></span>
+						<input className={FIELD} list="record-activities" placeholder="e.g. Rice, Hair braiding, Tomatoes" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
+					</label>
+					<label className={LABEL}>
+						<span>Season or batch <span className="font-normal text-foreground/50">(optional)</span></span>
+						<input className={FIELD} list="record-seasons" placeholder="e.g. Christmas 2026, Main season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
+					</label>
+					<label className={LABEL}>
+						<span>{direction === "in" ? "Who paid you?" : "Who did you pay?"} <span className="font-normal text-foreground/50">(optional)</span></span>
+						<input className={FIELD} value={counterparty} onChange={(e) => setCounterparty(e.target.value)} maxLength={120} />
+					</label>
+					<label className={`${LABEL} sm:col-span-2`}>
+						<span>Note <span className="font-normal text-foreground/50">(optional)</span></span>
+						<input className={FIELD} placeholder={direction === "in" ? "e.g. 10 bags of rice sold at Makola" : "e.g. New stock from the wholesaler"} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
+					</label>
+				</div>
+				<datalist id="record-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
+				<datalist id="record-seasons">{seasons.map((value) => <option key={value} value={value} />)}</datalist>
+				{error && <p className="m-0 mt-3 text-[13px] text-destructive" role="alert">{error}</p>}
 			</div>
 
-			<div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				<label className={LABEL}>
-					Amount (GH¢)
-					<input className={FIELD} inputMode="decimal" placeholder="1350" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-				</label>
-				<label className={LABEL}>
-					Date
-					<input className={FIELD} type="date" max={accraDate()} value={date} onChange={(e) => setDate(e.target.value)} required />
-				</label>
-				<label className={LABEL}>
-					What was it for?
-					<select className={FIELD} value={category} onChange={(e) => setCategory(e.target.value)} required>
-						<option value="">Choose…</option>
-						{options.map((option) => <option key={option} value={option}>{option}</option>)}
-					</select>
-				</label>
-				<label className={LABEL}>
-					<span>Product or service <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} list="record-activities" placeholder="e.g. Rice, Hair braiding, Tomatoes" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
-				</label>
-				<label className={LABEL}>
-					<span>Season or batch <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} list="record-seasons" placeholder="e.g. Christmas 2026, Main season" value={season} onChange={(e) => setSeason(e.target.value)} maxLength={80} />
-				</label>
-				<label className={LABEL}>
-					<span>{direction === "in" ? "Who paid you?" : "Who did you pay?"} <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} value={counterparty} onChange={(e) => setCounterparty(e.target.value)} maxLength={120} />
-				</label>
-				<label className={`${LABEL} sm:col-span-2 lg:col-span-3`}>
-					<span>Note <span className="font-normal text-foreground/50">(optional)</span></span>
-					<input className={FIELD} placeholder={direction === "in" ? "e.g. 10 bags of rice sold at Makola" : "e.g. New stock from the wholesaler"} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
-				</label>
-			</div>
-			<datalist id="record-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
-			<datalist id="record-seasons">{seasons.map((value) => <option key={value} value={value} />)}</datalist>
-
-			{error && <p className="m-0 mt-3 text-[13px] text-destructive" role="alert">{error}</p>}
-			<div className="mt-4 flex flex-wrap gap-2">
-				<button type="submit" disabled={add.isPending} className="rounded-full bg-foreground px-4 py-2 text-[13px] text-background cursor-pointer disabled:opacity-50">
+			<DrawerFooter className="border-t border-border sm:flex-row sm:justify-end">
+				<DrawerClose asChild>
+					<PillButton variant="secondary" className="sm:mr-auto">Cancel</PillButton>
+				</DrawerClose>
+				<PillButton type="submit" disabled={add.isPending}>
 					{add.isPending ? "Saving…" : "Save record"}
-				</button>
-				<button type="button" onClick={onDone} className="rounded-full border border-border px-4 py-2 text-[13px] cursor-pointer">
-					Close
-				</button>
-			</div>
+				</PillButton>
+			</DrawerFooter>
 		</form>
 	);
 }
