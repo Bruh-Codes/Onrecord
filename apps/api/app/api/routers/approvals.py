@@ -129,6 +129,35 @@ def _item(document: Document, business: Business, totals: dict[str, int]) -> App
     )
 
 
+class ApprovalSummary(BaseModel):
+    open: int
+
+
+def _visible_documents(claims: Claims):
+    query = (
+        select(Document, Business)
+        .join(Business, Business.id == Document.business_id)
+        .where(Document.deleted_at.is_(None))
+        .order_by(Document.created_at.desc())
+    )
+    if claims.role != Role.ADMIN:
+        granted = select(BusinessAccess.business_id).where(
+            BusinessAccess.user_id == claims.user_id, BusinessAccess.role == Role.REVIEWER
+        )
+        query = query.where(Document.business_id.in_(granted))
+    return query
+
+
+@router.get("/v1/approvals/summary", response_model=ApprovalSummary)
+async def approvals_summary(
+    claims: Claims = Depends(require_role(Role.REVIEWER, Role.ADMIN)),
+    session: AsyncSession = Depends(get_session),
+) -> ApprovalSummary:
+    """How many uploads are waiting, for the badge on the Approvals link."""
+    documents = (await session.scalars(_visible_documents(claims).with_only_columns(Document))).all()
+    return ApprovalSummary(open=sum(1 for document in documents if needs_approval(document)))
+
+
 @router.get("/v1/approvals", response_model=list[ApprovalItem])
 async def list_approvals(
     state: Literal["open", "done"] = Query("open"),
@@ -141,18 +170,7 @@ async def list_approvals(
     Admins see every business. Reviewers see only businesses they hold an
     explicit reviewer grant for (business_access), like everywhere else.
     """
-    query = (
-        select(Document, Business)
-        .join(Business, Business.id == Document.business_id)
-        .where(Document.deleted_at.is_(None))
-        .order_by(Document.created_at.desc())
-    )
-    if claims.role != Role.ADMIN:
-        granted = select(BusinessAccess.business_id).where(
-            BusinessAccess.user_id == claims.user_id, BusinessAccess.role == Role.REVIEWER
-        )
-        query = query.where(Document.business_id.in_(granted))
-
+    query = _visible_documents(claims)
     pairs = []
     for document, business in (await session.execute(query)).all():
         review = (document.quality_flags or {}).get("evidence_review")

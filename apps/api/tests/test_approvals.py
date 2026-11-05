@@ -42,6 +42,8 @@ async def test_admin_sees_held_upload_and_approves_it(client, db_ready, monkeypa
     _, business_id, document_id = await _unreconciled_and_owner_confirmed(client, db_ready, b"approve-me")
     admin = bearer_header(role="admin", user_id=uuid.uuid4())
 
+    before = (await client.get("/v1/approvals/summary", headers=admin)).json()["open"]
+    assert before >= 1
     queue = await client.get("/v1/approvals", headers=admin)
     assert queue.status_code == 200, queue.text
     item = next(i for i in queue.json() if i["document_id"] == document_id)
@@ -59,6 +61,17 @@ async def test_admin_sees_held_upload_and_approves_it(client, db_ready, monkeypa
     assert resolved.status_code == 200, resolved.text
     assert resolved.json()["scoring_eligible"] is True
     assert business_id in recomputed
+    assert (await client.get("/v1/approvals/summary", headers=admin)).json()["open"] == before - 1
+
+    async with async_sessionmaker(db_ready, expire_on_commit=False)() as session:
+        from sqlalchemy import select
+
+        note = (await session.scalars(select(Notification).where(
+            Notification.business_id == uuid.UUID(business_id), Notification.dedupe_key == f"document:{document_id}",
+        ))).one()
+    assert note.title.endswith("was approved")
+    assert note.read_at is None
+    assert "Checked against the PDF." in note.body
 
     open_ids = [i["document_id"] for i in (await client.get("/v1/approvals", headers=admin)).json()]
     assert document_id not in open_ids
@@ -74,6 +87,7 @@ async def test_reviewer_needs_a_grant_for_the_business(client, db_ready):
     reviewer = bearer_header(role="reviewer", user_id=reviewer_id)
 
     assert (await client.get("/v1/approvals", headers=reviewer)).json() == []
+    assert (await client.get("/v1/approvals/summary", headers=reviewer)).json() == {"open": 0}
     denied = await client.post(
         f"/v1/documents/{document_id}/evidence-review/resolve",
         json={"decision": "approved", "note": "ok"},
