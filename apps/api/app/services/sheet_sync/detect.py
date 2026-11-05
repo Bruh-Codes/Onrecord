@@ -1,10 +1,13 @@
 """Suggest which column means what, so the owner only has to confirm it.
 
-Header words get it right for most bookkeeping sheets. When they don't find a
-date and an amount, the AI is asked (if one is configured), and failing that
-the data itself is inspected. The owner always confirms before any row is read.
+Header words get it right for most bookkeeping sheets. The data under the
+header is then checked: a "Date" column with no dates in it, or a money column
+that holds unit prices, is not trusted. The sheet's own name and title rows
+say whether a one-amount tab is costs or sales. The owner always confirms
+before any row is read.
 """
 
+import re
 from datetime import date
 
 from app.services.sheet_sync.parsing import (
@@ -49,9 +52,20 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
 }
 _HEADER_SCAN_ROWS = 15
 _SAMPLE_ROWS = 40
+_MONEY_FIELDS = ("money_in", "money_out", "amount")
+# "Unit cost", "Qty", "Rate" and "Balance" hold numbers but not the record's amount.
+_NOT_AMOUNT = re.compile(r"\b(unit|units|qty|quantity|rate|per|each|balance|bal|price per|no of|number of)\b")
+_OUT_NAMES = re.compile(r"\b(expense|expenses|expenditure|cost|costs|spend|spending|purchase|purchases|payments|bills)\b")
+_IN_NAMES = re.compile(r"\b(sale|sales|income|revenue|receipts|takings|earnings)\b")
+
+
+def _header(value) -> str:
+    return " ".join(normalise(cell_text(value)).split())
 
 
 def _score(header: str, field: str) -> int:
+    if field in _MONEY_FIELDS and _NOT_AMOUNT.search(header):
+        return 0
     words = SYNONYMS[field]
     if header in words:
         return 3
@@ -64,17 +78,20 @@ def find_header_row(rows: list[list]) -> int:
     """1-based row number of the most header-like row near the top, or 0."""
     best_row, best_hits = 0, 1
     for index, values in enumerate(rows[:_HEADER_SCAN_ROWS]):
-        headers = [normalise(cell_text(value)) for value in values]
+        headers = [_header(value) for value in values]
         hits = sum(1 for header in headers if header and any(_score(header, field) for field in FIELDS))
         if hits > best_hits:
             best_row, best_hits = index + 1, hits
     return best_row
 
 
-def propose_mapping(rows: list[list], *, today: date | None = None) -> dict:
-    """A best guess the owner will confirm. Never applied without that."""
+def propose_mapping(rows: list[list], *, today: date | None = None, names: tuple[str, ...] = ()) -> dict:
+    """A best guess the owner will confirm. Never applied without that.
+
+    names are the spreadsheet and tab names, which often say "Expenses" or "Sales".
+    """
     header_row = find_header_row(rows)
-    headers = [normalise(cell_text(value)) for value in rows[header_row - 1]] if header_row else []
+    headers = [_header(value) for value in rows[header_row - 1]] if header_row else []
     candidates = sorted(
         ((_score(header, field), -FIELDS.index(field), index, field)
          for index, header in enumerate(headers) if header for field in FIELDS),
@@ -88,23 +105,79 @@ def propose_mapping(rows: list[list], *, today: date | None = None) -> dict:
         columns[field] = index
         used.add(index)
 
-    if columns["money_in"] is not None or columns["money_out"] is not None:
-        if columns["amount"] is not None and columns["money_in"] is not None and columns["money_out"] is not None:
-            columns["amount"] = None
-    sample = rows[header_row:header_row + _SAMPLE_ROWS]
+    # One amount column or money in and out, never a mix of the two.
+    split = [field for field in ("money_in", "money_out") if columns[field] is not None]
+    if columns["amount"] is not None and len(split) == 2:
+        used.discard(columns["amount"])
+        columns["amount"] = None
+    elif columns["amount"] is not None and len(split) == 1:
+        used.discard(columns[split[0]])
+        columns[split[0]] = None
+
+    sample = [row for row in rows[header_row:header_row + _SAMPLE_ROWS] if any(cell_text(cell) for cell in row)]
+
+    def is_date(value) -> bool:
+        return parse_date(value, today=today) is not None
+
+    if columns["date"] is not None and not _mostly(sample, columns["date"], is_date):
+        # A "Date" header over an empty or unreadable column: look for dates elsewhere.
+        found = _column_where(sample, is_date, exclude=used)
+        if found is not None:
+            used.discard(columns["date"])
+            columns["date"] = found
+            used.add(found)
     if columns["date"] is None:
-        columns["date"] = _column_where(sample, lambda value: parse_date(value, today=today) is not None, exclude=used)
+        columns["date"] = _column_where(sample, is_date, exclude=used)
+        if columns["date"] is not None:
+            used.add(columns["date"])
     if columns["amount"] is None and columns["money_in"] is None and columns["money_out"] is None:
-        columns["amount"] = _column_where(
-            sample, lambda value: parse_amount(value) is not None, exclude=used | {columns["date"]},
-        )
+        columns["amount"] = _column_where(sample, lambda value: parse_amount(value) is not None, exclude=used)
+
     return {
         "header_row": header_row,
         "columns": columns,
-        "default_direction": None,
-        "date_order": "dmy",
+        "default_direction": _guess_direction(rows[:header_row], sample, columns, names),
+        "date_order": _guess_date_order(sample, columns["date"]),
+        "default_date": None,
         "source": "headers",
     }
+
+
+def _mostly(sample: list[list], index: int, test) -> bool:
+    cells = [row[index] for row in sample if index < len(row) and cell_text(row[index])]
+    return bool(cells) and sum(1 for cell in cells if test(cell)) / len(cells) >= 0.6
+
+
+def _guess_direction(title_rows: list[list], sample: list[list], columns: dict, names: tuple[str, ...]) -> str | None:
+    """For a one-amount tab with no in/out column: is it a costs tab or a sales tab?"""
+    if columns["amount"] is None or columns["direction"] is not None:
+        return None
+    amounts = [parse_amount(row[columns["amount"]]) for row in sample if columns["amount"] < len(row)]
+    if any(amount is not None and amount < 0 for amount in amounts):
+        return None  # Minus signs already say which rows are money out.
+    text = " ".join([*names, *(cell_text(cell) for row in title_rows for cell in row)])
+    words = " ".join(normalise(text).split())
+    out, into = bool(_OUT_NAMES.search(words)), bool(_IN_NAMES.search(words))
+    if out and not into:
+        return "out"
+    if into and not out:
+        return "in"
+    return None
+
+
+def _guess_date_order(sample: list[list], index: int | None) -> str:
+    """31/10 can only be day first and 10/31 only month first. Day first otherwise (Ghana)."""
+    if index is None:
+        return "dmy"
+    day_first = month_first = 0
+    for row in sample:
+        match = re.match(r"^\s*(\d{1,2})[/.-](\d{1,2})[/.-]\d{2,4}\s*$", cell_text(row[index]) if index < len(row) else "")
+        if not match:
+            continue
+        first, second = int(match.group(1)), int(match.group(2))
+        day_first += first > 12
+        month_first += second > 12
+    return "mdy" if month_first > day_first else "dmy"
 
 
 def _column_where(sample: list[list], test, *, exclude: set) -> int | None:
@@ -118,27 +191,49 @@ def _column_where(sample: list[list], test, *, exclude: set) -> int | None:
     return None
 
 
-def mapping_problems(mapping: dict, width: int) -> list[str]:
-    """What stops a mapping from being usable, in words for the owner."""
+FIELD_NAMES = {
+    "date": "date", "money_in": "money in", "money_out": "money out", "amount": "amount",
+    "direction": "in or out", "description": "details", "category": "category",
+    "counterparty": "customer or supplier", "payment_method": "paid by", "reference": "reference",
+    "product": "product or service",
+}
+
+
+def field_problems(mapping: dict, width: int) -> list[dict]:
+    """What stops a mapping from being usable, each tied to the question it belongs to."""
     columns = mapping.get("columns") or {}
-    problems = []
+    problems: list[dict] = []
+
+    def add(field: str, message: str) -> None:
+        problems.append({"field": field, "message": message})
+
     for field, index in columns.items():
         if field not in FIELDS:
-            problems.append(f"Unknown field {field}.")
+            add("columns", f"Unknown field {field}.")
         elif index is not None and not (0 <= index < max(width, 1)):
-            problems.append(f"The column for {field.replace('_', ' ')} is outside the sheet.")
-    if columns.get("date") is None:
-        problems.append("Choose the column with the date.")
+            add(field, f"The column for {FIELD_NAMES[field]} is outside the sheet.")
+    if columns.get("date") is None and not mapping.get("default_date"):
+        add("date", "Choose the column with the date, or pick one date for every row.")
     has_split = columns.get("money_in") is not None or columns.get("money_out") is not None
     if not has_split and columns.get("amount") is None:
-        problems.append("Choose the column with the amount, or the money in and money out columns.")
+        add("amount", "Choose the column with the amount, or the money in and money out columns.")
     if has_split and columns.get("amount") is not None:
-        problems.append("Use either one amount column or money in and money out columns, not both.")
+        add("amount", "Use either one amount column or money in and money out columns, not both.")
     if mapping.get("default_direction") not in (None, "in", "out"):
-        problems.append("All-rows direction must be money in or money out.")
+        add("direction", "All-rows direction must be money in or money out.")
     if mapping.get("date_order", "dmy") not in ("dmy", "mdy"):
-        problems.append("Date order must be day first or month first.")
-    used = [index for index in columns.values() if index is not None]
-    if len(used) != len(set(used)):
-        problems.append("One column is used for two things.")
+        add("date", "Date order must be day first or month first.")
+    seen: dict[int, str] = {}
+    for field, index in columns.items():
+        if index is None or field not in FIELDS:
+            continue
+        if index in seen:
+            add(field, f"This column is already used for {FIELD_NAMES[seen[index]]}.")
+        else:
+            seen[index] = field
     return problems
+
+
+def mapping_problems(mapping: dict, width: int) -> list[str]:
+    """The same problems as plain sentences."""
+    return [problem["message"] for problem in field_problems(mapping, width)]

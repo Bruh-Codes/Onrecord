@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -15,6 +15,8 @@ class SheetMapping(BaseModel):
     columns: dict[SheetField, int | None]
     default_direction: Literal["in", "out"] | None = None
     date_order: Literal["dmy", "mdy"] = "dmy"
+    # Used for rows whose date cell is empty, for sheets that keep no dates.
+    default_date: date | None = None
 
 
 class SheetConnectionCreate(BaseModel):
@@ -26,6 +28,16 @@ class SheetConnectionCreate(BaseModel):
 
 class SheetPreviewRequest(BaseModel):
     mapping: SheetMapping | None = None
+
+
+class SheetTabChange(BaseModel):
+    sheet_gid: int = Field(ge=0)
+
+
+class SheetTab(BaseModel):
+    sheet_gid: int
+    title: str
+    row_count: int | None = None
 
 
 class SheetMappingUpdate(BaseModel):
@@ -80,6 +92,11 @@ class PreviewRow(BaseModel):
     issues: list[str]
 
 
+class FieldProblem(BaseModel):
+    field: str
+    message: str
+
+
 class SheetPreview(BaseModel):
     mapping: SheetMapping
     header: list[str]
@@ -87,3 +104,12 @@ class SheetPreview(BaseModel):
     rows: list[PreviewRow]
     problems: list[str]
     data_rows: int
+    # The same problems, each tied to the question it belongs to.
+    field_problems: list[FieldProblem] = []
+    # What the data itself says, such as a date column with nothing in it.
+    notes: list[FieldProblem] = []
+    readable_rows: int = 0
+    money_in_pesewas: int = 0
+    money_out_pesewas: int = 0
+    first_date: date | None = None
+    last_date: date | None = None

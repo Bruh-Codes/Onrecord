@@ -64,6 +64,7 @@ export default function SheetConnectionPage() {
 				<div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
 					<SheetColumnSetup
 						connectionId={id}
+						sheet={sheet}
 						onDone={() => {
 							setEditingColumns(false);
 							toast({ title: "Columns saved. OnRecord is reading your sheet now.", tone: "success" });

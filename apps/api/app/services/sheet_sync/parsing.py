@@ -13,7 +13,8 @@ from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 # A mapping is {"header_row": 1-based int, "columns": {field: 0-based index},
-# "default_direction": "in" | "out" | None, "date_order": "dmy" | "mdy"}.
+# "default_direction": "in" | "out" | None, "date_order": "dmy" | "mdy",
+# "default_date": ISO date used for rows whose date cell is empty, or None}.
 FIELDS = (
     "date", "money_in", "money_out", "amount", "direction", "description",
     "category", "counterparty", "payment_method", "reference", "product",
@@ -159,7 +160,10 @@ def parse_row(values: list, row_number: int, mapping: dict, *, today: date | Non
         row.skip = True
         return row
 
+    date_cell = cell_text(_cell(values, columns.get("date")))
     occurred_on = parse_date(_cell(values, columns.get("date")), date_order=mapping.get("date_order", "dmy"), today=today)
+    if occurred_on is None and not date_cell and mapping.get("default_date"):
+        occurred_on = _iso_date(mapping["default_date"])
     direction, amount, issues = _money(values, columns, mapping.get("default_direction"))
     text_cells = " ".join(row.values).lower()
     if any(normalise(value) in _TOTAL_CELLS for value in row.values):
@@ -169,7 +173,7 @@ def parse_row(values: list, row_number: int, mapping: dict, *, today: date | Non
         row.skip = True
         return row
     if occurred_on is None:
-        issues.insert(0, "The date could not be read.")
+        issues.insert(0, f"“{date_cell[:40]}” isn't a date OnRecord can read." if date_cell else "No date in this row.")
     elif occurred_on > today + timedelta(days=31):
         issues.insert(0, "The date is in the future.")
     if amount is None and not issues:
@@ -193,6 +197,15 @@ def parse_row(values: list, row_number: int, mapping: dict, *, today: date | Non
         }
     row.fingerprint = fingerprint(row)
     return row
+
+
+def _iso_date(value) -> date | None:
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
 
 
 def _money(values: list, columns: dict, default_direction: str | None) -> tuple[str | None, int | None, list[str]]:
