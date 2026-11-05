@@ -126,7 +126,7 @@ export default function ApprovalsPage() {
 
 	const list = (
 		<>
-			<div className="border-b border-border p-3">
+			<div className="flex shrink-0 items-center border-b border-border p-3 lg:h-[67px]">
 				<input
 					type="search"
 					value={query}
@@ -233,12 +233,6 @@ export default function ApprovalsPage() {
 						? createPortal(
 								// Wide screens: a second sidebar, full height beside the main one.
 								<aside aria-label="Uploads" className="flex w-[320px] flex-col border-r border-border bg-card">
-									<div className="flex items-center justify-between gap-2 h-[67px] shrink-0 border-b border-border px-4">
-										<span className="text-[14px] font-semibold">{tab === "open" ? "Waiting" : "Decided"}</span>
-										<span className="text-[12px] text-foreground/55">
-											{items.length} upload{items.length === 1 ? "" : "s"}
-										</span>
-									</div>
 									{list}
 								</aside>,
 								column,
