@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: light;
-  --background: #f7f7f6;
+  --background: #fcfcfb;
   --foreground: #141414;
   --card: #ffffff;
   --card-foreground: #141414;
@@ -80,20 +80,23 @@
   --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* The sidebar is dark in both themes so the menu stands apart from the page.
+/* In light mode the sidebar is a quiet, slightly tinted panel so the page
+   stays the focus; in dark mode it sits a step darker than the page.
    Redefining the tokens here makes everything inside it (links, tooltips,
-   dividers) flip to white-on-black without per-element colours. */
+   dividers) follow without per-element colours. */
 .sidebar-scope {
-  --background: #141414;
-  --foreground: #f7f7f6;
-  --muted: #141414;
-  --border: rgba(247, 247, 246, 0.14);
+  --background: #eeeeeb;
+  --foreground: #3a3a37;
+  --muted: #eeeeeb;
+  --border: rgba(20, 20, 20, 0.08);
   color: var(--foreground);
 }
 
 .dark .sidebar-scope {
   --background: #0a0a09;
+  --foreground: #f7f7f6;
   --muted: #0a0a09;
+  --border: rgba(247, 247, 246, 0.14);
 }
 
 @theme inline {
