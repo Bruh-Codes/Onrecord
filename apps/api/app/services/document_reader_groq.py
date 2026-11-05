@@ -17,6 +17,7 @@ import base64
 import io
 import json
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -47,6 +48,7 @@ MAX_IMAGE_SIDE = 2000
 TEXT_MAX_TOKENS = 32_000
 VISION_MAX_TOKENS = 16_000
 RETRIES = 2
+_COLUMN_GAP = re.compile(r" {3,}")
 
 VISION_NOTE = (
     "Each image is preceded by a line naming its page number. Use that number as page, "
@@ -157,12 +159,27 @@ def _pdf_chunks(payload: bytes, processed: ProcessedDocument | None) -> list[_Ch
 
 
 def _page_texts(payload: bytes) -> list[str]:
+    """Each page's text layer with table rows kept on one line.
+
+    pypdf's default extraction puts every table cell on its own line, so a
+    17-column MoMo row becomes 17 lines and chunking can cut a row in half.
+    Layout mode keeps a printed row on one line; wide gaps are shortened to
+    save tokens while still separating columns.
+    """
     from pypdf import PdfReader
 
     try:
-        return [page.extract_text() or "" for page in PdfReader(io.BytesIO(payload)).pages]
+        pages = PdfReader(io.BytesIO(payload)).pages
     except Exception:  # pypdf raises many types for damaged/encrypted files
         return []
+    texts = []
+    for page in pages:
+        try:
+            text = page.extract_text(extraction_mode="layout") or ""
+        except Exception:  # layout mode fails on some fonts; plain mode still reads them
+            text = page.extract_text() or ""
+        texts.append("\n".join(_COLUMN_GAP.sub("   ", line).rstrip() for line in text.splitlines()))
+    return texts
 
 
 def _render_page(payload: bytes, index: int) -> bytes | None:

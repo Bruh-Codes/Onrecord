@@ -29,7 +29,9 @@ from app.services.transaction_mapping import CATEGORIES
 logger = logging.getLogger(__name__)
 
 PDF_PAGES_PER_CHUNK = 8
-SOURCES_PER_CHUNK = 350
+# Small enough that the reader's JSON for a chunk stays well inside the output
+# limit (a long transcription drops rows, and one dropped row fails the balance check).
+SOURCES_PER_CHUNK = 120
 MAX_PARALLEL_CHUNKS = 4
 MAX_OUTPUT_TOKENS = 64000
 _IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}
@@ -53,6 +55,7 @@ class ReadRow:
     category: str
     page: int
     source_ref: str
+    balance_before: str | None = None
 
 
 @dataclass(frozen=True)
@@ -201,10 +204,14 @@ def _sources(processed: ProcessedDocument) -> list[dict]:
         by_row: dict[int, dict[int, str]] = {}
         for cell in table.cells:
             by_row.setdefault(cell.row, {})[cell.column] = cell.text
+        header_rows = {cell.row for cell in table.cells if cell.column_header} or {min(by_row, default=0)}
         for row_index, values in sorted(by_row.items()):
             cells = [values.get(column, "") for column in range(table.column_count)]
             if any(value.strip() for value in cells):
-                sources.append({"source_id": f"table:{table_index}:row:{row_index}", "page": table.page, "cells": cells})
+                source = {"source_id": f"table:{table_index}:row:{row_index}", "page": table.page, "cells": cells}
+                if row_index in header_rows:
+                    source["header"] = True
+                sources.append(source)
     if not sources:
         sources = _line_sources(processed.text)
     return sources
@@ -223,15 +230,41 @@ def _line_sources(text: str, page: int = 1, prefix: str = "text") -> list[dict]:
 
 
 def source_chunks(sources: list[dict]) -> list[_Chunk]:
-    return [
-        _Chunk(
-            [{"type": "text", "text": "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)}],
+    """Split sources into chunks; each chunk repeats the column headers of the tables it holds.
+
+    A chunk that starts mid-table would otherwise reach the reader as bare
+    numbers with no way to tell a fee from a balance.
+    """
+    headers: dict[str, list[dict]] = {}
+    for item in sources:
+        if item.get("header"):
+            headers.setdefault(_table_key(item["source_id"]), []).append(item)
+    chunks: list[_Chunk] = []
+    for start in range(0, len(sources), SOURCES_PER_CHUNK):
+        part = sources[start : start + SOURCES_PER_CHUNK]
+        present = {item["source_id"] for item in part}
+        tables = dict.fromkeys(_table_key(item["source_id"]) for item in part)
+        context = [
+            header for table in tables if table
+            for header in headers.get(table, []) if header["source_id"] not in present
+        ]
+        text = "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)
+        if context:
+            text = (
+                "Column headers of the tables below, repeated from earlier in the document "
+                "(context only, not transactions):\n" + json.dumps(context, ensure_ascii=False) + "\n\n" + text
+            )
+        chunks.append(_Chunk(
+            [{"type": "text", "text": text}],
             label=f"rows {start + 1}-{start + len(part)} of {len(sources)}",
             source_pages={item["source_id"]: item.get("page", 1) for item in part},
-        )
-        for start in range(0, len(sources), SOURCES_PER_CHUNK)
-        if (part := sources[start : start + SOURCES_PER_CHUNK])
-    ]
+        ))
+    return chunks
+
+
+def _table_key(source_id: str) -> str | None:
+    parts = source_id.split(":")
+    return ":".join(parts[:2]) if len(parts) >= 4 and parts[0] == "table" else None
 
 
 def parse_reading(
@@ -271,6 +304,7 @@ def parse_reading(
             category=category,
             page=page,
             source_ref=source_ref or f"page:{page}",
+            balance_before=_text(item.get("balance_before")),
         ))
     confidence = data.get("confidence")
     if not isinstance(confidence, (int, float)) or isinstance(confidence, bool):
@@ -295,9 +329,16 @@ def parse_reading(
 
 
 def merge_readings(parts: list[DocumentReading], model: str) -> DocumentReading:
-    """Combine chunk readings; document facts come from the first and last parts."""
-    first, last = parts[0], parts[-1]
+    """Combine chunk readings.
+
+    Opening and closing balances must describe the same span as the merged
+    rows. Statements list rows oldest-first or newest-first, so the opening
+    comes from the part holding the earliest row and the closing from the
+    part holding the latest row, not simply the first and last parts.
+    """
+    first = parts[0]
     doc_types = [part.doc_type for part in parts if part.rows] or [first.doc_type]
+    opening, closing = _span_balances(parts)
     return DocumentReading(
         doc_type=max(set(doc_types), key=doc_types.count),
         provider=next((part.provider for part in parts if part.provider), None),
@@ -305,8 +346,8 @@ def merge_readings(parts: list[DocumentReading], model: str) -> DocumentReading:
         currency=next((part.currency for part in parts if part.currency), None),
         period_start=next((part.period_start for part in parts if part.period_start), None),
         period_end=next((part.period_end for part in reversed(parts) if part.period_end), None),
-        opening_balance=first.opening_balance,
-        closing_balance=last.closing_balance,
+        opening_balance=opening,
+        closing_balance=closing,
         confidence=min(part.confidence for part in parts),
         summary=first.summary,
         findings=tuple(finding for part in parts for finding in part.findings)[:30],
@@ -315,6 +356,22 @@ def merge_readings(parts: list[DocumentReading], model: str) -> DocumentReading:
         chunks=len(parts),
         truncated=any(part.truncated for part in parts),
     )
+
+
+def _span_balances(parts: list[DocumentReading]) -> tuple[str | None, str | None]:
+    if len(parts) == 1:
+        return parts[0].opening_balance, parts[0].closing_balance
+    dated = [(row.occurred_on, index) for index, part in enumerate(parts) for row in part.rows if row.occurred_on]
+    if not dated:
+        return parts[0].opening_balance, parts[-1].closing_balance
+    earliest, latest = min(dated)[0], max(dated)[0]
+    oldest = {index for occurred_on, index in dated if occurred_on == earliest}
+    newest = {index for occurred_on, index in dated if occurred_on == latest}
+    # A part only knows the document's opening if it holds the earliest rows,
+    # and only one part may hold them; otherwise leave the check to the rows.
+    opening = parts[next(iter(oldest))].opening_balance if len(oldest) == 1 else None
+    closing = parts[next(iter(newest))].closing_balance if len(newest) == 1 else None
+    return opening, closing
 
 
 def _text(value: object) -> str | None:
@@ -356,13 +413,14 @@ def reading_schema() -> dict:
                         "fee": nullable,
                         "levy": nullable,
                         "balance_after": nullable,
+                        "balance_before": nullable,
                         "category": {"type": "string", "enum": list(CATEGORIES)},
                         "page": {"type": "integer"},
                         "source_ref": {"type": "string"},
                     },
                     "required": [
                         "occurred_on", "description", "counterparty", "reference", "direction", "amount",
-                        "fee", "levy", "balance_after", "category", "page", "source_ref",
+                        "fee", "levy", "balance_after", "balance_before", "category", "page", "source_ref",
                     ],
                 },
             },
@@ -392,15 +450,16 @@ What to return
 - findings: short notes a reviewer should know: unreadable rows, pages that look edited, totals that do not add up, rows you were unsure about, foreign currency.
 
 Transactions
-- Include every real money movement. Skip headers, repeated column titles, opening or closing balance lines, subtotals, totals, and summary boxes.
+- Include every real money movement, one entry per row, even when the list is long. Never summarise or skip rows. Skip headers, repeated column titles, opening or closing balance lines, subtotals, totals, and summary boxes.
 - occurred_on: YYYY-MM-DD. Ghanaian documents write dates day first (03/04/2026 is 3 April 2026) unless the document clearly uses another order.
-- direction: "in" when money came into this account, "out" when it left.
+- direction: "in" when money came into this account, "out" when it left. When the row prints balances, the balance going up means in and going down means out. A generic type such as TRANSFER can be either: check whether the account holder is the sender or the receiver.
 - amount: the principal exactly as printed, without the currency symbol, always positive (for example "1,250.00"). Never calculate or round it.
 - fee and levy: MoMo statements often list an operator fee and the e-levy separately from the amount. Copy each as printed, or null. Do not fold them into amount.
 - balance_after: the running balance printed on that row, or null.
+- balance_before: the balance before the transaction when the row prints one (MTN MoMo has a BAL BEFORE column), else null. Copy it exactly; it is used to check direction and amount.
 - counterparty: the other party's name as printed (customer, supplier, sender, recipient), or null. Write phone numbers exactly as printed; they are masked afterwards.
 - reference: the transaction ID or reference number when printed, or null.
-- description: the row's narration or transaction type, short and readable.
+- description: the row's narration or transaction type, short and readable. Leave out network routing columns such as MTN's OVA value ("Internal" there means the same mobile network, not a transfer between the owner's own accounts).
 - category: your best guess. revenue is money from sales or customers. cogs is stock, inputs, seed, fertiliser, feed, or goods for resale. opex is running costs such as rent, transport, wages, airtime, and utilities. tax is tax payments. financing_in is a loan received, financing_out is a loan repayment. owner is the owner's personal money in or out. internal is a transfer between the business's own accounts. Use unknown when unsure.
 - page: the page number within the file you were given (1 for spreadsheets, text and single images).
 - source_ref: the source_id of the row when the input lists source ids, otherwise "page:N".

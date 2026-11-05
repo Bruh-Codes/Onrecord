@@ -56,7 +56,10 @@ def recompute_business(db: Session, business_id: uuid.UUID) -> dict:
     # categorization stage was wired into the worker. Human and owner labels
     # always win and are never overwritten by rules.
     for txn in txns:
-        if re.search(r"\binternal\b", txn.description or "", re.I):
+        # AI-read rows carry the reader's own "internal" category. Their text
+        # can hold MTN's OVA value "Internal" (same network, not own accounts),
+        # so the keyword rule would wrongly drop them from the analysis.
+        if not (txn.flags or {}).get("ai_extracted") and re.search(r"\binternal\b", txn.description or "", re.I):
             txn.flags = {**(txn.flags or {}), "internal_transfer": True}
         if txn.category_source in {CategorySource.HUMAN, CategorySource.OWNER_STATED}:
             continue
