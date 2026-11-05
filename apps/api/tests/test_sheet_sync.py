@@ -305,3 +305,28 @@ async def test_undated_costs_tab_switches_tab_and_uses_one_date(client, sheet, r
 
     late = await client.put(f"/v1/sheet-connections/{connection['id']}/tab", headers=headers, json={"sheet_gid": 0})
     assert late.status_code == 409
+
+
+async def test_scheduled_sweep_picks_up_new_rows_without_sync_now(client, sheet, run_worker):
+    """The beat task (sheets.sync_due) re-reads sheets left alone for the interval, and only those."""
+    from app.db import engine_sync
+    from app.models.sheet_sync import SheetConnection
+    from app.workers import sheet_tasks
+
+    headers, bid = await _owner(client)
+    connection = await _connect(client, headers, bid, sheet, [HEADER, [_d(3), "Sold rice", 300, "", ""]])
+    await client.put(f"/v1/sheet-connections/{connection['id']}/mapping", headers=headers, json={"mapping": connection["mapping"]})
+    sheet.set([HEADER, [_d(3), "Sold rice", 300, "", ""], [_d(1), "Shop rent", "", 400, ""]])
+
+    # Just synced: the sweep leaves it alone.
+    assert sheet_tasks.sync_due() == 0
+    assert ("Shop rent", 40000) not in await _ledger(client, headers, bid)
+
+    # Not checked for longer than the interval: the sweep syncs it.
+    with Session(engine_sync) as session:
+        row = session.get(SheetConnection, uuid.UUID(connection["id"]))
+        row.last_checked_at = datetime.now(UTC) - timedelta(minutes=16)
+        session.commit()
+    assert sheet_tasks.sync_due() == 1
+    assert ("Shop rent", 40000) in await _ledger(client, headers, bid)
+    assert sheet_tasks.sync_due() == 0
