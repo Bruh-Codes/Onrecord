@@ -103,3 +103,48 @@ async def reviewer_context(
     if document is not None:
         context["open_upload"] = await open_upload_context(session, document)
     return context
+
+
+DRAFT_REQUEST = (
+    "Recommend whether the reviewer should approve or reject open_upload, then write the note they will "
+    "send to the owner. Answer in exactly this shape and nothing else:\n"
+    "DECISION: APPROVE or REJECT\n"
+    "NOTE: two or three short, kind sentences to the owner in plain words. If rejecting, say what is wrong "
+    "and what to upload instead. If approving, say what was checked."
+)
+
+
+def template_draft(context: dict[str, Any]) -> tuple[str, str]:
+    """A rule-based draft for when Ona can't be reached."""
+    upload = context.get("open_upload") or {}
+    findings = {f.get("code") for f in upload.get("review_findings", [])}
+    balance = (upload.get("balance_check") or {}).get("status")
+    name = upload.get("filename") or "this file"
+    if "READ_TRUNCATED" in findings or upload.get("reader_marked_truncated"):
+        return "rejected", (
+            f"We could only read part of {name}, so it can't count toward your loan readiness yet. "
+            "Please upload the full statement again, or split it into shorter date ranges."
+        )
+    if balance == "balance_breaks":
+        return "rejected", (
+            f"Some balances in {name} don't follow on from the row before, so we couldn't confirm the rows are right. "
+            "Please upload the original statement from your provider (PDF) rather than a screenshot or edited copy."
+        )
+    return "approved", f"We checked the rows in {name} against the file and they match. They now count toward your loan readiness."
+
+
+def parse_draft(text: str) -> tuple[str, str] | None:
+    decision = note = None
+    for line in text.splitlines():
+        clean = line.strip().strip("*").strip()
+        upper = clean.upper()
+        if upper.startswith("DECISION:"):
+            word = upper.split(":", 1)[1]
+            decision = "rejected" if "REJECT" in word else "approved" if "APPROVE" in word else None
+        elif upper.startswith("NOTE:"):
+            note = clean.split(":", 1)[1].strip()
+        elif note is not None and clean:
+            note = f"{note} {clean}"
+    if decision and note:
+        return decision, note[:1000]
+    return None

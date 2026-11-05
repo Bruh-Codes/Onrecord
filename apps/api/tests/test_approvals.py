@@ -217,3 +217,42 @@ async def test_owner_chat_has_no_reviewer_context_and_reviewers_need_a_grant(cli
         json={"message": "check this", "document_id": document_id}, headers=reviewer,
     )
     assert denied.status_code == 403
+
+
+async def test_draft_note_uses_ona_and_falls_back_to_a_template(client, db_ready, monkeypatch):
+    from app.api.routers import approvals as approvals_router
+    from app.services.ona import OnaAnswer
+    from app.services.ona_review import parse_draft
+
+    assert parse_draft("**DECISION:** REJECT\nNOTE: Please upload\nthe full file.") == ("rejected", "Please upload the full file.")
+    assert parse_draft("I think it's fine") is None
+
+    seen: dict = {}
+
+    async def fake_answer(**kwargs):
+        seen.update(kwargs)
+        return OnaAnswer("DECISION: REJECT\nNOTE: Only 2 rows were read. Please upload the full statement.", ())
+
+    monkeypatch.setattr(approvals_router, "answer_question", fake_answer)
+    _, _, document_id = await _unreconciled_and_owner_confirmed(client, db_ready, b"draft-note")
+    admin = bearer_header(role="admin", user_id=uuid.uuid4())
+
+    drafted = await client.post(f"/v1/approvals/{document_id}/draft-note", headers=admin)
+    assert drafted.status_code == 200, drafted.text
+    assert drafted.json() == {
+        "recommendation": "rejected", "note": "Only 2 rows were read. Please upload the full statement.", "source": "ona",
+    }
+    assert seen["snapshot"]["reviewer_context"]["open_upload"]["document_id"] == document_id
+
+    async def broken(**kwargs):
+        raise RuntimeError("groq down")
+
+    monkeypatch.setattr(approvals_router, "answer_question", broken)
+    fallback = (await client.post(f"/v1/approvals/{document_id}/draft-note", headers=admin)).json()
+    assert fallback["source"] == "template"
+    assert fallback["recommendation"] == "rejected"  # balances don't add up
+
+    # Drafting changes nothing: the upload is still waiting.
+    assert document_id in [i["document_id"] for i in (await client.get("/v1/approvals", headers=admin)).json()]
+    reviewer = bearer_header(role="reviewer", user_id=uuid.uuid4())
+    assert (await client.post(f"/v1/approvals/{document_id}/draft-note", headers=reviewer)).status_code == 403

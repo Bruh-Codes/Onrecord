@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { PillButton } from "@/components/ui/PillButton";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
+import {
+	Drawer,
+	DrawerClose,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from "@/components/ui/drawer";
 import { ApiError } from "@/lib/api";
 import {
 	type ApprovalItem,
@@ -11,6 +21,7 @@ import {
 	canReview,
 	openOriginalFile,
 	useApprovals,
+	useDraftNote,
 	useResolveApproval,
 } from "@/lib/approvals";
 import { useExtractedRows } from "@/lib/document-review";
@@ -175,8 +186,7 @@ export default function ApprovalsPage() {
 
 function ApprovalDetail({ item }: { item: ApprovalItem }) {
 	const rows = useExtractedRows(item.document_id);
-	const resolve = useResolveApproval();
-	const [note, setNote] = useState("");
+	const [drawerOpen, setDrawerOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
 	const [fileError, setFileError] = useState<string | null>(null);
 	const [opening, setOpening] = useState(false);
@@ -193,10 +203,6 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 		return () => setOnaFocus(null);
 	}, [item.business_id, item.document_id, item.business_name]);
 
-	const decide = (decision: "approved" | "rejected") => {
-		if (!note.trim()) return;
-		resolve.mutate({ documentId: item.document_id, decision, note: note.trim() });
-	};
 	const openFile = async () => {
 		setFileError(null);
 		setOpening(true);
@@ -226,22 +232,15 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 			</div>
 			{fileError && <p className="text-[12.5px] text-destructive m-0 mb-2">{fileError}</p>}
 			<div className="flex flex-wrap gap-2 mb-3">
-				<button
-					type="button"
+				{!decided && (
+					<PillButton onClick={() => setDrawerOpen(true)}>Draft a note and decide</PillButton>
+				)}
+				<PillButton
+					variant="secondary"
 					onClick={() => askOna("Check this upload for me. Do the rows look complete for the file, do the balances follow on, and what should I look at before I decide?")}
-					className="rounded-full border border-border px-3 py-1 text-[12.5px] cursor-pointer hover:bg-accent"
 				>
 					Ask Ona to check this upload
-				</button>
-				{!decided && (
-					<button
-						type="button"
-						onClick={() => askOna("Draft a short, kind note to the owner explaining why this upload can't be approved yet and what they should upload instead.")}
-						className="rounded-full border border-border px-3 py-1 text-[12.5px] cursor-pointer hover:bg-accent"
-					>
-						Draft a note to the owner
-					</button>
-				)}
+				</PillButton>
 			</div>
 			<StatusBadges item={item} />
 
@@ -324,55 +323,158 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 				</div>
 			)}
 
-			<div className="mt-5 border-t border-border pt-4">
-				{decided ? (
-					<div className="text-[13px]">
-						<span className={`font-semibold ${item.review_status === "approved" ? "text-positive" : "text-destructive"}`}>
-							{item.review_status === "approved" ? "Approved" : "Rejected"}
-						</span>
-						{item.reviewed_at && <span className="text-foreground/60"> on {dateTimeFormatter.format(new Date(item.reviewed_at))}</span>}
-						{item.reviewer_note && <p className="m-0 mt-1 text-foreground/80">“{item.reviewer_note}”</p>}
-					</div>
-				) : (
-					<>
-						<label htmlFor="approval-note" className="block text-[12px] font-semibold mb-1.5">
-							Note <span className="font-normal text-foreground/55">(the owner sees this if you reject)</span>
-						</label>
-						<textarea
-							id="approval-note"
-							value={note}
-							onChange={(e) => setNote(e.target.value)}
-							maxLength={1000}
-							rows={3}
-							placeholder="e.g. Checked the rows against pages 1 to 22, totals match."
-							className="w-full rounded-[12px] border border-border bg-background px-3 py-2 text-[13.5px] resize-y"
-						/>
+			{decided && (
+				<div className="mt-5 border-t border-border pt-4 text-[13px]">
+					<span className={`font-semibold ${item.review_status === "approved" ? "text-positive" : "text-destructive"}`}>
+						{item.review_status === "approved" ? "Approved" : "Rejected"}
+					</span>
+					{item.reviewed_at && <span className="text-foreground/60"> on {dateTimeFormatter.format(new Date(item.reviewed_at))}</span>}
+					{item.reviewer_note && <p className="m-0 mt-1 text-foreground/80">“{item.reviewer_note}”</p>}
+				</div>
+			)}
+			{!decided && <DecisionDrawer item={item} open={drawerOpen} onOpenChange={setDrawerOpen} />}
+		</section>
+	);
+}
+
+/** Approve or reject in a bottom drawer, with Ona's suggested note prefilled. */
+function DecisionDrawer({
+	item,
+	open,
+	onOpenChange,
+}: {
+	item: ApprovalItem;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const draft = useDraftNote();
+	const resolve = useResolveApproval();
+	const { toast } = useToast();
+	const [note, setNote] = useState("");
+	const suggestion = draft.data;
+
+	const suggest = () => {
+		draft.mutate(item.document_id, {
+			// Only fill the box if the reviewer hasn't started typing their own note.
+			onSuccess: (data) => setNote((current) => (current.trim() && current !== suggestion?.note ? current : data.note)),
+		});
+	};
+	useEffect(() => {
+		// Ask Ona for a suggestion the first time the drawer opens.
+		if (open && !draft.data && !draft.isPending && !draft.isError) suggest();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [open]);
+
+	const decide = (decision: "approved" | "rejected") => {
+		if (!note.trim()) return;
+		resolve.mutate(
+			{ documentId: item.document_id, decision, note: note.trim() },
+			{
+				onSuccess: () => {
+					onOpenChange(false);
+					toast({
+						title: decision === "approved" ? "Approved" : "Rejected",
+						description: `${item.business_name} has been notified.`,
+						tone: "success",
+					});
+				},
+			},
+		);
+	};
+	const recommended = suggestion?.recommendation;
+
+	return (
+		<Drawer open={open} onOpenChange={onOpenChange}>
+			<DrawerContent aria-describedby="decision-drawer-description">
+				<div className="mx-auto flex w-full max-w-[640px] flex-col overflow-y-auto">
+					<DrawerHeader>
+						<DrawerTitle>Approve or reject {item.filename}</DrawerTitle>
+						<DrawerDescription id="decision-drawer-description">
+							{item.business_name} · {reasonLabel(item)}
+						</DrawerDescription>
+					</DrawerHeader>
+
+					<div className="px-5">
+						<div className="flex items-center justify-between gap-3 mb-2">
+							<label htmlFor="approval-note" className="text-[12px] font-semibold">
+								Note to the owner
+							</label>
+							<button
+								type="button"
+								onClick={suggest}
+								disabled={draft.isPending}
+								className="text-[12px] underline underline-offset-2 cursor-pointer disabled:opacity-50"
+							>
+								{draft.isPending ? "Ona is writing…" : "Suggest again"}
+							</button>
+						</div>
+						{draft.isPending && !note ? (
+							<div aria-busy="true" aria-label="Ona is drafting a note" className="rounded-[12px] border border-border bg-background p-3 space-y-2">
+								<Skeleton className="h-3.5 w-11/12" />
+								<Skeleton className="h-3.5 w-4/5" />
+								<Skeleton className="h-3.5 w-2/3" />
+							</div>
+						) : (
+							<textarea
+								id="approval-note"
+								value={note}
+								onChange={(e) => setNote(e.target.value)}
+								maxLength={1000}
+								rows={4}
+								placeholder="Write what you checked, or what the owner should upload instead."
+								className="w-full rounded-[12px] border border-border bg-background px-3 py-2 text-[14px] leading-6 resize-y"
+							/>
+						)}
+						{suggestion && (
+							<p className="m-0 mt-2 text-[12.5px] text-foreground/70">
+								{suggestion.source === "ona" ? "Ona suggests" : "Suggested from the checks"}:{" "}
+								<span className={`font-semibold ${recommended === "approved" ? "text-positive" : "text-destructive"}`}>
+									{recommended === "approved" ? "approve" : "reject"}
+								</span>
+								. Edit the note as you like.
+							</p>
+						)}
+						{draft.isError && (
+							<p className="m-0 mt-2 text-[12.5px] text-foreground/60">Ona couldn&apos;t suggest a note just now. Write your own, or try again.</p>
+						)}
+						<p className="m-0 mt-3 rounded-[12px] bg-muted px-3 py-2 text-[12.5px] text-foreground/75">
+							Nothing is sent until you press Approve or Reject. The owner then gets a notification with this note.
+						</p>
 						{item.waiting_on_owner && (
-							<p className="text-[12.5px] text-foreground/60 m-0 mt-2">
+							<p className="m-0 mt-2 text-[12.5px] text-foreground/60">
 								The owner hasn&apos;t checked these rows yet, so they can&apos;t be approved. You can still reject the file.
 							</p>
 						)}
 						{resolve.isError && (
-							<p className="text-[12.5px] text-destructive m-0 mt-2">
+							<p className="m-0 mt-2 text-[12.5px] text-destructive">
 								{resolve.error instanceof ApiError ? resolve.error.message : "That didn't save. Try again."}
 							</p>
 						)}
-						<div className="flex flex-wrap gap-2 mt-3">
-							<PillButton
-								variant="success"
-								onClick={() => decide("approved")}
-								disabled={!note.trim() || resolve.isPending || item.waiting_on_owner}
-							>
-								Approve, count toward readiness
-							</PillButton>
-							<PillButton variant="danger" onClick={() => decide("rejected")} disabled={!note.trim() || resolve.isPending}>
-								Reject and tell the owner
-							</PillButton>
-						</div>
-						{!note.trim() && <p className="text-[11.5px] text-foreground/50 m-0 mt-2">Add a note to approve or reject.</p>}
-					</>
-				)}
-			</div>
-		</section>
+					</div>
+
+					<DrawerFooter className="sm:flex-row sm:justify-end">
+						<DrawerClose asChild>
+							<PillButton variant="secondary" className="sm:mr-auto">Cancel</PillButton>
+						</DrawerClose>
+						<PillButton
+							variant="danger"
+							onClick={() => decide("rejected")}
+							disabled={!note.trim() || resolve.isPending}
+							className={recommended === "rejected" ? "ring-2 ring-destructive/30" : ""}
+						>
+							{resolve.isPending && resolve.variables?.decision === "rejected" ? "Rejecting…" : "Reject and tell the owner"}
+						</PillButton>
+						<PillButton
+							variant="success"
+							onClick={() => decide("approved")}
+							disabled={!note.trim() || resolve.isPending || item.waiting_on_owner}
+							className={recommended === "approved" ? "ring-2 ring-positive/30" : ""}
+						>
+							{resolve.isPending && resolve.variables?.decision === "approved" ? "Approving…" : "Approve, count toward readiness"}
+						</PillButton>
+					</DrawerFooter>
+				</div>
+			</DrawerContent>
+		</Drawer>
 	);
 }

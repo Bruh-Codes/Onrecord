@@ -62,6 +62,16 @@ export function useApprovalsSummary(enabled: boolean) {
 	});
 }
 
+export type DraftNote = { recommendation: "approved" | "rejected"; note: string; source: "ona" | "template" };
+
+/** Ona's suggested decision and note. Saves and sends nothing. */
+export function useDraftNote() {
+	return useMutation({
+		mutationFn: (documentId: string) =>
+			request<DraftNote>(`/v1/approvals/${documentId}/draft-note`, { method: "POST" }),
+	});
+}
+
 export function useResolveApproval() {
 	const qc = useQueryClient();
 	return useMutation({
