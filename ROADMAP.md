@@ -135,9 +135,26 @@ _specs: `11-testing.md`_
       structure to OpenAI for bounded `clear`/`review`/`unknown` findings. The model
       must never declare forgery or alter extracted facts; unresolved signals stay
       out of readiness scoring until human review.
+- [ ] Verified statements by email (DKIM): an inbound address (e.g. statements@onrecord)
+      that users forward or auto-forward provider statement emails to, plus an .eml
+      upload option. Verify the DKIM signature (RFC 6376) against an allowlist of
+      provider sending domains, extract the attached PDF, and mark it **Verified**.
+      DKIM covers the attachment, so this proves the file came from the provider
+      unchanged; a normal "Forward" is re-signed by the mail client and does not count.
+      First step: confirm with a real MTN MoMo statement email that MTN signs with DKIM.
+  - Privacy (Act 843): opt-in forwarding only, never inbox access; one-line consent at
+    setup; drop emails from unknown senders unread; delete the raw email once the PDF
+    is extracted; register with the Data Protection Commission before launch.
+- [ ] Evidence trust levels shown to lenders per source: **Verified** (provider-signed
+      email or PDF, or direct API), **Checked** (balances reconcile, no fraud signals,
+      or reviewer-approved), **Self-reported** (hand entries, spreadsheet sync,
+      unreconciled uploads). Readiness counts Verified and Checked only; self-reported
+      data feeds the owner's insights. Today hand entries and sheet sync have no
+      evidence review and still count toward readiness.
 
   Reference: [NIST Digital Signature Standard](https://www.nist.gov/publications/digital-signature-standard-dss-3)
-  and [NIST guidance on authenticating metadata](https://airc.nist.gov/docs/NIST.AI.100-4.SyntheticContent.ipd.pdf).
+  and [NIST guidance on authenticating metadata](https://airc.nist.gov/docs/NIST.AI.100-4.SyntheticContent.ipd.pdf);
+  DKIM: [RFC 6376](https://www.rfc-editor.org/rfc/rfc6376).
 
 ## Phase 10-Pilot
 
