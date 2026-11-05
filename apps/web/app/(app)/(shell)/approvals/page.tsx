@@ -79,6 +79,11 @@ export default function ApprovalsPage() {
 	const approvals = useApprovals(tab, allowed);
 	const items = approvals.data ?? [];
 	const [selectedState, setSelected] = useState<string | null>(null);
+	const [query, setQuery] = useState("");
+	const needle = query.trim().toLowerCase();
+	const shown = needle
+		? items.filter((i) => `${i.business_name} ${i.filename}`.toLowerCase().includes(needle))
+		: items;
 	const selectedId = items.some((i) => i.document_id === selectedState) ? selectedState : (items[0]?.document_id ?? null);
 	const selected = items.find((i) => i.document_id === selectedId) ?? null;
 
@@ -102,7 +107,7 @@ export default function ApprovalsPage() {
 	}
 
 	return (
-		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1200px] mx-auto">
+		<div className="px-4 sm:px-10 py-6 sm:py-8 pb-16 max-w-[1400px] mx-auto">
 			<div className="mb-1.5 text-[11px] tracking-wider uppercase text-foreground/55">Review</div>
 			<h1 className="text-[24px] sm:text-[30px] m-0 mb-1.5">Approvals</h1>
 			<p className="text-sm opacity-75 m-0 mb-5 max-w-[720px]">
@@ -152,18 +157,36 @@ export default function ApprovalsPage() {
 			)}
 
 			{selected && (
-				<div className="grid gap-6 items-start grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)]">
-					<ul className="m-0 p-0 list-none flex flex-col gap-2" aria-label="Uploads">
-						{items.map((item) => (
+				<div className="grid gap-6 items-start grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
+					{/* A second sidebar: its own scroll, so a long queue never pushes the detail down. */}
+					<aside
+						aria-label="Uploads"
+						className="flex flex-col rounded-[20px] border border-border bg-card lg:sticky lg:top-[84px] max-h-[45dvh] lg:max-h-[calc(100dvh-108px)]"
+					>
+						<div className="border-b border-border p-3">
+							<input
+								type="search"
+								value={query}
+								onChange={(e) => setQuery(e.target.value)}
+								placeholder={`Search ${items.length} upload${items.length === 1 ? "" : "s"}`}
+								aria-label="Search uploads by business or file name"
+								className="w-full rounded-full border border-border bg-background px-3.5 py-1.5 text-[13px]"
+							/>
+						</div>
+						<ul className="m-0 flex-1 list-none overflow-y-auto overscroll-contain p-2 flex flex-col gap-1.5">
+							{shown.length === 0 && (
+								<li className="px-3 py-6 text-center text-[13px] text-foreground/55">No uploads match “{query}”.</li>
+							)}
+						{shown.map((item) => (
 							<li key={item.document_id}>
 								<button
 									type="button"
 									onClick={() => setSelected(item.document_id)}
 									aria-current={item.document_id === selectedId ? "true" : undefined}
-									className={`w-full text-left rounded-[16px] border p-4 cursor-pointer transition-colors ${
+									className={`w-full text-left rounded-[14px] border p-3 cursor-pointer transition-colors ${
 										item.document_id === selectedId
 											? "border-primary/50 bg-card ring-1 ring-primary/25 shadow-[0_1px_3px_rgba(40,33,20,0.06)] dark:bg-accent dark:ring-0 dark:border-foreground/40"
-											: "border-border bg-card hover:border-foreground/25"
+											: "border-transparent bg-card hover:border-border hover:bg-accent/40"
 									}`}
 								>
 									<div className="flex items-start justify-between gap-3">
@@ -187,7 +210,8 @@ export default function ApprovalsPage() {
 								</button>
 							</li>
 						))}
-					</ul>
+						</ul>
+					</aside>
 					<ApprovalDetail key={selected.document_id} item={selected} />
 				</div>
 			)}
@@ -198,13 +222,11 @@ export default function ApprovalsPage() {
 function ApprovalDetail({ item }: { item: ApprovalItem }) {
 	const rows = useExtractedRows(item.document_id);
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [showAll, setShowAll] = useState(false);
 	const [fileError, setFileError] = useState<string | null>(null);
 	const [opening, setOpening] = useState(false);
 	const decided = item.review_status === "approved" || item.review_status === "rejected";
 	const period = [formatDate(item.period_start), formatDate(item.period_end)].filter(Boolean).join(" to ");
 	const allRows = rows.data?.rows ?? [];
-	const visibleRows = showAll ? allRows : allRows.slice(0, 25);
 	const notes = item.findings.filter((f) => f.code !== "BALANCE_CHECK" && f.code !== "READ_TRUNCATED");
 	const balanceFinding = item.findings.find((f) => f.code === "BALANCE_CHECK");
 
@@ -293,16 +315,18 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 				</div>
 			)}
 
-			<div className="text-[12px] font-semibold mb-1.5">Rows</div>
+			<div className="text-[12px] font-semibold mb-1.5">
+				Rows{allRows.length > 0 && <span className="font-normal text-foreground/55"> · {allRows.length}{allRows.length > 12 ? ", scroll to see all" : ""}</span>}
+			</div>
 			{rows.isLoading && <Skeleton className="h-24 w-full" />}
 			{rows.isError && <p className="text-[13px] text-foreground/60 m-0">Rows couldn&apos;t be loaded for this file.</p>}
 			{!rows.isLoading && !rows.isError && allRows.length === 0 && (
 				<p className="text-[13px] text-foreground/60 m-0">No rows were read from this file.</p>
 			)}
 			{allRows.length > 0 && (
-				<div className="rounded-[14px] border border-border bg-card overflow-x-auto">
+				<div className="rounded-[14px] border border-border bg-card max-h-[420px] overflow-auto overscroll-contain">
 					<table className="w-full border-collapse text-[12.5px]">
-						<thead>
+						<thead className="sticky top-0 z-[1]">
 							<tr className="bg-muted">
 								{["Date", "Description", "In", "Out", "Balance"].map((h) => (
 									<th key={h} className={`px-3 py-2 text-[10.5px] uppercase tracking-wider text-foreground/55 border-b border-border ${h === "Date" || h === "Description" ? "text-left" : "text-right"}`}>
@@ -312,7 +336,7 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 							</tr>
 						</thead>
 						<tbody>
-							{visibleRows.map((row) => (
+							{allRows.map((row) => (
 								<tr key={row.id} className={row.excluded ? "opacity-45 line-through" : ""}>
 									<td className="px-3 py-1.5 border-b border-foreground/6 whitespace-nowrap">{row.occurred_on}</td>
 									<td className="px-3 py-1.5 border-b border-foreground/6 max-w-[260px] truncate" title={row.description}>
@@ -326,11 +350,6 @@ function ApprovalDetail({ item }: { item: ApprovalItem }) {
 							))}
 						</tbody>
 					</table>
-					{allRows.length > 25 && (
-						<button type="button" onClick={() => setShowAll((v) => !v)} className="w-full py-2 text-[12.5px] underline cursor-pointer">
-							{showAll ? "Show fewer" : `Show all ${allRows.length} rows`}
-						</button>
-					)}
 				</div>
 			)}
 
