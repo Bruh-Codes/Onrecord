@@ -139,6 +139,13 @@ function SignupForm() {
 					<button type="button" disabled={!ready || busy} onClick={handleSubmit} className="w-full mt-5 text-background font-display text-[14.5px] p-3.5 border-none rounded-full disabled:cursor-not-allowed" style={{ background: ready && !submitting ? "var(--foreground)" : "var(--muted-foreground)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
 						{submitting ? "Please wait…" : authMode === "signup" ? "Create account" : "Log in"}
 					</button>
+					{authMode === "signup" && (
+						<p className="text-[12px] text-center opacity-65 mt-3.5 mb-0">
+							By creating an account you agree to our{" "}
+							<Link href="/terms" className="underline underline-offset-2">Terms of Use</Link> and{" "}
+							<Link href="/privacy" className="underline underline-offset-2">Privacy Policy</Link>.
+						</p>
+					)}
 				</div>
 			</div>
 

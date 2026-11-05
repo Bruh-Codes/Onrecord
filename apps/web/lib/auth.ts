@@ -130,12 +130,12 @@ export const auth = betterAuth({
 	plugins: [
 		dash(),
 		phoneNumber({
-			// Dev-only stub-no SMS provider configured yet. Real delivery is
-			// out of scope for this pass (ROADMAP.md Phase 0/1). OTPs are stored
-			// in the core verification table (already renamed auth_verification
-			// above)-the plugin has no table of its own to rename.
-			sendOTP: ({ phoneNumber, code }) => {
-				console.log(`[dev] MoMo/SMS OTP for ${phoneNumber}: ${code}`);
+			// No SMS provider yet, so phone sign-in is switched off: refuse to
+			// send rather than write the code to the server logs. The plugin
+			// stays so its user columns keep their schema. OTPs live in the core
+			// verification table (renamed auth_verification above).
+			sendOTP: () => {
+				throw new Error("Phone sign-in isn't available yet. Use email or Google.");
 			},
 		}),
 		organization({
