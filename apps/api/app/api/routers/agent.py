@@ -139,7 +139,7 @@ async def delete_agent_session(
 _PAGE_NAMES = {
     "/dashboard": "Home",
     "/money": "Money",
-    "/overview": "Business health",
+    "/overview": "Money",
     "/documents": "Records",
     "/readiness": "Readiness",
     "/lender-summary": "Lender summary",

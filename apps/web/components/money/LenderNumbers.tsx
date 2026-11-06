@@ -50,7 +50,8 @@ export function LenderNumbers({ businessId, months }: { businessId: string; mont
 	}
 
 	const map = indicators.map;
-	const avgTicket = seriesOf(map.AVG_TICKET).slice(-months);
+	// Months with no sales (often before the first statement) have no average sale.
+	const avgTicket = seriesOf(map.AVG_TICKET).slice(-months).filter((point) => point.v > 0);
 	const tradingDays = seriesOf(map.ACTIVE_TRADING_DAYS).slice(-months);
 	const cashLeft = seriesOf(map.OPERATING_CASHFLOW).slice(-months);
 	const costRatio = valueOf(map.OPEX_RATIO);
