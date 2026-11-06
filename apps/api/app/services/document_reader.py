@@ -83,6 +83,10 @@ class _Chunk:
     page_offset: int = 0
     label: str = ""
     source_pages: dict[str, int] = field(default_factory=dict)
+    # Row-based chunks keep their rows and repeated headers so a reader can
+    # split a chunk and read the halves again.
+    sources: list[dict] = field(default_factory=list)
+    context: list[dict] = field(default_factory=list)
 
 
 class DocumentReader:
@@ -229,7 +233,7 @@ def _line_sources(text: str, page: int = 1, prefix: str = "text") -> list[dict]:
     ]
 
 
-def source_chunks(sources: list[dict]) -> list[_Chunk]:
+def source_chunks(sources: list[dict], size: int | None = None) -> list[_Chunk]:
     """Split sources into chunks; each chunk repeats the column headers of the tables it holds.
 
     A chunk that starts mid-table would otherwise reach the reader as bare
@@ -239,27 +243,34 @@ def source_chunks(sources: list[dict]) -> list[_Chunk]:
     for item in sources:
         if item.get("header"):
             headers.setdefault(_table_key(item["source_id"]), []).append(item)
+    size = size or SOURCES_PER_CHUNK
     chunks: list[_Chunk] = []
-    for start in range(0, len(sources), SOURCES_PER_CHUNK):
-        part = sources[start : start + SOURCES_PER_CHUNK]
+    for start in range(0, len(sources), size):
+        part = sources[start : start + size]
         present = {item["source_id"] for item in part}
         tables = dict.fromkeys(_table_key(item["source_id"]) for item in part)
         context = [
             header for table in tables if table
             for header in headers.get(table, []) if header["source_id"] not in present
         ]
-        text = "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)
-        if context:
-            text = (
-                "Column headers of the tables below, repeated from earlier in the document "
-                "(context only, not transactions):\n" + json.dumps(context, ensure_ascii=False) + "\n\n" + text
-            )
-        chunks.append(_Chunk(
-            [{"type": "text", "text": text}],
-            label=f"rows {start + 1}-{start + len(part)} of {len(sources)}",
-            source_pages={item["source_id"]: item.get("page", 1) for item in part},
-        ))
+        chunks.append(rows_chunk(part, context, label=f"rows {start + 1}-{start + len(part)} of {len(sources)}"))
     return chunks
+
+
+def rows_chunk(part: list[dict], context: list[dict], label: str) -> _Chunk:
+    text = "Document rows (each has a source_id; cite it as source_ref):\n" + json.dumps(part, ensure_ascii=False)
+    if context:
+        text = (
+            "Column headers of the tables below, repeated from earlier in the document "
+            "(context only, not transactions):\n" + json.dumps(context, ensure_ascii=False) + "\n\n" + text
+        )
+    return _Chunk(
+        [{"type": "text", "text": text}],
+        label=label,
+        source_pages={item["source_id"]: item.get("page", 1) for item in part},
+        sources=part,
+        context=context,
+    )
 
 
 def _table_key(source_id: str) -> str | None:

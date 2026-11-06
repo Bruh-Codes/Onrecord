@@ -35,8 +35,10 @@ from app.services.document_reader import (
     _line_sources,
     _sources,
     _text_sources,
+    merge_readings,
     parse_reading,
     reading_schema,
+    rows_chunk,
     source_chunks,
 )
 
@@ -48,6 +50,16 @@ MAX_IMAGE_SIDE = 2000
 TEXT_MAX_TOKENS = 32_000
 VISION_MAX_TOKENS = 16_000
 RETRIES = 2
+# The text model stops early on long chunks: a 120-line MoMo page came back
+# with a third of its rows. Small chunks, and splitting a chunk that still
+# comes back short, keep every row.
+SOURCES_PER_CHUNK = 40
+MIN_SPLIT_SOURCES = 6
+MAX_SPLITS = 2
+SHORT_READING = 0.8
+_DATE = re.compile(
+    r"\b(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[-/. ](\d{1,2}|[A-Za-z]{3,9})[-/. ]\d{2,4})\b"
+)
 _COLUMN_GAP = re.compile(r" {3,}")
 
 VISION_NOTE = (
@@ -79,9 +91,32 @@ class GroqDocumentReader(DocumentReader):
             return _pdf_chunks(payload, processed)
         if suffix in _IMAGE_TYPES:
             return [_Chunk([_image_part(payload, _IMAGE_TYPES[suffix])], label="photo")]
-        return source_chunks(_sources(processed) if processed else _text_sources(payload))
+        return source_chunks(_sources(processed) if processed else _text_sources(payload), SOURCES_PER_CHUNK)
 
-    def _read_chunk(self, chunk: _Chunk, index: int, total: int) -> DocumentReading:
+    def _read_chunk(self, chunk: _Chunk, index: int, total: int, depth: int = 0) -> DocumentReading:
+        """Read a chunk; split a row chunk in half and read again when the answer is cut short."""
+        can_split = depth < MAX_SPLITS and len(chunk.sources) >= MIN_SPLIT_SOURCES
+        try:
+            reading = self._read_once(chunk, index, total)
+        except DocumentReaderError as error:
+            if not can_split or "incomplete" not in str(error):
+                raise
+            reading = None
+        if reading is not None and not (can_split and (reading.truncated or _looks_short(reading, chunk))):
+            return reading
+        logger.info("Groq read of %s came back short; reading it in two halves", chunk.label or f"part {index}")
+        middle = len(chunk.sources) // 2
+        halves = [
+            rows_chunk(part, chunk.context, label=f"{chunk.label} (half {number})")
+            for number, part in enumerate((chunk.sources[:middle], chunk.sources[middle:]), start=1)
+        ]
+        parts = [self._read_chunk(half, index, total, depth + 1) for half in halves]
+        merged = merge_readings(parts, self.model)
+        if reading is not None and len(reading.rows) > len(merged.rows):
+            return reading
+        return merged
+
+    def _read_once(self, chunk: _Chunk, index: int, total: int) -> DocumentReading:
         vision = any(part["type"] == "image_url" for part in chunk.content)
         model = self.vision_model if vision else self.text_model
         position = f"This is part {index} of {total}{f' ({chunk.label})' if chunk.label else ''}."
@@ -135,16 +170,29 @@ class GroqDocumentReader(DocumentReader):
         raise DocumentReaderError("The document reader is unavailable.")
 
 
+def _looks_short(reading: DocumentReading, chunk: _Chunk) -> bool:
+    """True when the chunk holds clearly more dated lines than the rows that came back."""
+    dated = sum(
+        1 for item in chunk.sources
+        if not item.get("header") and _DATE.search(item.get("text") or " ".join(item.get("cells") or []))
+    )
+    return dated >= MIN_SPLIT_SOURCES and len(reading.rows) < dated * SHORT_READING
+
+
 def _pdf_chunks(payload: bytes, processed: ProcessedDocument | None) -> list[_Chunk]:
-    if processed and (processed.tables or processed.text.strip()):
-        return source_chunks(_sources(processed))
     texts = _page_texts(payload)
+    # A digital PDF's own text layer, one printed row per line, reads more
+    # reliably than Docling's table capture, which merges cells across rows on
+    # wide statements. Docling still covers PDFs with scanned pages.
+    digital = bool(texts) and all(text.strip() for text in texts)
+    if not digital and processed and (processed.tables or processed.text.strip()):
+        return source_chunks(_sources(processed), SOURCES_PER_CHUNK)
     sources = [
         source
         for number, text in enumerate(texts, start=1)
         for source in _line_sources(text, page=number, prefix=f"p{number}:line")
     ]
-    chunks = source_chunks(sources)
+    chunks = source_chunks(sources, SOURCES_PER_CHUNK)
     scanned = [number for number, text in enumerate(texts, start=1) if not text.strip()]
     for start in range(0, len(scanned), IMAGES_PER_REQUEST):
         pages = scanned[start : start + IMAGES_PER_REQUEST]

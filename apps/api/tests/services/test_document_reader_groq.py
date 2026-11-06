@@ -136,3 +136,44 @@ def test_pdf_text_layer_keeps_each_table_row_on_one_line():
     row_lines = [line for line in text.splitlines() if "30-Oct-2026" in line]
     assert len(row_lines) == 1 and "1914.77" in row_lines[0] and "1562.15" in row_lines[0]
     assert "      " not in row_lines[0]  # wide gaps are shortened
+
+
+def _rows_reply(count: int, finish: str = "stop") -> httpx.Response:
+    row = _payload()["transactions"][0]
+    payload = _payload(transactions=[{**row, "reference": f"R{n}"} for n in range(count)])
+    return httpx.Response(200, json={"model": "openai/gpt-oss-120b", "choices": [
+        {"finish_reason": finish, "message": {"content": json.dumps(payload)}},
+    ]})
+
+
+def test_short_answer_is_read_again_in_two_halves():
+    lines = "\n".join(f"{day:02d}-Oct-2026   PAYMENT_RECEIVED   AMA   {day}.00" for day in range(1, 21))
+    requests: list[dict] = []
+    # 20 dated lines but only 5 rows back: the chunk is split and each half read again.
+    reading = _reader(requests, [_rows_reply(5), _rows_reply(10), _rows_reply(10)]).read(lines.encode(), "pasted.txt", None)
+    assert len(requests) == 3 and len(reading.rows) == 20
+    first_half = requests[1]["messages"][1]["content"][0]["text"]
+    assert "01-Oct-2026" in first_half and "20-Oct-2026" not in first_half
+
+
+def test_full_answer_is_not_split():
+    lines = "\n".join(f"{day:02d}-Oct-2026   PAYMENT_RECEIVED   AMA   {day}.00" for day in range(1, 11))
+    requests: list[dict] = []
+    reading = _reader(requests, [_rows_reply(10)]).read(lines.encode(), "pasted.txt", None)
+    assert len(requests) == 1 and len(reading.rows) == 10
+
+
+def test_long_text_is_sent_in_small_chunks():
+    from app.services.document_reader_groq import SOURCES_PER_CHUNK
+
+    lines = "\n".join(f"line {n}" for n in range(SOURCES_PER_CHUNK * 2 + 1))
+    assert len(_reader([]).build_chunks(lines.encode(), "pasted.txt", None)) == 3
+
+
+def test_digital_pdf_prefers_its_text_layer_over_docling():
+    requests: list[dict] = []
+    pdf = _text_pdf([[(40, "30-Oct-2026"), (200, "EDITH DOH"), (420, "350")]])
+    processed = ProcessedDocument(text="garbled docling table", page_count=1, structure={}, tables=())
+    _reader(requests).read(pdf, "statement.pdf", processed)
+    text = requests[0]["messages"][1]["content"][0]["text"]
+    assert "EDITH DOH" in text and "garbled" not in text
