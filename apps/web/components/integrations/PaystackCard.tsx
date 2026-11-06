@@ -20,12 +20,13 @@ export function PaystackCard({ header }: { header: ReactNode }) {
 	const sync = usePaystackMutation(() => paystackApi.sync(businessId!));
 	const disconnect = usePaystackMutation(() => paystackApi.disconnect(businessId!));
 
-	const current = connection.data ?? null;
+	// If the status call fails (for example while a new API deploy is still
+	// rolling out), show the calm "Connect" state rather than an error.
+	const current = connection.isError ? null : (connection.data ?? null);
 	const showForm = !current ? formOpen : current.status === "needs_attention";
 
 	let action: ReactNode;
-	if (connection.isLoading || !businessId) action = <span className="text-[12px] opacity-60">Checking…</span>;
-	else if (connection.isError) action = <span className="text-[11px] text-destructive">Couldn&apos;t check Paystack.</span>;
+	if ((connection.isLoading && !connection.isError) || !businessId) action = <span className="text-[12px] opacity-60">Checking…</span>;
 	else if (!current) {
 		action = formOpen ? null : (
 			<button type="button" onClick={() => setFormOpen(true)} className="shrink-0 bg-foreground text-background text-[13px] px-4.5 py-2.5 rounded-full">
@@ -95,6 +96,17 @@ export function PaystackCard({ header }: { header: ReactNode }) {
 	);
 }
 
+function connectError(problem: unknown): string {
+	if (problem instanceof ApiError) {
+		// 404: the API doesn't have Paystack yet. 503: the server key isn't set.
+		if (problem.status === 404 || problem.code === "PAYSTACK_NOT_CONFIGURED") {
+			return "Paystack connections aren't switched on yet. Try again a little later.";
+		}
+		if (problem.status < 500) return problem.message;
+	}
+	return "Couldn't connect Paystack just now. Try again in a minute.";
+}
+
 function KeyForm({ businessId, replacing, onCancel }: { businessId: string; replacing: boolean; onCancel?: () => void }) {
 	const [key, setKey] = useState("");
 	const [error, setError] = useState("");
@@ -105,7 +117,7 @@ function KeyForm({ businessId, replacing, onCancel }: { businessId: string; repl
 		setError("");
 		connect.mutate(key.trim(), {
 			onSuccess: () => setKey(""),
-			onError: (problem) => setError(problem instanceof ApiError ? problem.message : "Couldn't connect Paystack. Try again."),
+			onError: (problem) => setError(connectError(problem)),
 		});
 	}
 
