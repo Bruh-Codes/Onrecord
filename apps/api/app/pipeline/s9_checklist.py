@@ -50,11 +50,13 @@ _PACKS: dict[str, list[dict]] = {
             "label": "Tenancy agreement for your business premises",
         },
         {
+            # Optional: most small owners don't have one, and asking for it as a
+            # must-have blocked them. Ona can help write one.
             "doc_type": "cashflow_projection",
-            "requirement": "required",
+            "requirement": "optional",
             "constraint": {"min_months": 6},
             "generatable": True,
-            "label": "Six-month cash flow projection",
+            "label": "Cash flow plan (next 6 months)",
         },
         {
             "doc_type": "financial_statement",

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { GetStartedCard } from "@/components/home/GetStartedCard";
 import { GoogleSheetsConnect } from "@/components/integrations/GoogleSheetsConnect";
+import { UploadDropzone } from "@/components/documents/UploadDropzone";
 import { authClient } from "@/lib/auth-client";
 import { formatGhs } from "@/lib/format";
 import {
@@ -22,7 +23,8 @@ import { HomePageSkeleton, Skeleton } from "@/components/ui/Skeleton";
 export default function HomePage() {
 	const { data: session } = authClient.useSession();
 	const ownerFirstName = session?.user?.name?.split(" ")[0];
-	const { businessId } = useMe();
+	const me = useMe();
+	const { businessId } = me;
 	const [googleSheetsConnected, setGoogleSheetsConnected] = useState(false);
 	const score = useScore(businessId);
 	const coverage = useCoverage(businessId);
@@ -32,7 +34,10 @@ export default function HomePage() {
 	const money = useMoneySummary(businessId, {});
 	// Until the first document exists, keep the home state safe for a fresh account.
 	// This also avoids showing seeded actions if the documents request is unavailable.
-	const isNewUser = !documents.data || documents.data.total === 0;
+	// Stay on the first-time view after an upload from here, so the upload box
+	// can show "Uploaded" and take the owner to Records.
+	const [uploadedHere, setUploadedHere] = useState(false);
+	const isNewUser = uploadedHere || !documents.data || documents.data.total === 0;
 	const nextSteps = buildNextSteps(gaps.data, checklist.data).slice(0, 3);
 
 	useEffect(() => {
@@ -63,14 +68,14 @@ export default function HomePage() {
 			</h1>
 			<p className="text-[14.5px] text-muted-foreground m-0 mb-6">
 				{isNewUser
-					? "Start by adding your MoMo or bank statements. We'll turn them into a record a lender can read."
-					: "Here's your money and how ready your record is to show a lender."}
+					? "OnRecord turns your records into a clear picture of your business that you can show a lender."
+					: "Your money, and how ready your record is for a lender."}
 			</p>
 
 			{awaitingReview > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/35 bg-warning/10 px-4 py-3 text-[13px]" role="status">
 					<span>
-						{awaitingReview === 1 ? "1 upload has" : `${awaitingReview} uploads have`} rows waiting for you to check. They don&apos;t count until you confirm them.
+						{awaitingReview === 1 ? "1 upload has" : `${awaitingReview} uploads have`} rows for you to check before they count.
 					</span>
 					<Link href="/documents" className="font-semibold underline underline-offset-2">Check rows</Link>
 				</div>
@@ -88,7 +93,7 @@ export default function HomePage() {
 						<div className="mt-1 text-[12px] text-foreground/60">
 							{lastMonth
 								? `Out ${formatGhs(lastMonth.money_out_pesewas)}${prevMonth ? ` · ${changeText(lastMonth.money_in_pesewas, prevMonth.money_in_pesewas)} vs ${monthLabel(prevMonth.period)}` : ""}`
-								: "No confirmed transactions yet"}
+								: "Nothing counted yet"}
 						</div>
 					</Link>
 					<Link href="/readiness" className="rounded-2xl border border-border bg-card p-4 no-underline text-foreground hover:border-foreground/30">
@@ -98,7 +103,7 @@ export default function HomePage() {
 							<span className="text-[14px] text-foreground/50"> / 100</span></>}
 						</div>
 						<div className="mt-1 text-[12px] text-foreground/60">
-							{score.data ? `${BAND_LABELS[score.data.band]} · not a credit decision` : "Calculated after your first statement"}
+							{score.data ? `${BAND_LABELS[score.data.band]} · not a loan decision` : "Shows after your first statement"}
 						</div>
 					</Link>
 					<Link href="/documents" className="rounded-2xl border border-border bg-card p-4 no-underline text-foreground hover:border-foreground/30">
@@ -142,6 +147,19 @@ export default function HomePage() {
 
 			<GetStartedCard
 				hasData={!isNewUser}
+				upload={
+					<UploadDropzone
+						businessId={businessId}
+						businessLoading={me.isLoading}
+						businessError={me.isError}
+						onRetryBusiness={() => me.refetch()}
+						onUploaded={() => {
+							setUploadedHere(true);
+							void documents.refetch();
+						}}
+						processingDocuments={documents.data?.items ?? []}
+					/>
+				}
 				googleSheets={googleSheetsConnected ? <GoogleSheetsConnect /> : undefined}
 			/>
 		</div>

@@ -27,6 +27,7 @@ class ParsedRow:
     category_source: str | None = None
     internal_transfer: bool = False
     quality_flags: tuple[str, ...] = ()
+    counterparty: str | None = None
 
 
 _DATE_PATTERNS = (
@@ -250,7 +251,7 @@ def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedR
     occurred_on = _parse_date(cells[date_index])
     if occurred_on is None:
         return None
-    descriptions = [cell for index, cell in enumerate(cells) if index != date_index and not _amount_value(cell)]
+    descriptions = [cell for index, cell in enumerate(cells) if index != date_index and not _is_amount_cell(cell)]
     raw_description = " ".join(descriptions).strip()
     description = _clean_description(raw_description)
     if not description:
@@ -278,7 +279,7 @@ def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedR
             return None
         else:
             amount = candidates[0]
-            direction = "out" if _is_negative_amount(" ".join(cells)) or re.search(r"cash out|withdraw|debit|payment|purchase|airtime|bill pay|fee", f"{description} {transaction_type or ''}", re.I) else "in"
+            direction = "out" if _is_negative_amount(" ".join(cells)) else _direction(f"{transaction_type or ''} {description}", balance_before, balance_after)
 
     balance = balance_after or _last_amount_for_headers(cells, header, ("balance", "running"))
     # MoMo exports contain many numeric identifiers (account, phone, F_ID).
@@ -292,6 +293,7 @@ def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedR
         if movement > 0 and transaction_type is not None:
             amount = movement
     category_l1, category_l2, confidence = categorize_transaction(description, transaction_type, direction)
+    counterparty = _counterparty(cells, header, direction)
     internal_transfer = bool(re.search(r"\binternal\b", f"{description} {transaction_type or ''}", re.I))
     quality_flags: list[str] = []
     if balance is None:
@@ -314,6 +316,7 @@ def _parse_row(cells: list[str], header: list[str], *, page: int = 1) -> ParsedR
         category_source="rule" if category_l1 else None,
         internal_transfer=internal_transfer,
         quality_flags=tuple(quality_flags),
+        counterparty=counterparty,
     )
 
 
@@ -376,7 +379,35 @@ def _header_value(cells: list[str], header: list[str], names: tuple[str, ...]) -
     return None
 
 
+# Who paid (money in) or who was paid (money out), from a named column such as
+# MTN's "From Name" / "To Name". Matched on whole words so "to" never matches
+# "total" or "customer".
+_FROM_HEADERS = ("from name", "from", "sender", "sender name", "payer", "customer", "received from")
+_TO_HEADERS = ("to name", "to", "recipient", "recipient name", "payee", "beneficiary", "paid to", "supplier")
+_EITHER_HEADERS = ("counterparty", "party", "name")
+
+
+def _counterparty(cells: list[str], header: list[str], direction: str) -> str | None:
+    wanted = (_FROM_HEADERS if direction == "in" else _TO_HEADERS) + _EITHER_HEADERS
+    for name in wanted:
+        for index, title in enumerate(header):
+            if index < len(cells) and title.strip() == name:
+                value = cells[index].strip()
+                if value and not _is_amount_cell(value):
+                    return value[:120]
+    return None
+
+
+def _is_amount_cell(value: str) -> bool:
+    """True when the whole cell is a money amount (not a name with a number in it)."""
+    compact = value.replace(" ", "")
+    return bool(compact) and bool(_AMOUNT_RE.fullmatch(compact)) and _amount_value(compact) is not None
+
+
 def _direction(value: str, balance_before: int | None, balance_after: int | None) -> str:
+    # "PAYMENT RECEIVED" is money in: check receiving words before "payment".
+    if re.search(r"receiv|deposit|cash[ -]?in\b", value, re.I):
+        return "in"
     if re.search(r"debit|payment|purchase|withdraw|cash[ -]?out|airtime|bill|fee", value, re.I):
         return "out"
     if re.search(r"refund|reversal", value, re.I):
@@ -398,7 +429,7 @@ def _amount_value(value: str) -> int | None:
     negative = raw.startswith("-") or (raw.startswith("(") and raw.endswith(")"))
     raw = raw.strip("()")
     try:
-        amount = Decimal(raw.lstrip("+"))
+        amount = Decimal(raw.lstrip("+-"))
     except InvalidOperation:
         return None
     if amount < 0 or amount.as_tuple().exponent < -2:

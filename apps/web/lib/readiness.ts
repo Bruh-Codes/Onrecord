@@ -19,7 +19,7 @@ export const DOC_TYPE_LABELS: Record<string, string> = {
 	tenancy_agreement: "Tenancy or land agreement",
 	stock_list: "Stock or inventory list",
 	financial_statement: "Financial statements",
-	cashflow_projection: "Cash flow plan",
+	cashflow_projection: "Cash flow plan (next 6 months)",
 	id_document: "Ghana Card or other ID",
 	other: "Other document",
 };
@@ -93,13 +93,20 @@ export function buildNextSteps(gaps: Gap[] | undefined, checklist: ChecklistItem
 	for (const item of checklist ?? []) {
 		if (item.status !== "missing" || gapDocTypes.has(item.doc_type)) continue;
 		const label = docTypeLabel(item.doc_type);
+		const plan = item.doc_type === "cashflow_projection";
 		steps.push({
 			id: item.id,
 			title: `Add your ${label.toLowerCase()}`,
-			detail: item.requirement === "optional" ? "Optional, but it makes your file stronger." : "Lenders ask for this.",
+			detail: plan
+				? "Optional. Ona can help you write one from your records."
+				: item.requirement === "optional"
+					? "Optional, but it makes your record stronger."
+					: "Lenders ask for this.",
 			severity: item.requirement === "optional" ? "minor" : "major",
 			action: "upload",
-			prompt: `Lenders want my ${label.toLowerCase()}. Where do I get it in Ghana and what should it show?`,
+			prompt: plan
+				? "Help me write a simple cash flow plan for the next 6 months from my records."
+				: `Lenders want my ${label.toLowerCase()}. Where do I get it in Ghana and what should it show?`,
 		});
 	}
 

@@ -47,7 +47,8 @@ function AddRecordForm({
 	const { toast } = useToast();
 	const categories = useRecordCategories();
 	const add = useAddRecord(businessId);
-	const [direction, setDirection] = useState<"in" | "out">("out");
+	// Cash sales are the usual reason to type a record in, so start on Money in.
+	const [direction, setDirection] = useState<"in" | "out">("in");
 	const [amount, setAmount] = useState("");
 	const [date, setDate] = useState(accraDate());
 	const [category, setCategory] = useState("");
@@ -56,6 +57,7 @@ function AddRecordForm({
 	const [activity, setActivity] = useState(defaults?.farm_activity ?? "");
 	const [season, setSeason] = useState(defaults?.season ?? "");
 	const [error, setError] = useState<string | null>(null);
+	const [showMore, setShowMore] = useState(Boolean(defaults?.farm_activity || defaults?.season));
 	const options = categories.data?.[direction] ?? [];
 
 	async function save(event: React.FormEvent) {
@@ -94,11 +96,11 @@ function AddRecordForm({
 				<div className="grid gap-1">
 					<DrawerTitle className="font-[family-name:var(--body-font)]">Add a record</DrawerTitle>
 					<DrawerDescription id="add-record-description">
-						For cash sales and costs that aren&apos;t on a MoMo or bank statement. Lenders trust statements and receipts more, so upload those too when you have them.
+						For cash sales and costs that aren&apos;t on a statement.
 					</DrawerDescription>
 				</div>
 				<div className="mt-2 flex shrink-0 self-start rounded-full border border-border p-0.5 sm:mt-0" role="group" aria-label="Money in or out">
-					{(["out", "in"] as const).map((value) => (
+					{(["in", "out"] as const).map((value) => (
 						<button
 							key={value}
 							type="button"
@@ -129,6 +131,16 @@ function AddRecordForm({
 							{options.map((option) => <option key={option} value={option}>{option}</option>)}
 						</select>
 					</label>
+					{!showMore && (
+						<button
+							type="button"
+							onClick={() => setShowMore(true)}
+							className="justify-self-start bg-transparent border-none p-0 text-[12.5px] font-semibold underline underline-offset-2 cursor-pointer sm:col-span-2"
+						>
+							More details (optional)
+						</button>
+					)}
+					{showMore && <>
 					<label className={LABEL}>
 						<span>Product or service <span className="font-normal text-foreground/50">(optional)</span></span>
 						<input className={FIELD} list="record-activities" placeholder="e.g. Rice, Hair braiding, Tomatoes" value={activity} onChange={(e) => setActivity(e.target.value)} maxLength={80} />
@@ -145,6 +157,7 @@ function AddRecordForm({
 						<span>Note <span className="font-normal text-foreground/50">(optional)</span></span>
 						<input className={FIELD} placeholder={direction === "in" ? "e.g. 10 bags of rice sold at Makola" : "e.g. New stock from the wholesaler"} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
 					</label>
+					</>}
 				</div>
 				<datalist id="record-activities">{activities.map((value) => <option key={value} value={value} />)}</datalist>
 				<datalist id="record-seasons">{seasons.map((value) => <option key={value} value={value} />)}</datalist>

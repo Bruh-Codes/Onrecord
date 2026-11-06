@@ -13,8 +13,8 @@ import type { Document, DocumentStatus } from "@/lib/api-types";
 import { formatGhs } from "@/lib/format";
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
-	received: "Waiting to be read",
-	classified: "Being read",
+	received: "Reading",
+	classified: "Reading",
 	extracted: "Read",
 	reconciliation_failed: "Balances don't add up",
 	failed: "Couldn't be read",
@@ -35,8 +35,14 @@ function isUnsupportedDocument(document: Document) {
 	return document.status === "failed" && document.quality_flags?.supported === false;
 }
 
+// OnRecord is still checking the file: nothing for the owner to do yet.
+function beingChecked(document: Document) {
+	const review = document.quality_flags?.evidence_review as { status?: string } | undefined;
+	return review?.status === "pending";
+}
+
 function needsReview(document: Document) {
-	if (isUnsupportedDocument(document)) return false;
+	if (isUnsupportedDocument(document) || beingChecked(document)) return false;
 	const evidenceReview = document.quality_flags?.evidence_review as
 		| { status?: string; scoring_eligible?: boolean }
 		| undefined;
@@ -64,13 +70,14 @@ function evidenceReviewMessage(document: Document): string | null {
 	if (isUnsupportedDocument(document)) return null;
 	if (awaitingRowReview(document)) {
 		const count = aiIngest(document)?.row_count ?? 0;
-		return `We read ${count} row${count === 1 ? "" : "s"} from this file. Check them before they're added to your records.`;
+		return `We read ${count} row${count === 1 ? "" : "s"}. Check them before they're added.`;
 	}
+	if (beingChecked(document)) return "We're checking this file. It counts once the check is done.";
 	const review = document.quality_flags?.evidence_review as
 		| { status?: string; summary?: string }
 		| undefined;
 	if (!review || !["pending", "warning", "error", "rejected"].includes(review.status ?? "")) return null;
-	return review.summary || "Check this file before it counts in your record.";
+	return review.summary || "Check this file before it counts.";
 }
 
 function isPartiallyUsable(document: Document) {
@@ -87,9 +94,9 @@ function canDelete(document: Document) {
 }
 
 const documentDateFormatter = new Intl.DateTimeFormat("en-GB", {
-	dateStyle: "short",
-	timeStyle: "medium",
-	timeZone: "UTC",
+	day: "numeric",
+	month: "short",
+	year: "numeric",
 });
 
 export function UploadedDocumentsList({
@@ -163,12 +170,12 @@ export function UploadedDocumentsList({
 						</div>
 						{(doc.transaction_count ?? 0) > 0 && (
 							<div className="mt-1 text-[11px] text-foreground/60">
-								{doc.transaction_count} transactions · money out {formatGhs(doc.money_out_pesewas ?? 0)}
+								{doc.transaction_count} rows · in {formatGhs(doc.money_in_pesewas ?? 0)} · out {formatGhs(doc.money_out_pesewas ?? 0)}
 							</div>
 						)}
 						{evidenceReviewMessage(doc) && (
-							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) || awaitingRowReview(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
-								{awaitingRowReview(doc) ? "" : isPartiallyUsable(doc) ? "Counted, with a warning: " : "Needs your check before it counts. "}
+							<div className={`text-[11px] mt-1 ${isPartiallyUsable(doc) || awaitingRowReview(doc) || beingChecked(doc) ? "text-foreground/60" : "text-destructive/80"}`}>
+								{isPartiallyUsable(doc) ? "Counted, with a warning: " : ""}
 								{evidenceReviewMessage(doc)}
 							</div>
 						)}
@@ -195,11 +202,13 @@ export function UploadedDocumentsList({
 								{expandedId === doc.id ? "Hide data" : "View data"}
 							</PillButton>
 						)}
-						<Badge tone={awaitingRowReview(doc) ? "neutral" : needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
+						<Badge tone={awaitingRowReview(doc) || beingChecked(doc) ? "neutral" : needsReview(doc) ? "negative" : STATUS_TONE[doc.status]}>
 							{awaitingRowReview(doc)
-								? "Waiting for you"
+								? "Your turn"
+								: beingChecked(doc)
+								? "Being checked"
 								: needsReview(doc)
-								? "Needs review"
+								? "Needs a look"
 								: isUnsupportedDocument(doc)
 								? "Not financial data"
 								: STATUS_LABEL[doc.status]}

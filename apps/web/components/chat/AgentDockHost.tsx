@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AgentDock, type DockConversationMessage } from "@/components/ui/agent-dock";
 import { useToast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
@@ -20,7 +21,19 @@ function toConversationMessages(
 	}));
 }
 
+// Short example questions per page, shown before the first message.
+const STARTERS: { prefix: string; questions: string[] }[] = [
+	{ prefix: "/readiness", questions: ["Explain my score", "What should I do first?"] },
+	{ prefix: "/money", questions: ["How is my business doing?", "What will a lender look at?"] },
+	{ prefix: "/documents", questions: ["What should I upload first?", "How do I get my MoMo statement?"] },
+	{ prefix: "/lender-summary", questions: ["What will a lender look at?", "What is still missing?"] },
+];
+const DEFAULT_STARTERS = ["What should I upload first?", "How is my business doing?", "What will a lender look at?"];
+
 export function AgentDockHost() {
+	const pathname = usePathname();
+	const starterQuestions =
+		STARTERS.find((entry) => pathname?.startsWith(entry.prefix))?.questions ?? DEFAULT_STARTERS;
 	const { businessId: ownBusinessId } = useMe();
 	// On Approvals, Ona talks about the upload the reviewer has open instead.
 	const focus = useOnaFocus();
@@ -181,6 +194,7 @@ export function AgentDockHost() {
 			onActionConfirm={confirmAction}
 			pendingAction={pendingAction}
 			sessionResetKey={sessionResetKey}
+			starterQuestions={focus ? [] : starterQuestions}
 			workingActivity={workingActivity}
 		/>
 	);

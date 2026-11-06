@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { AddRecordDrawer } from "@/components/money/AddRecordForm";
 import { FarmBreakdown } from "@/components/money/FarmBreakdown";
@@ -26,7 +27,9 @@ export default function MoneyPage() {
 	const { businessId } = useMe();
 	const [months, setMonths] = useState(12);
 	const [filter, setFilter] = useState<FarmFilter>({});
-	const [adding, setAdding] = useState(false);
+	// Home's "Type in a cash sale or cost" links here with ?add=1 to open the form.
+	const searchParams = useSearchParams();
+	const [adding, setAdding] = useState(() => searchParams.get("add") === "1");
 	const overall = useMoneySummary(businessId, {});
 	const latest = overall.data?.latest_on ?? null;
 	const range = latest && months ? { from: rangeStart(latest, months) } : {};
@@ -72,7 +75,7 @@ export default function MoneyPage() {
 				<div className="rounded-2xl border border-dashed border-foreground/25 bg-muted/50 p-8 text-center">
 					<p className="m-0 text-[15px] font-semibold">No transactions yet</p>
 					<p className="m-0 mt-1.5 text-[13px] text-foreground/60">
-						Upload a MoMo or bank statement, a screenshot, or paste your SMS alerts and we&apos;ll build this page for you. Sales and costs paid in cash can be added with &ldquo;Add a record&rdquo;.
+						Upload a statement and we&apos;ll fill this page. For cash sales, tap &ldquo;Add a record&rdquo;.
 					</p>
 					<div className="mt-4 flex flex-wrap justify-center gap-2">
 						<Link href="/documents" className="inline-block rounded-full bg-foreground px-4 py-2 text-[13px] text-background no-underline">
@@ -171,7 +174,7 @@ export default function MoneyPage() {
 
 			<FarmBreakdown farm={data.farm} filter={filter} onFilter={setFilter} />
 
-			<div className="mt-4 grid gap-4 md:grid-cols-2">
+			<div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 				<RankedList
 					title="Who pays you"
 					tone="in"

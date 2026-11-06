@@ -69,7 +69,9 @@ export function Sidebar() {
 	const reviewer = canReview(me?.role);
 	const groups = reviewer ? [...NAV_GROUPS, REVIEW_GROUP] : NAV_GROUPS;
 	const waiting = useApprovalsSummary(reviewer).data?.open ?? 0;
-	const [collapsed, setCollapsed] = useState(true);
+	// Open with labels by default so new owners can read the menu; remember
+	// if they collapse it.
+	const [collapsed, setCollapsed] = useState(false);
 	const [storageReady, setStorageReady] = useState(false);
 	const [width, setWidth] = useState(MAX_WIDTH);
 	const [dragging, setDragging] = useState(false);
@@ -82,17 +84,21 @@ export function Sidebar() {
 	const effective = collapsed ? COLLAPSED_WIDTH : width;
 
 	useEffect(() => {
-		const saved = localStorage.getItem("sidebar-collapsed");
-		if (saved === "false") {
-			setCollapsed(false);
-			setWidth(MAX_WIDTH);
+		try {
+			if (localStorage.getItem("sidebar-collapsed") === "true") setCollapsed(true);
+		} catch {
+			// Storage blocked: keep the default.
 		}
 		setStorageReady(true);
 	}, []);
 
 	useEffect(() => {
 		if (!storageReady) return;
-		localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
+		try {
+			localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
+		} catch {
+			// Storage blocked: nothing to remember.
+		}
 	}, [collapsed, storageReady]);
 
 	useEffect(() => {
