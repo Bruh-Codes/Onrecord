@@ -27,6 +27,8 @@ _EVIDENCE_MULTIPLIER = {
     "bank_statement": 1.0,
     "momo_statement": 1.0,
     "momo_merchant_statement": 1.0,
+    # Read from Paystack's API with the owner's key, not typed in.
+    "processor_statement": 1.0,
     "invoice_issued": 1.0,
     "invoice_received": 1.0,
     "receipt": 0.6,

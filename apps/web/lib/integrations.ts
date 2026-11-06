@@ -4,7 +4,9 @@ export type AppIntegration = {
 	icon: "google-sheets" | "paystack" | "mtn" | "bank" | "gmail";
 };
 
-/** Cards on the Integrations page. Only Google Sheets works today; the rest show "Coming soon". */
+/** Cards on the Integrations page. Google Sheets and Paystack work today; the rest show "Coming soon". */
+export const LIVE_INTEGRATIONS: AppIntegration["icon"][] = ["google-sheets", "paystack"];
+
 export const APP_INTEGRATIONS: AppIntegration[] = [
 	{
 		name: "Google Sheets",
@@ -13,7 +15,7 @@ export const APP_INTEGRATIONS: AppIntegration[] = [
 	},
 	{
 		name: "Paystack",
-		desc: "Your Paystack payments and payouts, without uploading statements.",
+		desc: "Your Paystack payments come in by themselves, without uploading statements.",
 		icon: "paystack",
 	},
 	{
