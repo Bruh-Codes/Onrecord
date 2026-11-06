@@ -469,7 +469,7 @@ Transactions
 - balance_after: the running balance printed on that row, or null.
 - balance_before: the balance before the transaction when the row prints one (MTN MoMo has a BAL BEFORE column), else null. Copy it exactly; it is used to check direction and amount.
 - counterparty: the other party's name as printed (customer, supplier, sender, recipient), or null. Write phone numbers exactly as printed; they are masked afterwards.
-- reference: the transaction ID or reference number when printed, or null.
+- reference: the unique transaction ID when printed (MTN MoMo: the F_ID / Financial Transaction ID column), or null. Never a free-text note such as MTN's REF column ("goods", "to bank"); put that in description if useful.
 - description: the row's narration or transaction type, short and readable. Leave out network routing columns such as MTN's OVA value ("Internal" there means the same mobile network, not a transfer between the owner's own accounts).
 - category: your best guess. revenue is money from sales or customers. cogs is stock, inputs, seed, fertiliser, feed, or goods for resale. opex is running costs such as rent, transport, wages, airtime, and utilities. tax is tax payments. financing_in is a loan received, financing_out is a loan repayment. owner is the owner's personal money in or out. internal is a transfer between the business's own accounts. Use unknown when unsure.
 - page: the page number within the file you were given (1 for spreadsheets, text and single images).

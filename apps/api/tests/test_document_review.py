@@ -176,3 +176,20 @@ async def test_same_value_rows_with_different_references_are_kept(client, db_rea
     assert meta["summary"] == "Statement for •••456."
     assert meta["findings"] == ["Account •••890 is listed."]
     assert meta["account_label"] == "•••3456"
+
+
+async def test_free_text_reference_shared_by_many_rows_is_not_an_id(client, db_ready, monkeypatch):
+    from app.workers.tasks import recompute
+
+    monkeypatch.setattr(recompute, "delay", lambda *_: None)
+    _, business_id, document_id = await _document(client, b"free-text-ref")
+    # MTN's REF column holds notes like "goods" on many different payments.
+    rows = [
+        _row("10.00", "in", "10.00", "goods", "2026-03-01"), _row("20.00", "in", "30.00", "goods", "2026-03-02"),
+        _row("5.00", "out", "25.00", "to bank", "2026-03-03"), _row("15.00", "in", "40.00", "goods", "2026-03-04"),
+    ]
+    assert await _stage(db_ready, document_id, _reading(rows)) is True
+
+    transactions = await _transactions(db_ready, business_id)
+    assert len(transactions) == 4
+    assert [t.provider_reference for t in transactions].count(None) == 3  # "to bank" appears once, so it stays
