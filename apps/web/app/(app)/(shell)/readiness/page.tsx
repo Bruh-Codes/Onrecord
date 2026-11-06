@@ -58,8 +58,7 @@ export default function ReadinessPage() {
 				<div>
 					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Readiness</h1>
 					<p className="text-sm opacity-70 m-0 max-w-[620px]">
-						How complete your record is for a bank, microfinance or co-op lender,
-						and what to do next. OnRecord doesn&apos;t lend or make loan decisions.
+						How complete your record is for a lender, and what to do next. OnRecord doesn&apos;t lend.
 					</p>
 				</div>
 				<Link
@@ -98,7 +97,7 @@ export default function ReadinessPage() {
 					<p className="m-0 mt-3 text-[13px] leading-relaxed text-foreground/70">
 						{score.data
 							? BAND_MEANING[band]
-							: "Your score appears after your first statement is processed."}
+							: "Your score shows after we read your first statement."}
 					</p>
 				</div>
 				)}
@@ -137,7 +136,7 @@ export default function ReadinessPage() {
 				Do these next
 			</h2>
 			<p className="m-0 mb-3 text-[13px] text-foreground/60">
-				Most important first. Ona can explain any item or help you find the document.
+				Most important first. Ona can explain any of them.
 			</p>
 			{loading ? (
 				<div aria-busy="true" aria-label="Loading next steps">
@@ -145,9 +144,16 @@ export default function ReadinessPage() {
 					<GapRowSkeleton />
 					<GapRowSkeleton />
 				</div>
+			) : !score.data ? (
+				<div className="rounded-2xl bg-muted p-6 text-[13.5px] text-foreground/70">
+					<p className="m-0">Add your first statement. We&apos;ll then show what lenders will ask for.</p>
+					<Link href="/documents" className="mt-3 inline-block rounded-full bg-foreground px-3.5 py-1.5 text-[12.5px] text-background no-underline">
+						Upload a statement
+					</Link>
+				</div>
 			) : steps.length === 0 ? (
 				<div className="rounded-2xl bg-muted p-6 text-[13.5px] text-foreground/70">
-					Nothing open. Your record has everything this lender checklist asks for.
+					Nothing left to do. Your record has everything on this checklist.
 				</div>
 			) : (
 				<ol className="m-0 list-none p-0 flex flex-col gap-2.5">

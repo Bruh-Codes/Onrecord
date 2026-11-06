@@ -15,6 +15,7 @@ from app.models.business import Account
 from app.models.document import Document, Extraction
 from app.models.enums import AccountKind, DocStatus, DocType, Provider
 from app.pipeline.recompute import recompute_business
+from app.pipeline.s3_ai_normalise import mask_identifiers
 from app.pipeline.s3_extract import ParsedRow, parse_statement
 from app.pipeline.s3_financial_statement import parse_financial_statement, summarize_financial_fields
 from app.pipeline.s3_invoice import extract_invoice
@@ -462,6 +463,7 @@ def _persist_transactions(session: Session, doc: Document, text: str, rows: list
                 flags={
                     **({"internal_transfer": True} if row.internal_transfer else {}),
                     **({"extraction_quality": list(row.quality_flags)} if row.quality_flags else {}),
+                    **({"counterparty": mask_identifiers(row.counterparty)} if row.counterparty else {}),
                 },
                 provenance={"extraction_ids": [str(extraction.id)]},
             )

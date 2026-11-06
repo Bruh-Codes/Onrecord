@@ -16,7 +16,7 @@ export function RankedList({
 }) {
 	const max = Math.max(1, ...items.map((item) => item.amount_pesewas));
 	return (
-		<section className="rounded-2xl border border-border bg-card p-4 sm:p-5 [--viz-in:#1a7a4c] [--viz-out:#c17d11] dark:[--viz-in:#45a877] dark:[--viz-out:#c07a20]">
+		<section className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5 [--viz-in:#1a7a4c] [--viz-out:#c17d11] dark:[--viz-in:#45a877] dark:[--viz-out:#c07a20]">
 			<h2 className="m-0 mb-3 text-[15px] font-semibold font-[family-name:var(--body-font)]">{title}</h2>
 			{items.length === 0 ? (
 				<p className="m-0 text-[12.5px] text-foreground/55">{empty}</p>

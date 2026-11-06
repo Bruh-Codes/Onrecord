@@ -174,3 +174,23 @@ def test_long_table_keeps_using_amount_header_after_four_rows():
     assert error is None
     assert len(parsed) == 7
     assert {row.amount_pesewas for row in parsed} == {1_000}
+
+
+def test_momo_csv_payment_received_is_money_in_and_signed_amounts_are_read():
+    text = """
+    | Transaction Date | Transaction Type | From Name | To Name | Amount | Fees | Balance | Reference |
+    | --- | --- | --- | --- | ---: | ---: | ---: | --- |
+    | 2026-05-01 10:16 | PAYMENT RECEIVED | Customer 31 | Ama Beauty Salon | 200.00 | 0.00 | 1050.00 | Hair service |
+    | 2026-05-03 15:23 | TRANSFER | Ama Beauty Salon | Kofi Supplies | -100.00 | 1.00 | 949.00 | Hair products |
+    """
+
+    rows, error = parse_statement(text)
+
+    assert error is None
+    assert [row.direction for row in rows] == ["in", "out"]
+    # The signed amount is used, not the fee next to it.
+    assert [row.amount_pesewas for row in rows] == [20_000, 10_000]
+    # The other party comes from From Name (money in) or To Name (money out).
+    assert [row.counterparty for row in rows] == ["Customer 31", "Kofi Supplies"]
+    assert "Customer 31" in rows[0].description
+    assert "0.00" not in rows[0].description

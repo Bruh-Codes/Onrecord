@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLink } from "@/components/ui/BrandLink";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -52,9 +53,7 @@ function ResetPasswordForm() {
 	return (
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
-				<Link href="/" className="hover:opacity-100">
-					<span className="font-display text-[19px]">OnRecord</span>
-				</Link>
+				<BrandLink />
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">

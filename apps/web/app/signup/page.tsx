@@ -7,12 +7,14 @@ import { CheckIcon, GoogleLogo } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
 import { Footer } from "@/components/ui/Footer";
+import { BrandLink } from "@/components/ui/BrandLink";
 
 function SignupForm() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { toast } = useToast();
 	const [authMode, setAuthMode] = useState<"signup" | "login">(() => searchParams.get("mode") === "login" ? "login" : "signup");
+	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [consented, setConsented] = useState(false);
@@ -20,20 +22,31 @@ function SignupForm() {
 	const [googleLoading, setGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const ready = authMode === "signup"
-		? email.trim() && password.trim() && consented
+		? name.trim() && email.trim() && password.trim()
 		: email.trim() && password.trim();
 	const busy = submitting || googleLoading;
 
 	async function handleSubmit() {
 		if (!ready || busy) return;
+		if (authMode === "signup" && !consented) {
+			setError("Tick the box to confirm this is your business.");
+			return;
+		}
 		setSubmitting(true);
 		setError(null);
-		const name = email.trim().split("@")[0] || "User";
 		if (authMode === "signup") {
-			sessionStorage.setItem(
-				"onrecord_pending_signup",
-				JSON.stringify({ email: email.trim(), password, name }),
-			);
+			// Create the account now so it isn't lost if the owner leaves setup.
+			// Until a business exists, the app sends them back to /setup.
+			const { error: signUpError } = await authClient.signUp.email({
+				name: name.trim(),
+				email: email.trim(),
+				password,
+			});
+			if (signUpError) {
+				setError(signUpError.message ?? "Couldn't create your account. Please try again.");
+				setSubmitting(false);
+				return;
+			}
 			router.push("/setup");
 			return;
 		}
@@ -50,7 +63,7 @@ function SignupForm() {
 	async function handleGoogleSignIn() {
 		if (busy) return;
 		if (authMode === "signup" && !consented) {
-			setError("First tick the box below the password to confirm this is your business, then continue with Google.");
+			setError("Tick the box to confirm this is your business.");
 			return;
 		}
 		setGoogleLoading(true);
@@ -101,9 +114,7 @@ function SignupForm() {
 	return (
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 sm:px-10 py-5.5">
-				<span className="font-display text-[19px]">
-					OnRecord
-				</span>
+				<BrandLink />
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
@@ -124,6 +135,12 @@ function SignupForm() {
 					</button>
 
 					<div className="flex items-center gap-2.5 my-4.5"><div className="flex-1 h-px bg-foreground/12" /><span className="text-[11.5px] opacity-50">or use email</span><div className="flex-1 h-px bg-foreground/12" /></div>
+					{authMode === "signup" && (
+						<div className="mb-3.5">
+							<label className="block text-xs mb-1.5 text-foreground/70">Your name</label>
+							<input value={name} onChange={(e) => setName(e.target.value)} disabled={busy} autoComplete="name" placeholder="e.g. Ama Mensah" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />
+						</div>
+					)}
 					<div className="mb-3.5">
 						<label className="block text-xs mb-1.5 text-foreground/70">Email</label>
 						<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} placeholder="you@business.com" className="w-full min-h-11 px-4.5 py-2.5 text-[14.5px] text-foreground bg-muted border border-foreground/16 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" />

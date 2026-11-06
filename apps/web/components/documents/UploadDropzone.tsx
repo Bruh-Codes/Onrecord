@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { CheckIcon, UploadIcon } from "@/components/icons";
+import { usePathname, useRouter } from "next/navigation";
+import { UploadIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import type { Document } from "@/lib/api-types";
 import { useUploadDocument } from "@/lib/hooks/use-documents";
@@ -53,6 +53,7 @@ export function UploadDropzone({
 	duplicateDocumentId?: string | null;
 }) {
 	const router = useRouter();
+	const pathname = usePathname();
 	const upload = useUploadDocument(businessId ?? "");
 	const [uploads, setUploads] = useState<UploadState[]>([]);
 	const [batchIds, setBatchIds] = useState<string[]>([]);
@@ -86,18 +87,20 @@ export function UploadDropzone({
 			const document = uploadState.documentId
 				? documentsById.get(uploadState.documentId)
 				: undefined;
-			return document === undefined || document.status === "received";
+			return document === undefined || document.status === "received" || document.status === "classified";
 		});
 
 	useEffect(() => {
-		if (!batchUploadsComplete) return;
+		// On Records the result is already in the list below; elsewhere (Home)
+		// take the owner to Records so they can see it.
+		if (!batchUploadsComplete || pathname === UPLOAD_COMPLETE_REDIRECT_PATH) return;
 
 		const timer = window.setTimeout(() => {
 			router.push(UPLOAD_COMPLETE_REDIRECT_PATH);
 		}, REDIRECT_DELAY_MS);
 
 		return () => window.clearTimeout(timer);
-	}, [batchUploadsComplete, router]);
+	}, [batchUploadsComplete, pathname, router]);
 
 	function startUploads(files: File[]) {
 		const nextUploads = files.map((file) => ({
@@ -199,7 +202,7 @@ export function UploadDropzone({
 		<div>
 			{duplicateDocumentId && (
 				<div className="mb-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[12.5px] text-foreground/75" role="status">
-					That document has already been imported. Choose a replacement file above to replace the existing document.
+					You already uploaded this file. Choose a new file above to replace it.
 				</div>
 			)}
 			<label
@@ -223,25 +226,25 @@ export function UploadDropzone({
 					{businessError
 						? "Upload unavailable. Your business profile couldn't be loaded"
 						: uploadReady
-							? "Upload anything: a MoMo or bank statement, a screenshot, a receipt photo, a spreadsheet"
+							? "Upload a statement, receipt, photo or spreadsheet"
 							: "Preparing your secure upload"}
 				</span>
 			</label>
 			<div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[12px] text-foreground/55">
-				<span>Any layout works: PDF, photos, screenshots, Excel, CSV, Word. We read it and you check the rows.</span>
+				<span>PDF, photo, screenshot, Excel, CSV or Word.</span>
 				<button
 					type="button"
 					disabled={!uploadReady}
 					onClick={() => setPasteOpen((open) => !open)}
 					className="bg-transparent border-none p-0 text-[12.5px] font-semibold text-foreground underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{pasteOpen ? "Close" : "Paste SMS or text instead"}
+					{pasteOpen ? "Close" : "Paste MoMo SMS instead"}
 				</button>
 			</div>
 			{pasteOpen && (
 				<div className="mt-3 rounded-2xl border border-border bg-card p-3">
 					<label htmlFor="paste-text" className="block text-[12.5px] font-semibold mb-1.5">
-						Paste MoMo SMS alerts, a WhatsApp message, or notes from your cash book
+						Paste MoMo SMS, a WhatsApp message or cash book notes
 					</label>
 					<textarea
 						id="paste-text"
@@ -273,22 +276,16 @@ export function UploadDropzone({
 				</button>
 			)}
 
-			{uploads.length > 0 && (
-				<div className="mb-3">
-					{uploads.map((u) => (
+			{uploads.some((u) => u.status !== "done") && (
+				<div className="mt-3">
+					{uploads.filter((u) => u.status !== "done").map((u) => (
 						<div
 							key={u.id}
 							className={`flex items-center gap-2 text-[12.5px] py-3 px-1 border-b border-border last:border-b-0 ${
-								u.status === "error"
-									? "text-destructive"
-									: u.status === "done"
-										? "text-positive"
-										: "opacity-70"
+								u.status === "error" ? "text-destructive" : "opacity-70"
 							}`}
 						>
-							{u.status === "done" ? (
-								<CheckIcon className="shrink-0" />
-							) : u.status === "error" ? (
+							{u.status === "error" ? (
 								<span className="w-3.5 h-3.5 shrink-0 text-destructive font-bold">
 									!
 								</span>
@@ -299,11 +296,7 @@ export function UploadDropzone({
 							)}
 							<span className="truncate">{u.name}</span>
 							<span className="ml-auto shrink-0">
-								{u.status === "done"
-									? "uploaded-queued for classification"
-									: u.status === "error"
-										? u.error
-										: "processing…"}
+								{u.status === "error" ? u.error : "Uploading…"}
 							</span>
 							{u.status === "error" && u.existingDocumentId && (
 								<button
@@ -318,21 +311,19 @@ export function UploadDropzone({
 					))}
 				</div>
 			)}
-			{batchUploadsComplete && !batchProcessingComplete && (
+			{upload.isPending ? (
 				<div className="text-[12.5px] text-foreground/60 pt-3 px-1" role="status">
-					{batchWaitingForProcessing
-						? "All files uploaded. Waiting for processing to finish…"
-						: "Some files need attention. Check the upload results above."}
+					Uploading. Keep this page open.
 				</div>
-			)}
-			{batchProcessingComplete && (
-				<div className="text-[12.5px] text-positive pt-3 px-1" role="status">
-					All files processed. Taking you to Records…
-				</div>
-			)}
-			{upload.isPending && (
-				<div className="text-[12.5px] opacity-60 pt-3 px-1">
-					Keep this page open while your files upload.
+			) : batchUploadsComplete && (
+				<div className="text-[12.5px] text-foreground/60 pt-3 px-1" role="status">
+					{pathname !== UPLOAD_COMPLETE_REDIRECT_PATH
+						? "Uploaded. Taking you to Records…"
+						: batchWaitingForProcessing
+							? "Uploaded. Reading your file…"
+							: batchProcessingComplete
+								? "Done. Your file is in the list below."
+								: "Uploaded. See the status in the list below."}
 				</div>
 			)}
 		</div>

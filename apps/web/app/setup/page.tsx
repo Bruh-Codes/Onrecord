@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { linkBusiness } from "@/lib/link-business";
 import { authClient } from "@/lib/auth-client";
 import { SECTOR_OPTIONS } from "@/lib/sectors";
+import { BrandLink } from "@/components/ui/BrandLink";
 
 const ENTITY_TYPES: { value: string; label: string }[] = [
 	{ value: "sole_prop", label: "Just me (sole proprietor)" },
@@ -22,63 +23,29 @@ export default function SetupPage() {
 	const [sector, setSector] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string; name: string } | null>(null);
-
-	const ready = legalName.trim().length > 0;
+	const ready = legalName.trim().length > 0 && !sessionPending && Boolean(session);
 
 	useEffect(() => {
-		if (sessionPending) return;
-		const raw = sessionStorage.getItem("onrecord_pending_signup");
-		if (!raw) {
-			// Signed in already (e.g. a new Google account): only the business
-			// is left to create.
-			if (session) setPendingSignup({ email: "", password: "", name: "" });
-			else router.replace("/signup");
-			return;
-		}
-		try {
-			const pending = JSON.parse(raw);
-			if (typeof pending.email === "string" && typeof pending.password === "string" && typeof pending.name === "string") {
-				setPendingSignup(pending);
-				return;
-			}
-		} catch {
-			// Fall through to the signup page for malformed pending state.
-		}
-		sessionStorage.removeItem("onrecord_pending_signup");
-		router.replace("/signup");
-		if (session) setPendingSignup({ email: "", password: "", name: "" });
+		// The account is created on the sign-up page; setup only adds the business.
+		if (!sessionPending && !session) router.replace("/signup");
 	}, [router, session, sessionPending]);
 
 	async function handleSubmit() {
 		if (!ready || submitting) return;
 		setSubmitting(true);
 		setError(null);
-		let createdAccount = false;
-
 		try {
-			if (!pendingSignup) return;
-			if (pendingSignup.email) {
-				const { error: authError } = await authClient.signUp.email(pendingSignup);
-				if (authError) throw new Error(authError.message ?? "Could not create your account.");
-				createdAccount = true;
-			}
 			const business = await api.createBusiness({
 				legal_name: legalName.trim(),
 				entity_type: entityType,
 				sector_code: sector || null,
 			});
 			await linkBusiness(business.id);
-			sessionStorage.removeItem("onrecord_pending_signup");
 			// The server-side gate in app/(app)/layout.tsx resolves businessId
 			// from the auth_user row itself, so no session refresh is needed —
 			// the owner won't be bounced back here on the next navigation.
 			router.push("/dashboard");
 		} catch (err) {
-			// Do not leave a half-completed signup behind when setup fails after auth.
-			if (createdAccount) {
-				await authClient.deleteUser({ callbackURL: "/signup" }).catch(() => undefined);
-			}
 			setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
 			setSubmitting(false);
 		}
@@ -87,15 +54,14 @@ export default function SetupPage() {
 	return (
 		<div className="min-h-dvh flex flex-col">
 			<div className="flex items-center px-6 py-5 sm:px-10">
-				<span className="font-display text-[19px]">OnRecord</span>
+				<BrandLink />
 			</div>
 
 			<div className="flex-1 flex items-center justify-center p-6 sm:p-10">
 				<div className="w-full max-w-[460px] bg-card rounded-3xl shadow-card p-6 sm:p-9">
 					<h1 className="text-[22px] m-0 mb-1.5">Tell us about your business</h1>
 					<p className="text-[13px] opacity-70 m-0 mb-6.5">
-						Two quick questions and you&apos;re in. You can change these later in Settings. OnRecord
-						doesn&apos;t share your records with GRA.
+						Three quick questions. You can change them later in Settings.
 					</p>
 
 					<div className="mb-3.5">

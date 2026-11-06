@@ -73,6 +73,8 @@ type AgentDockProps = {
 	onRefreshSessions?: () => void | Promise<void>;
 	initialMessages?: DockConversationMessage[];
 	sessionResetKey?: number;
+	/** Example questions shown before the first message, so owners know what to ask. */
+	starterQuestions?: string[];
 };
 
 function formatAgentMarkdown(text: string) {
@@ -112,6 +114,7 @@ export function AgentDock({
 	onRefreshSessions,
 	initialMessages = [],
 	sessionResetKey = 0,
+	starterQuestions = [],
 }: AgentDockProps) {
 	const [mode, setMode] = useState<AgentDockMode>("idle");
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -496,7 +499,7 @@ export function AgentDock({
 				className={
 					isExpanded
 						? "flex max-h-[calc(100dvh-5rem)] w-full flex-col overflow-visible rounded-2xl bg-card p-2 text-card-foreground shadow-card"
-						: "pointer-events-auto ml-auto flex w-fit flex-col items-center gap-1.5 rounded-2xl bg-card px-2.5 py-2.5 text-card-foreground shadow-card"
+						: "pointer-events-auto ml-auto flex w-fit flex-col items-center gap-1 rounded-2xl bg-card p-1.5 text-card-foreground shadow-card md:gap-1.5 md:px-2.5 md:py-2.5"
 				}
 				initial={false}
 				layout
@@ -515,7 +518,7 @@ export function AgentDock({
 							type="button"
 						>
 							<motion.div
-								className="size-14 overflow-hidden rounded-xl"
+								className="size-10 overflow-hidden rounded-xl md:size-14"
 								layoutId="agent-avatar"
 								transition={
 									shouldReduceMotion ? { duration: 0 } : dockLayoutTransition
@@ -859,7 +862,7 @@ export function AgentDock({
 														? "Thinking…"
 														: isTranscribing
 															? "Transcribing…"
-															: "Ask Ona about your money or your record…"
+															: "Ask Ona anything about your business…"
 												}
 												ref={textareaRef}
 												value={message}
@@ -889,6 +892,21 @@ export function AgentDock({
 									</div>
 								</div>
 							) : (
+								<div className="flex flex-col gap-2">
+								{starterQuestions.length > 0 && !isTranscribing && (
+									<div className="flex flex-wrap gap-1.5 px-1 pt-1">
+										{starterQuestions.map((question) => (
+											<button
+												className="rounded-full border border-foreground/15 bg-transparent px-3 py-1.5 text-left text-[12.5px] text-foreground hover:bg-muted"
+												key={question}
+												onClick={() => void submitMessage(question)}
+												type="button"
+											>
+												{question}
+											</button>
+										))}
+									</div>
+								)}
 								<div className="flex items-end gap-2">
 									<div className="relative min-w-0 flex-1">
 										<button
@@ -910,7 +928,7 @@ export function AgentDock({
 											placeholder={
 												isTranscribing
 													? "Transcribing…"
-													: "Ask Ona about your money or your record…"
+													: "Ask Ona anything about your business…"
 											}
 											ref={textareaRef}
 											value={message}
@@ -921,6 +939,7 @@ export function AgentDock({
 											</p>
 										)}
 									</div>
+								</div>
 								</div>
 							)}
 						</motion.div>

@@ -92,7 +92,7 @@ export function useDocuments(businessId: string | null) {
     queryFn: () => api.listDocuments(businessId!),
     enabled: !!businessId,
     refetchInterval: (query) =>
-      query.state.data?.items.some((document) => document.status === "received")
+      query.state.data?.items.some((document) => document.status === "received" || document.status === "classified")
         ? 3_000
         : false,
   });
