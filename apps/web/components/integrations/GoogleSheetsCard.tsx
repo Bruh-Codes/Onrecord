@@ -31,7 +31,7 @@ export function GoogleSheetsCard({ header }: { header: ReactNode }) {
   else if (connected === null) action = <span className="text-[12px] opacity-60">Checking…</span>;
   else if (connected) {
     action = (
-      <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+      <div className="flex items-center gap-2">
         <Badge tone="positive">Connected</Badge>
         <div className="flex gap-2">
           <Link href="/documents" className="text-[12px] opacity-70 underline underline-offset-2">Import data</Link>
@@ -45,9 +45,9 @@ export function GoogleSheetsCard({ header }: { header: ReactNode }) {
 
   return (
     <div className="flex flex-col gap-4 p-5 border border-foreground/12 rounded-2xl">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {header}
-        {action}
+        <div className="basis-full pl-15 sm:basis-auto sm:pl-0">{action}</div>
       </div>
       {connected ? <SheetConnections /> : null}
     </div>
