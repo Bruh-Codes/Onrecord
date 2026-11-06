@@ -170,8 +170,9 @@ TOOL_DEFINITIONS = [
         "get_business_patterns",
         "Patterns for business advice: sales by day of the week, how much sales lean on the top 3 "
         "customers, how many customers came back in 3 or more months, the typical sale, and which costs "
-        "(by who was paid) grew or shrank in the last 3 months against the 3 before. Use for 'what can I "
-        "do better', 'where am I wasting money', 'what are my slow days' or any request for insights.",
+        "(by who was paid) grew in the last 3 months against the 3 before. Use for 'what can I "
+        "do better', 'where am I wasting money', 'what are my slow days' or any request for insights. "
+        "Also returns the biggest costs by who was paid, with each one's share of all costs.",
         {},
     ),
     _tool(
@@ -545,7 +546,8 @@ async def business_vs_personal(session: AsyncSession, business_id: UUID, args: d
             .group_by(name).order_by(func.sum(Transaction.amount_pesewas).desc()).limit(5)
         )).all()
         personal.extend(
-            {"direction": direction.value, "name": label, "transactions": int(count), "amount": ghs(amount)}
+            {"direction": direction.value, "name": label, "transactions": int(count), "amount": ghs(amount),
+             "note": "total for the whole period, not per month"}
             for label, count, amount in rows
         )
     return {
@@ -671,7 +673,13 @@ async def business_patterns(session: AsyncSession, business_id: UUID, args: dict
     costs: dict[str, list[int]] = {}
     for payee, recent, amount in cost_rows:
         costs.setdefault(payee, [0, 0])[int(recent)] += int(amount)
-    moves = sorted(costs.items(), key=lambda item: abs(item[1][1] - item[1][0]), reverse=True)[:6]
+    moves = sorted(((payee, pair) for payee, pair in costs.items() if pair[1] > pair[0]),
+                   key=lambda item: item[1][1] - item[1][0], reverse=True)[:6]
+    payees = (await session.execute(
+        _base(name, func.sum(Transaction.amount_pesewas), func.count(func.distinct(month)))
+        .where(*cost_filter).group_by(name).order_by(func.sum(Transaction.amount_pesewas).desc())
+    )).all()
+    total_costs = sum(int(amount) for _, amount, _ in payees)
 
     fees, fee_rows = (await session.execute(
         _base(func.coalesce(func.sum(Transaction.fee_pesewas + Transaction.levy_pesewas), 0),
@@ -692,11 +700,18 @@ async def business_patterns(session: AsyncSession, business_id: UUID, args: dict
         "typical_sale": ghs(total_sales // sales_count) if sales_count else None,
         "momo_and_bank_charges": {"total": ghs(fees), "transactions_charged": int(fee_rows),
                                   "note": "Fees and e-levy taken on top of payments, across all records."},
-        "cost_changes": {
+        "biggest_costs": {
+            "stock_and_running_costs_total": ghs(total_costs),
+            "by_payee": [{"paid_to": payee, "amount": ghs(int(amount)), "share_of_costs": percent(int(amount), total_costs),
+                          "months_paid": int(months)} for payee, amount, months in payees[:5]],
+        },
+        "costs_that_grew": {
+            "note": "Payees paid more in the last 3 months than the 3 before. For stock this usually means more "
+                    "was bought (sales may have grown too), not a price rise.",
             "last_3_months": f"{recent_start.isoformat()} to {last_on.isoformat()}",
             "3_months_before": f"{prior_start.isoformat()} to {(recent_start - timedelta(days=1)).isoformat()}",
             "by_payee": [{"paid_to": payee, "3_months_before": ghs(before), "last_3_months": ghs(after),
-                          "change": ghs(after - before)} for payee, (before, after) in moves],
+                          "paid_more_by": ghs(after - before)} for payee, (before, after) in moves],
         },
         "note": "Sales are money in marked as sales. Costs are stock and running costs. Patterns describe the "
                 "records only; the owner knows the reasons behind them.",

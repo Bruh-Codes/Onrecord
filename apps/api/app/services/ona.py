@@ -266,7 +266,7 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             "band": score.band.value,
             "computed_at": score.computed_at.isoformat(),
             "pillars": score.pillars,
-            "top_contributions": (score.contributions or [])[:8],
+            "top_contributions": [_plain_contribution(item) for item in (score.contributions or [])[:8]],
         }
 
     for gap in gap_rows:
@@ -339,7 +339,6 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
         seen_codes.add(row.code)
         facts["indicators"].append(
             {
-                "code": row.code,
                 "name": INDICATOR_LABELS.get(row.code, row.code),
                 "unit": row.unit,
                 "period_start": row.period_start.isoformat(),
@@ -699,6 +698,14 @@ INDICATOR_LABELS = {
 }
 # Series where adding the months together means something (not averages).
 _ADDITIVE = {"REV_MONTHLY", "ACTIVE_TRADING_DAYS", "OPERATING_CASHFLOW", "NET_CASHFLOW", "TRANSACTION_VALUE"}
+
+
+def _plain_contribution(item: dict) -> dict:
+    """A readiness contribution with indicator codes swapped for their labels, so Ona never repeats a code."""
+    reason = str(item.get("reason") or "")
+    for code, label in INDICATOR_LABELS.items():
+        reason = reason.replace(code, label)
+    return {"part": item.get("pillar"), "earned": item.get("earned"), "available": item.get("available"), "reason": reason}
 
 
 def _summarize_indicator(value_json: dict, unit: str | None = None, code: str | None = None) -> dict[str, Any]:
