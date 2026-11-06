@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useMe } from "@/lib/hooks/use-business";
+import { SheetQuickConnect } from "@/components/integrations/SheetQuickConnect";
 import { STATUS_TEXT, timeAgo, useSheetConnections } from "@/lib/sheet-sync";
 
-/** The sheets OnRecord keeps reading, under the Google Sheets card. */
+/** The sheets OnRecord keeps reading, under the Google Sheets card, plus the
+ *  one-step picker for adding one. */
 export function SheetConnections() {
 	const { businessId } = useMe();
 	const connections = useSheetConnections(businessId);
+	const [adding, setAdding] = useState(false);
 
 	if (connections.isLoading) return <Skeleton className="h-14 rounded-xl" />;
 	const items = connections.data ?? [];
@@ -40,14 +44,17 @@ export function SheetConnections() {
 					</Link>
 				);
 			})}
-			<div className="flex flex-wrap items-center gap-3">
-				<Link href="/apps/sheets/new" className="rounded-full bg-foreground px-4 py-2 text-[13px] text-background">
-					{items.length ? "Connect another sheet" : "Keep a sheet in sync"}
-				</Link>
-				<span className="text-[12px] opacity-60">
-					OnRecord checks connected sheets every 15 minutes and adds new rows to Records for you.
-				</span>
-			</div>
+			{items.length && !adding ? (
+				<button type="button" onClick={() => setAdding(true)} className="self-start text-[13px] font-semibold underline underline-offset-2">
+					Add another sheet
+				</button>
+			) : (
+				<div className="flex flex-col gap-1.5">
+					{items.length ? null : <span className="text-[13px] font-semibold">Pick the sheet you keep your sales or costs in</span>}
+					<SheetQuickConnect />
+					<span className="text-[12px] opacity-60">OnRecord checks it every 15 minutes and adds new rows. It never edits your sheet.</span>
+				</div>
+			)}
 		</div>
 	);
 }

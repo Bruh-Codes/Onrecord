@@ -174,7 +174,7 @@ export function useSheetCatchUp(businessId: string | null) {
 
 export const STATUS_TEXT: Record<SheetStatus, { label: string; tone: "positive" | "warning" | "negative" | "neutral" }> = {
 	active: { label: "Syncing", tone: "positive" },
-	needs_mapping: { label: "Confirm columns", tone: "warning" },
+	needs_mapping: { label: "Not syncing yet", tone: "warning" },
 	needs_attention: { label: "Needs attention", tone: "negative" },
 	paused: { label: "Paused", tone: "neutral" },
 	disconnected: { label: "Disconnected", tone: "neutral" },

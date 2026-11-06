@@ -8,7 +8,7 @@ export type AppIntegration = {
 export const APP_INTEGRATIONS: AppIntegration[] = [
 	{
 		name: "Google Sheets",
-		desc: "Bring in a sales book or cash book you keep in Google Sheets, and keep it up to date.",
+		desc: "Pick your sales or cash book once. New rows come into OnRecord by themselves.",
 		icon: "google-sheets",
 	},
 	{
