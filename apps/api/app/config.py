@@ -117,6 +117,15 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     sheet_sync_interval_minutes: int = 15
 
+    # Paystack secret keys are encrypted with a key derived from this value
+    # before they are stored. Any long random string; set the same value on
+    # the api and worker services. Without it, connecting Paystack is refused.
+    paystack_key_secret: str = ""
+    paystack_api_url: str = "https://api.paystack.co"
+    paystack_sync_interval_minutes: int = 5
+    # How far back the first sync reads.
+    paystack_backfill_days: int = 365
+
     max_document_size_bytes: int = 25 * 1024 * 1024
     max_documents_per_batch: int = 50
 

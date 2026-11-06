@@ -9,6 +9,7 @@ import type { Band, ChecklistItem, Gap } from "@/lib/api-types";
 export const DOC_TYPE_LABELS: Record<string, string> = {
 	momo_statement: "MoMo statement",
 	momo_merchant_statement: "MoMo merchant statement",
+	processor_statement: "Paystack payments",
 	bank_statement: "Bank statement",
 	invoice_issued: "Invoices you sent",
 	invoice_received: "Bills you received",

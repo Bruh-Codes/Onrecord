@@ -13,6 +13,7 @@ from app.api.routers.internal_storage import router as internal_storage_router
 from app.api.routers.me import router as me_router
 from app.api.routers.money import router as money_router
 from app.api.routers.notifications import router as notifications_router
+from app.api.routers.paystack import router as paystack_router
 from app.api.routers.sheet_sync import router as sheet_sync_router
 from app.api.routers.transactions import router as transactions_router
 from app.api.routers.voice import router as voice_router
@@ -59,6 +60,7 @@ app.include_router(notifications_router)
 app.include_router(analytics_router)
 app.include_router(money_router)
 app.include_router(sheet_sync_router)
+app.include_router(paystack_router)
 app.include_router(internal_storage_router)
 
 

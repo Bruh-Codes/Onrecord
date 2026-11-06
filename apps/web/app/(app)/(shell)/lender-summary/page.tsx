@@ -279,7 +279,7 @@ export default function LenderSummaryPage() {
 
 function evidenceKind(docType: string | null | undefined, typed: boolean): string {
 	if (typed) return "Owner's own record";
-	if (docType === "bank_statement" || docType === "momo_statement" || docType === "momo_merchant_statement") return "Statement from the provider";
+	if (docType === "bank_statement" || docType === "momo_statement" || docType === "momo_merchant_statement" || docType === "processor_statement") return "Statement from the provider";
 	if (docType === "receipt" || docType === "invoice_issued" || docType === "invoice_received") return "Supporting document";
 	return "Document";
 }

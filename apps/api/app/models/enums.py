@@ -26,11 +26,14 @@ class Provider(StrEnum):
     ECOBANK = "ECOBANK"
     CBG = "CBG"
     OTHER_BANK = "OTHER_BANK"
+    PAYSTACK = "PAYSTACK"
 
 
 class DocType(StrEnum):
     MOMO_STATEMENT = "momo_statement"
     MOMO_MERCHANT_STATEMENT = "momo_merchant_statement"
+    # Payments read straight from a payment processor's API (Paystack).
+    PROCESSOR_STATEMENT = "processor_statement"
     BANK_STATEMENT = "bank_statement"
     INVOICE_ISSUED = "invoice_issued"
     INVOICE_RECEIVED = "invoice_received"
