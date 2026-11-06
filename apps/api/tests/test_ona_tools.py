@@ -2,11 +2,14 @@ import uuid
 
 from app.services.document_reader import DocumentReading, ReadRow
 from app.services.ona_tools import (
+    business_patterns,
+    business_vs_personal,
     cash_flow,
     category_breakdown,
     compare_periods,
     ghs,
     search_transactions,
+    statement_summary,
     top_counterparties,
 )
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -65,7 +68,7 @@ async def test_tools_answer_from_stored_transactions(client, db_ready, monkeypat
 
         categories = await category_breakdown(session, business_id, {"start_date": "2026-02-01", "end_date": None})
         assert categories["total_out"] == "GH¢150.00"
-        assert categories["money_in"][0] == {"category": "revenue", "transactions": 2, "amount": "GH¢750.00",
+        assert categories["money_in"][0] == {"category": "revenue", "label": "Sales", "transactions": 2, "amount": "GH¢750.00",
                                              "amount_pesewas": 75000, "share": "100%"}
 
         found = await search_transactions(session, business_id, {
@@ -128,3 +131,52 @@ async def test_tools_skip_rows_the_analytics_exclude(client, db_ready, monkeypat
             "min_amount_ghs": 300.0, "max_amount_ghs": 300.0, "sort": "largest", "limit": 10,
         })
         assert found["matches"] == 1 and found["transactions"][0]["amount"] == "GH¢300.00"
+
+
+async def test_statement_split_and_patterns_for_owner_questions(client, db_ready, monkeypatch):
+    from app.models.transaction import Transaction
+    from sqlalchemy import update
+
+    business_id, sessions = await _seed(client, db_ready, monkeypatch)
+    async with sessions() as session:
+        # The transport payment was really the owner's own (personal) spending.
+        await session.execute(
+            update(Transaction)
+            .where(Transaction.business_id == business_id, Transaction.amount_pesewas == 15000)
+            .values(category_l1="owner")
+        )
+        await session.commit()
+
+        split = await business_vs_personal(session, business_id, {"start_date": None, "end_date": None})
+        assert split["split"]["business"]["money_out"] == "GH¢300.00"
+        assert split["split"]["personal"]["money_out"] == "GH¢150.00"
+        assert split["split"]["personal"]["share_of_money_out"] == "33%"
+        assert split["biggest_personal"][0]["name"] == "TRANSPORT"
+
+        statement = await statement_summary(session, business_id, {"document": "momo"})
+        assert statement["type"] == "MoMo statement" and statement["rows_read"] == 5
+        assert statement["covers"] == {"from": "2026-01-05", "to": "2026-02-25", "months": 2}
+        assert statement["money_in"] == "GH¢1,750.00"
+        assert statement["month_with_most_money_in"] == "2026-01"
+        assert statement["business_vs_personal"]["personal"]["money_out"] == "GH¢150.00"
+        assert (await statement_summary(session, business_id, {"document": "nothing-like-this"}))["error"]
+
+        flow = await cash_flow(session, business_id, {"group_by": "month", "start_date": None, "end_date": None})
+        assert flow["most_sales_period"] == "2026-01" and flow["totals"]["sales"] == "GH¢1,750.00"
+
+        patterns = await business_patterns(session, business_id, {})
+        assert patterns["customers"]["top_3"][0] == {"name": "KOFI MARKET", "sales": "GH¢1,250.00"}
+        assert patterns["typical_sale"] == "GH¢583.33"
+        assert patterns["best_weekday"] and patterns["slowest_weekday"]
+        assert patterns["cost_changes"]["by_payee"][0]["paid_to"] == "AGRO INPUTS"
+
+
+def test_indicator_summary_skips_empty_lead_months_and_never_adds_averages():
+    from app.services.ona import _summarize_indicator
+
+    series = {"series": [{"m": "2026-01", "v": 0}, {"m": "2026-02", "v": 10000}, {"m": "2026-03", "v": 20000}]}
+    average = _summarize_indicator(series, "pesewas", "AVG_TICKET")
+    assert [m["month"] for m in average["months"]] == ["2026-02", "2026-03"]
+    assert average["average_per_month"] == "GH¢150.00" and "total" not in average
+    assert _summarize_indicator(series, "pesewas", "REV_MONTHLY")["total"] == "GH¢300.00"
+    assert _summarize_indicator({"v": 0.2918}, "ratio", "OPEX_RATIO")["value_percent"] == "29.2%"

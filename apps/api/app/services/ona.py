@@ -25,6 +25,7 @@ from app.models.enums import Direction, DocStatus, GapStatus
 from app.models.scoring import ChecklistItem, Declaration, Gap, Indicator, ReadinessScore
 from app.models.transaction import Transaction
 from app.services.coverage import build_coverage
+from app.services.ona_tools import CATEGORY_LABELS, ghs
 from app.services.ona_web import (
     fetch_web_context,
     is_casual_turn,
@@ -238,8 +239,10 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
             "earliest_on": None,
             "latest_on": None,
             "unclassified_count": int(unclassified_count or 0),
-            "by_category": [],
             "spending_by_category": [],
+            "note": "money_in and money_out here are all-time and include personal money and moves between "
+                    "the owner's own accounts. For sales, or business vs personal, call get_cash_flow or "
+                    "get_business_vs_personal.",
         },
         "analysis_period": coverage.get("analysis_window", {}),
         "accounts": [],
@@ -312,14 +315,11 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
     facts["transactions"]["money_out_ghs"] = round(facts["transactions"]["money_out_pesewas"] / 100, 2)
 
     for category, count, total in category_rows:
-        category_fact = {
-            "category_l1": category or "unclassified",
+        facts["transactions"]["spending_by_category"].append({
+            "category": CATEGORY_LABELS.get(category or "unclassified", category),
             "count": int(count),
-            "volume_pesewas": int(total),
-            "volume_ghs": round(int(total) / 100, 2),
-        }
-        facts["transactions"]["by_category"].append(category_fact)
-        facts["transactions"]["spending_by_category"].append(category_fact)
+            "amount": ghs(int(total)),
+        })
 
     for account in accounts:
         facts["accounts"].append(
@@ -340,10 +340,11 @@ async def build_business_snapshot(session: AsyncSession, business_id: UUID) -> d
         facts["indicators"].append(
             {
                 "code": row.code,
+                "name": INDICATOR_LABELS.get(row.code, row.code),
                 "unit": row.unit,
                 "period_start": row.period_start.isoformat(),
                 "period_end": row.period_end.isoformat(),
-                "summary": _summarize_indicator(row.value_json, row.unit),
+                "summary": _summarize_indicator(row.value_json, row.unit, row.code),
             }
         )
 
@@ -385,7 +386,7 @@ async def execute_ona_tool(
                 "money_out_pesewas": snapshot["transactions"]["money_out_pesewas"],
                 "earliest_on": snapshot["transactions"]["earliest_on"],
                 "latest_on": snapshot["transactions"]["latest_on"],
-                "by_category": snapshot["transactions"]["spending_by_category"],
+                "spending_by_category": snapshot["transactions"]["spending_by_category"],
             }
         }
     if name == "get_readiness_gaps":
@@ -680,29 +681,52 @@ def _snapshot_for_turn(message: str, snapshot: dict[str, Any]) -> dict[str, Any]
     return {"_note": "Casual greeting; do not infer business facts from this turn."}
 
 
-def _summarize_indicator(value_json: dict, unit: str | None = None) -> dict[str, Any]:
+# Plain names for the readiness indicators, matching "What a lender works out" on Money.
+INDICATOR_LABELS = {
+    "REV_MONTHLY": "Sales per month",
+    "REV_TTM": "Sales in the last 12 months",
+    "REV_GROWTH_3M": "Sales growth (last 3 months against the 3 before)",
+    "AVG_TICKET": "Average sale",
+    "ACTIVE_TRADING_DAYS": "Days with sales",
+    "OPEX_RATIO": "Costs as a share of sales",
+    "OPERATING_CASHFLOW": "Cash left after running costs",
+    "NET_CASHFLOW": "Money in minus money out",
+    "NEGATIVE_BALANCE_DAYS": "Days the account was empty",
+    "POSITIVE_BALANCE_DAYS": "Days the account had money",
+    "EXISTING_DEBT_SERVICE": "Loan repayments as a share of money in",
+    "TRANSACTION_VALUE": "All money moved",
+    "UNCLASSIFIED_RATIO": "Share of money not sorted yet",
+}
+# Series where adding the months together means something (not averages).
+_ADDITIVE = {"REV_MONTHLY", "ACTIVE_TRADING_DAYS", "OPERATING_CASHFLOW", "NET_CASHFLOW", "TRANSACTION_VALUE"}
+
+
+def _summarize_indicator(value_json: dict, unit: str | None = None, code: str | None = None) -> dict[str, Any]:
     if not isinstance(value_json, dict):
         return {"raw": value_json}
     summary: dict[str, Any] = {}
     if "status" in value_json:
         summary["status"] = value_json["status"]
     if "v" in value_json:
-        summary["value"] = value_json["v"]
-        if unit == "pesewas" and isinstance(value_json["v"], (int, float)):
-            summary["value_ghs"] = round(value_json["v"] / 100, 2)
-        elif unit == "ratio" and isinstance(value_json["v"], (int, float)):
-            summary["value_percent"] = round(value_json["v"] * 100, 2)
-    if "series" in value_json and isinstance(value_json["series"], list):
-        summary["series_points"] = len(value_json["series"])
-        if value_json["series"]:
-            summary["latest"] = value_json["series"][-1]
-            values = [point.get("v") for point in value_json["series"] if isinstance(point, dict) and isinstance(point.get("v"), (int, float))]
-            if values:
-                summary["series_total"] = sum(values)
-                if unit == "pesewas":
-                    summary["series_total_ghs"] = round(sum(values) / 100, 2)
-                summary["series_min"] = min(values)
-                summary["series_max"] = max(values)
+        value = value_json["v"]
+        summary["value"] = value
+        if unit == "pesewas" and isinstance(value, (int, float)):
+            summary["value_ghs"] = ghs(int(value))
+        elif unit == "ratio" and isinstance(value, (int, float)):
+            summary["value_percent"] = f"{round(value * 100, 1)}%"
+    if isinstance(value_json.get("series"), list):
+        points = [p for p in value_json["series"] if isinstance(p, dict) and isinstance(p.get("v"), (int, float))]
+        # Months before the first record are empty, not slow; leave them out.
+        while points and not points[0]["v"]:
+            points.pop(0)
+        if points:
+            values = [p["v"] for p in points]
+            show = (lambda v: ghs(int(v))) if unit == "pesewas" else (lambda v: v)
+            summary["months"] = [{"month": p.get("m"), "value": show(p["v"])} for p in points]
+            if code in _ADDITIVE:
+                summary["total"] = show(sum(values))
+            else:
+                summary["average_per_month"] = show(sum(values) / len(values))
     if not summary:
         summary["value_json"] = value_json
     return summary
