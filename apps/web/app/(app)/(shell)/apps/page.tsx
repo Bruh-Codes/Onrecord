@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { GoogleSheetsCard } from "@/components/integrations/GoogleSheetsCard";
 import { IntegrationLogo } from "@/components/integrations/logos";
@@ -32,7 +33,10 @@ export default function IntegrationsPage() {
 					app.icon === "paystack" ? (
 						<PaystackCard key={app.name} header={<CardHeader app={app} />} />
 					) : (
-						<GoogleSheetsCard key={app.name} header={<CardHeader app={app} />} />
+						// useSearchParams in the card needs a Suspense boundary.
+						<Suspense key={app.name}>
+							<GoogleSheetsCard header={<CardHeader app={app} />} />
+						</Suspense>
 					),
 				)}
 			</div>

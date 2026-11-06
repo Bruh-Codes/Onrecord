@@ -2,14 +2,18 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { SheetConnections } from "@/components/integrations/SheetConnections";
-import { connectGoogleSheets } from "@/lib/google-sheets-connect";
+import { connectGoogleSheets, googleConnectError } from "@/lib/google-sheets-connect";
 
 /** The Google Sheets card: connect Google, then pick a sheet right here. */
 export function GoogleSheetsCard({ header }: { header: ReactNode }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [error, setError] = useState("");
+
+  // Back from Google with a problem (?error=<code>): say what happened.
+  const linkError = googleConnectError(useSearchParams().get("error"));
 
   useEffect(() => {
     void fetch("/api/integrations/google-sheets/status")
@@ -49,6 +53,9 @@ export function GoogleSheetsCard({ header }: { header: ReactNode }) {
         {header}
         <div className="basis-full pl-15 sm:basis-auto sm:pl-0">{action}</div>
       </div>
+      {linkError ? (
+        <p role="alert" className="m-0 rounded-xl border border-destructive/40 bg-destructive-background px-4 py-3 text-[13px]">{linkError}</p>
+      ) : null}
       {connected ? <SheetConnections /> : null}
     </div>
   );

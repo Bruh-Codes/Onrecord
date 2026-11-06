@@ -109,9 +109,14 @@ export const auth = betterAuth({
 			enabled: true,
 			trustedProviders: ["google"],
 			requireLocalEmailVerified: false,
-			// Copy Google's profile (name + image) onto the local user when the
-			// account is linked, so the avatar isn't a bare initial.
-			updateUserInfoOnLink: true,
+			// Connecting Google Sheets links a Google account that may use a
+			// different email (e.g. a shop account reading the owner's Gmail).
+			// Without this, Better Auth refuses the link silently.
+			allowDifferentEmails: true,
+			// Don't copy that Google profile over the OnRecord name: with a
+			// different email it may be someone else's name. Google sign-in
+			// still refreshes name + avatar (overrideUserInfoOnSignIn below).
+			updateUserInfoOnLink: false,
 		},
 	},
 
