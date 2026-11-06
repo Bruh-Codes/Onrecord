@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PillButton } from "@/components/ui/PillButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { authClient } from "@/lib/auth-client";
-import { api } from "@/lib/api";
+import { api, clearTokenCache } from "@/lib/api";
 import { useBusiness, useMe } from "@/lib/hooks/use-business";
 import { ChangePasswordModal } from "@/components/sidebar/ChangePasswordModal";
 import { SECTOR_OPTIONS } from "@/lib/sectors";
@@ -104,6 +104,7 @@ export default function SettingsPage() {
 		setDeleteError(null);
 		try {
 			await api.deleteBusiness(businessId);
+			clearTokenCache();
 			const result = await authClient.deleteUser({ callbackURL: "/signup" });
 			if (result.error) throw new Error(result.error.message ?? "Couldn’t delete your login.");
 			router.replace("/signup");

@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { authClient } from "@/lib/auth-client";
 import { Footer } from "@/components/ui/Footer";
 import { BrandLink } from "@/components/ui/BrandLink";
+import { clearTokenCache } from "@/lib/api";
 
 function SignupForm() {
 	const router = useRouter();
@@ -34,6 +35,7 @@ function SignupForm() {
 		}
 		setSubmitting(true);
 		setError(null);
+		clearTokenCache();
 		if (authMode === "signup") {
 			// Create the account now so it isn't lost if the owner leaves setup.
 			// Until a business exists, the app sends them back to /setup.
