@@ -2,6 +2,8 @@ export type AppIntegration = {
 	name: string;
 	desc: string;
 	icon: "google-sheets" | "paystack" | "mtn" | "bank" | "gmail";
+	/** A short label shown next to the name, such as "Recommended for bookkeeping". */
+	tag?: string;
 };
 
 /** Cards on the Integrations page. Google Sheets and Paystack work today; the rest show "Coming soon". */
@@ -12,6 +14,7 @@ export const APP_INTEGRATIONS: AppIntegration[] = [
 		name: "Google Sheets",
 		desc: "Pick your sales or cash book once. New rows come into OnRecord by themselves.",
 		icon: "google-sheets",
+		tag: "Recommended for bookkeeping",
 	},
 	{
 		name: "Paystack",

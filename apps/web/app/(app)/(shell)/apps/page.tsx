@@ -9,7 +9,10 @@ function CardHeader({ app }: { app: AppIntegration }) {
 		<>
 			<IntegrationLogo icon={app.icon} />
 			<div className="flex-1 min-w-0">
-				<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
+				<div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+					<span className="text-[15px] font-semibold">{app.name}</span>
+					{app.tag ? <Badge tone="positive">{app.tag}</Badge> : null}
+				</div>
 				<div className="text-[12.5px] opacity-65">{app.desc}</div>
 			</div>
 		</>
