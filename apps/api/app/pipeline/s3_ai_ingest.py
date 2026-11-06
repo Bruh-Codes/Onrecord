@@ -8,6 +8,7 @@ transaction keeps a pointer to the extraction it came from (INV-7).
 
 import hashlib
 import uuid
+from collections import defaultdict
 from datetime import UTC, date, datetime
 
 from sqlalchemy import select
@@ -173,22 +174,24 @@ def _insert_transactions(
         if row.balance_after_pesewas is not None:
             key = (row.occurred_on, row.direction.value, row.amount_pesewas, row.balance_after_pesewas)
             fingerprints.setdefault(key, set()).add(row.provider_reference or row.flag_reference)
+    shared = _shared_references([row for _, row in rows])
     created = duplicates = 0
     for extraction, row in rows:
         fingerprint = (row.occurred_on, row.direction, row.amount_pesewas, row.balance_after_pesewas)
+        reference = row.reference if row.reference not in shared else None
         seen = fingerprints.get(fingerprint) if row.balance_after_pesewas is not None else None
-        if (row.reference and row.reference in references) or (
-            seen is not None and (not row.reference or None in seen)
+        if (reference and reference in references) or (
+            seen is not None and (not reference or None in seen)
         ):
             # Overlapping statements (MTN caps each at 90 days) repeat rows.
             duplicates += 1
             continue
-        stored_reference = row.reference if row.reference and row.reference not in taken_references else None
-        if row.reference:
-            references.add(row.reference)
-            taken_references.add(row.reference)
+        stored_reference = reference if reference and reference not in taken_references else None
+        if reference:
+            references.add(reference)
+            taken_references.add(reference)
         if row.balance_after_pesewas is not None:
-            fingerprints.setdefault(fingerprint, set()).add(row.reference or None)
+            fingerprints.setdefault(fingerprint, set()).add(reference or None)
         session.add(Transaction(
             business_id=doc.business_id,
             account_id=account.id,
@@ -217,6 +220,20 @@ def _insert_transactions(
         created += 1
     session.flush()
     return created, duplicates
+
+
+def _shared_references(rows: list[NormalizedRow]) -> set[str]:
+    """References that the same document gives to different transactions.
+
+    Those are notes, not IDs: MTN's REF column holds free text such as
+    "goods" or "to bank" on many rows. Treated as IDs they made every later
+    row with the same note look like a duplicate and dropped it.
+    """
+    by_reference: dict[str, set[tuple]] = defaultdict(set)
+    for row in rows:
+        if row.reference:
+            by_reference[row.reference].add((row.occurred_on, row.direction, row.amount_pesewas, row.balance_after_pesewas))
+    return {reference for reference, kinds in by_reference.items() if len(kinds) > 1}
 
 
 def _account_for(session: Session, doc: Document, meta: dict) -> Account:
