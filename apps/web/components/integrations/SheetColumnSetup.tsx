@@ -96,6 +96,8 @@ export function SheetColumnSetup({
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [adjusting, setAdjusting] = useState(false);
+	// OnRecord's guess is shown as a preview first; the column questions open only when asked for or needed.
+	const [fixing, setFixing] = useState(Boolean(onCancel));
 	const [noDates, setNoDates] = useState(false);
 	// Kept apart from the mapping so "money in and out" stays chosen while its columns are still empty.
 	const [chosenAmountMode, setChosenAmountMode] = useState<"one" | "split" | null>(null);
@@ -136,6 +138,7 @@ export function SheetColumnSetup({
 			setMapping(null);
 			setPreview(null);
 			setAdjusting(false);
+			setFixing(Boolean(onCancel));
 			setChosenAmountMode(null);
 		} catch (problem) {
 			setError(problem instanceof Error ? problem.message : "Could not switch to that tab.");
@@ -199,6 +202,9 @@ export function SheetColumnSetup({
 	const blocked = preview.field_problems.length > 0 || preview.readable_rows === 0;
 	const firstBlocker = preview.field_problems[0]?.message ?? preview.notes[0]?.message ?? "None of the rows can be read yet.";
 	const unreadable = preview.data_rows - preview.readable_rows;
+	const showQuestions = fixing || blocked;
+	const shownRows = showQuestions ? preview.rows : preview.rows.slice(0, 5);
+	const hasCategory = preview.rows.some((row) => row.record?.category_text);
 
 	function setAmountMode(mode: "one" | "split") {
 		if (mode === amountMode) return;
@@ -251,17 +257,19 @@ export function SheetColumnSetup({
 									? `All on ${dateText(preview.first_date)}. `
 									: `From ${dateText(preview.first_date)} to ${dateText(preview.last_date)}. `
 								: ""}
-							{unreadable ? `${unreadable} more row${unreadable === 1 ? "" : "s"} need a fix, shown below.` : "Every row could be read."}
+							{unreadable ? `${unreadable} more row${unreadable === 1 ? "" : "s"} need a fix.` : "Every row could be read."}
 						</div>
 					</>
 				) : (
 					<>
 						<div className="text-[15px] font-semibold">OnRecord can&apos;t read these rows yet</div>
-						<div className="mt-0.5 text-[12.5px] opacity-75">{preview.data_rows} rows found. Answer the question marked in red below and the preview updates.</div>
+						<div className="mt-0.5 text-[12.5px] opacity-75">{preview.data_rows} rows found. Fix the question in red below.</div>
 					</>
 				)}
 			</div>
 
+			{showQuestions ? (
+				<>
 			{/* The few things a record needs. */}
 			<div className="mt-2 divide-y divide-border">
 				<Question label="Date" hint="When it happened" problem={problemFor("date")}>
@@ -366,10 +374,13 @@ export function SheetColumnSetup({
 				) : null}
 			</div>
 
+				</>
+			) : null}
+
 			{/* Exactly what will be saved from the first rows. */}
-			<div className="mt-6">
+			<div className={showQuestions ? "mt-6" : "mt-4"}>
 				<h3 className="m-0 mb-2 text-[13.5px] font-semibold">
-					What OnRecord will save {loading ? <span className="font-normal opacity-50">· updating…</span> : null}
+					How your rows will look {loading ? <span className="font-normal opacity-50">· updating…</span> : null}
 				</h3>
 				<div className="overflow-x-auto rounded-xl border border-border">
 					<table className="w-full text-left text-[12.5px]">
@@ -378,25 +389,25 @@ export function SheetColumnSetup({
 								<th className="px-3 py-2 font-semibold">Row</th>
 								<th className="px-3 py-2 font-semibold">Date</th>
 								<th className="px-3 py-2 font-semibold">Details</th>
-								<th className="hidden px-3 py-2 font-semibold sm:table-cell">Category</th>
+								{hasCategory ? <th className="hidden px-3 py-2 font-semibold sm:table-cell">Category</th> : null}
 								<th className="px-3 py-2 text-right font-semibold">Amount</th>
 							</tr>
 						</thead>
 						<tbody>
-							{preview.rows.map((row) => (
+							{shownRows.map((row) => (
 								<tr key={row.row_number} className="border-t border-border">
 									<td className="px-3 py-2 opacity-60">{row.row_number}</td>
 									{row.record ? (
 										<>
 											<td className="px-3 py-2 whitespace-nowrap">{dateText(row.record.occurred_on)}</td>
 											<td className="px-3 py-2">{row.record.description ?? "-"}</td>
-											<td className="hidden px-3 py-2 opacity-75 sm:table-cell">{row.record.category_text ?? "-"}</td>
+											{hasCategory ? <td className="hidden px-3 py-2 opacity-75 sm:table-cell">{row.record.category_text ?? "-"}</td> : null}
 											<td className={`px-3 py-2 text-right whitespace-nowrap ${row.record.direction === "in" ? "text-positive" : ""}`}>
 												{row.record.direction === "in" ? "+" : "−"}{formatGhs(row.record.amount_pesewas)}
 											</td>
 										</>
 									) : (
-										<td colSpan={4} className="px-3 py-2">
+										<td colSpan={hasCategory ? 4 : 3} className="px-3 py-2">
 											<span className="opacity-60">{row.values.filter(Boolean).slice(0, 3).join(" · ")}</span>
 											<span className="block text-destructive">{row.issues.join(" ")}</span>
 										</td>
@@ -406,8 +417,8 @@ export function SheetColumnSetup({
 						</tbody>
 					</table>
 				</div>
-				{preview.data_rows > preview.rows.length ? (
-					<p className="m-0 mt-1.5 text-[12px] opacity-60">Showing the first {preview.rows.length} of {preview.data_rows} rows.</p>
+				{preview.data_rows > shownRows.length ? (
+					<p className="m-0 mt-1.5 text-[12px] opacity-60">First {shownRows.length} of {preview.data_rows} rows.</p>
 				) : null}
 			</div>
 
@@ -419,12 +430,15 @@ export function SheetColumnSetup({
 					onClick={() => void save()}
 					className="rounded-full bg-foreground px-5 py-2.5 text-[13.5px] text-background disabled:cursor-not-allowed disabled:opacity-40"
 				>
-					{confirm.isPending ? "Saving…" : `Confirm and start syncing${preview.readable_rows ? ` (${preview.readable_rows} rows)` : ""}`}
+					{confirm.isPending ? "Saving…" : showQuestions ? "Save and start syncing" : "Looks right, start syncing"}
 				</button>
+				{!showQuestions ? (
+					<button type="button" onClick={() => setFixing(true)} className="text-[13px] underline underline-offset-2">Something wrong? Fix columns</button>
+				) : null}
 				{onCancel ? <button type="button" onClick={onCancel} className="text-[13px] underline underline-offset-2">Cancel</button> : null}
 				{blocked && !loading ? <span className="text-[12.5px] text-destructive">To continue: {firstBlocker}</span> : null}
 			</div>
-			<p className="m-0 mt-3 text-[12px] opacity-60">You only do this once. OnRecord never changes your sheet.</p>
+			<p className="m-0 mt-3 text-[12px] opacity-60">You only do this once. OnRecord never edits your sheet.</p>
 		</div>
 	);
 }

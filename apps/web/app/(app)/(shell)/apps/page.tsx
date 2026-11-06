@@ -1,34 +1,44 @@
 import { Badge } from "@/components/ui/Badge";
-import { AppsIcon, GoogleSheetsLogo } from "@/components/icons";
-import { GoogleSheetsStatus } from "@/components/integrations/GoogleSheetsStatus";
-import { SheetConnections } from "@/components/integrations/SheetConnections";
-import { APP_INTEGRATIONS } from "@/lib/integrations";
+import { GoogleSheetsCard } from "@/components/integrations/GoogleSheetsCard";
+import { IntegrationLogo } from "@/components/integrations/logos";
+import { APP_INTEGRATIONS, type AppIntegration } from "@/lib/integrations";
+
+function CardHeader({ app }: { app: AppIntegration }) {
+	return (
+		<>
+			<IntegrationLogo icon={app.icon} />
+			<div className="flex-1 min-w-0">
+				<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
+				<div className="text-[12.5px] opacity-65">{app.desc}</div>
+			</div>
+		</>
+	);
+}
 
 export default function IntegrationsPage() {
+	const live = APP_INTEGRATIONS.filter((app) => app.icon === "google-sheets");
+	const soon = APP_INTEGRATIONS.filter((app) => app.icon !== "google-sheets");
 	return (
-		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[820px]">
+		<div className="flex-1 min-w-0 px-4 sm:px-7 pt-6 sm:pt-7.5 pb-10 max-w-[860px]">
 			<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Integrations</h1>
-			<p className="text-sm opacity-70 m-0 mb-6.5">
-				Bring in records automatically from services you already use. Connecting
-				one doesn&apos;t change anything you&apos;ve already uploaded.
-			</p>
+			<p className="text-sm opacity-70 m-0 mb-6.5">Connect once and OnRecord keeps your records up to date by itself.</p>
+
 			<div className="flex flex-col gap-3.5">
-				{APP_INTEGRATIONS.map((app) => (
-					<div
-						key={app.name}
-						className={`flex flex-col gap-4 p-5 border border-foreground/12 rounded-2xl transition-opacity ${app.icon === "google-sheets" ? "" : "opacity-75 hover:opacity-100"}`}
-					>
-						<div className="flex items-center gap-4">
-							<div className="w-11 h-11 shrink-0 rounded-xl bg-muted flex items-center justify-center">
-								{app.icon === "google-sheets" ? <GoogleSheetsLogo /> : <AppsIcon />}
-							</div>
-							<div className="flex-1 min-w-0">
-								<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
-								<div className="text-[12.5px] opacity-65">{app.desc}</div>
-							</div>
-							{app.icon === "google-sheets" ? <GoogleSheetsStatus /> : <Badge tone="neutral">Coming soon</Badge>}
+				{live.map((app) => <GoogleSheetsCard key={app.name} header={<CardHeader app={app} />} />)}
+			</div>
+
+			<h2 className="m-0 mt-9 mb-3 text-[13px] font-semibold uppercase tracking-wide opacity-60">Coming soon</h2>
+			<div className="grid gap-3 sm:grid-cols-2">
+				{soon.map((app) => (
+					<div key={app.name} className="flex flex-col gap-3 rounded-2xl border border-foreground/12 p-4.5">
+						<div className="flex items-start justify-between gap-3">
+							<IntegrationLogo icon={app.icon} />
+							<Badge tone="neutral">Soon</Badge>
 						</div>
-						{app.icon === "google-sheets" ? <SheetConnections /> : null}
+						<div>
+							<div className="text-[15px] font-semibold mb-0.5">{app.name}</div>
+							<div className="text-[12.5px] opacity-65">{app.desc}</div>
+						</div>
 					</div>
 				))}
 			</div>

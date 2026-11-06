@@ -49,8 +49,14 @@ export default function SheetConnectionPage() {
 				<Badge tone={status.tone}>{status.label}</Badge>
 			</div>
 			<p className="m-0 mb-6 text-sm opacity-70">
-				Tab: {sheet.sheet_title} · checked {timeAgo(sheet.last_checked_at)}
-				{sheet.last_synced_at ? ` · last change read ${timeAgo(sheet.last_synced_at)}` : ""}
+				{sheet.status === "needs_mapping" ? (
+					"Check that OnRecord read it right, then start."
+				) : (
+					<>
+						Tab: {sheet.sheet_title} · checked {timeAgo(sheet.last_checked_at)}
+						{sheet.last_synced_at ? ` · last change read ${timeAgo(sheet.last_synced_at)}` : ""}
+					</>
+				)}
 			</p>
 
 			{sheet.last_error ? (
@@ -74,19 +80,11 @@ export default function SheetConnectionPage() {
 				</div>
 			) : (
 				<>
-					<div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-						{[
-							["Records from this sheet", sheet.counts.in_ledger ?? 0],
-							["Need a look", sheet.counts.to_review ?? 0],
-							["Added last sync", result.added ?? 0],
-							["Changed last sync", (result.edited ?? 0) + (result.removed ?? 0)],
-						].map(([label, value]) => (
-							<div key={label} className="rounded-xl border border-border p-3">
-								<div className="text-[20px] font-semibold">{value}</div>
-								<div className="text-[12px] opacity-65">{label}</div>
-							</div>
-						))}
-					</div>
+					<p className="m-0 mb-5 text-[14px]">
+						<span className="font-semibold">{sheet.counts.in_ledger ?? 0} records</span> from this sheet
+						{result.added ? `, ${result.added} added last time` : ""}.{" "}
+						{sheet.status === "paused" ? "Paused, so new rows wait." : "New rows come in by themselves every 15 minutes."}
+					</p>
 
 					<div className="mb-8 flex flex-wrap gap-2">
 						{sheet.status === "paused" ? (
@@ -115,17 +113,12 @@ export default function SheetConnectionPage() {
 						</button>
 					</div>
 
-					<SheetRowList
-						title="Needs a look"
-						empty="Nothing to check. New rows are going straight into Records."
-						rows={sheet.review_rows}
-						withActions
-					/>
-					<SheetRowList
-						title="Changes OnRecord noticed"
-						empty="No rows have been edited or deleted in the sheet since it was connected."
-						rows={sheet.changed_rows}
-					/>
+					{sheet.review_rows.length ? (
+						<SheetRowList title="Needs a look" empty="" rows={sheet.review_rows} withActions />
+					) : null}
+					{sheet.changed_rows.length ? (
+						<SheetRowList title="Changes OnRecord noticed" empty="" rows={sheet.changed_rows} />
+					) : null}
 				</>
 			)}
 		</div>
