@@ -168,7 +168,9 @@ async def test_statement_split_and_patterns_for_owner_questions(client, db_ready
         assert patterns["customers"]["top_3"][0] == {"name": "KOFI MARKET", "sales": "GH¢1,250.00"}
         assert patterns["typical_sale"] == "GH¢583.33"
         assert patterns["best_weekday"] and patterns["slowest_weekday"]
-        assert patterns["cost_changes"]["by_payee"][0]["paid_to"] == "AGRO INPUTS"
+        assert patterns["biggest_costs"]["by_payee"][0] == {
+            "paid_to": "AGRO INPUTS", "amount": "GH¢300.00", "share_of_costs": "100%", "months_paid": 1}
+        assert patterns["costs_that_grew"]["by_payee"][0]["paid_more_by"] == "GH¢300.00"
 
 
 def test_indicator_summary_skips_empty_lead_months_and_never_adds_averages():
@@ -180,3 +182,12 @@ def test_indicator_summary_skips_empty_lead_months_and_never_adds_averages():
     assert average["average_per_month"] == "GH¢150.00" and "total" not in average
     assert _summarize_indicator(series, "pesewas", "REV_MONTHLY")["total"] == "GH¢300.00"
     assert _summarize_indicator({"v": 0.2918}, "ratio", "OPEX_RATIO")["value_percent"] == "29.2%"
+
+
+def test_groq_tools_make_nullable_inputs_optional():
+    from app.services.ona_groq import _function_tools
+
+    tools = {tool["function"]["name"]: tool["function"]["parameters"] for tool in _function_tools(False)}
+    # gpt-oss sends {} for "all time"; Groq rejects that when nullable dates are required.
+    assert tools["get_business_vs_personal"]["required"] == []
+    assert "start_date" in tools["get_business_vs_personal"]["properties"]

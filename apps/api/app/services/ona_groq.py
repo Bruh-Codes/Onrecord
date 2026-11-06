@@ -58,11 +58,23 @@ class _GroqError(Exception):
 def _function_tools(web_search: bool) -> list[dict[str, Any]]:
     tools = [
         {"type": "function", "function": {
-            "name": tool["name"], "description": tool["description"], "parameters": tool["input_schema"],
+            "name": tool["name"], "description": tool["description"], "parameters": _optional_nulls(tool["input_schema"]),
         }}
         for tool in TOOL_DEFINITIONS
     ]
     return [*tools, WEB_SEARCH_TOOL] if web_search else tools
+
+
+def _optional_nulls(schema: dict[str, Any]) -> dict[str, Any]:
+    """Claude's strict tools list every property as required (null means "no limit"). Groq rejects a
+    call that leaves such a property out, and gpt-oss often sends {} for "all time", so on Groq a
+    property that may be null is optional; the handlers treat a missing value as null."""
+    properties = schema.get("properties") or {}
+    required = [
+        key for key in schema.get("required") or []
+        if "null" not in (types := properties.get(key, {}).get("type")) and types != "null"
+    ]
+    return {**schema, "required": required}
 
 
 async def answer_with_groq(
