@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, clearTokenCache } from "@/lib/api";
 import { linkBusiness } from "@/lib/link-business";
 import { authClient } from "@/lib/auth-client";
 import { SECTOR_OPTIONS } from "@/lib/sectors";
@@ -41,6 +41,7 @@ export default function SetupPage() {
 				sector_code: sector || null,
 			});
 			await linkBusiness(business.id);
+			clearTokenCache();
 			// The server-side gate in app/(app)/layout.tsx resolves businessId
 			// from the auth_user row itself, so no session refresh is needed —
 			// the owner won't be bounced back here on the next navigation.

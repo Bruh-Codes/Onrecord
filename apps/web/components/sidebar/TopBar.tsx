@@ -8,6 +8,7 @@ import { BellIcon, SunIcon, MoonIcon, LogOutIcon, ApprovalsIcon, SettingsIcon } 
 import { canReview, useApprovalsSummary } from "@/lib/approvals";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
+import { clearTokenCache } from "@/lib/api";
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useMe, useNotifications } from "@/lib/hooks/use-business";
 import { useSheetCatchUp } from "@/lib/sheet-sync";
 import icon from "@/public/icon.png";
@@ -63,6 +64,7 @@ export function TopBar() {
     try {
       setIsLoading(true);
       setIsDropdownOpen(false);
+      clearTokenCache();
       await authClient.signOut({
         fetchOptions: { onSuccess: () => router.push("/signup") },
       });

@@ -62,7 +62,44 @@ export async function transcribeVoice(audio: Blob, fileName = "recording.webm"):
   return result.text;
 }
 
+// One token is shared by the requests a page fires together. Minting a JWT per
+// request made the dashboard wait on ~15 token calls that the server answered
+// one after another (about 0.7 s). The cache is short and is dropped on a 401/403
+// or when the business changes, so a token never outlives its claims for long.
+const TOKEN_TTL_MS = 60_000;
+let tokenCache: { token: string; until: number } | null = null;
+let tokenInFlight: Promise<string> | null = null;
+
+export function clearTokenCache(): void {
+  tokenCache = null;
+  tokenInFlight = null;
+}
+
+function tokenExpiry(token: string): number {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: number };
+    return payload.exp ? payload.exp * 1000 - 30_000 : Infinity;
+  } catch {
+    return 0;
+  }
+}
+
 async function getToken(): Promise<string> {
+  if (tokenCache && tokenCache.until > Date.now()) return tokenCache.token;
+  if (!tokenInFlight) {
+    tokenInFlight = mintToken()
+      .then((token) => {
+        tokenCache = { token, until: Math.min(Date.now() + TOKEN_TTL_MS, tokenExpiry(token)) };
+        return token;
+      })
+      .finally(() => {
+        tokenInFlight = null;
+      });
+  }
+  return tokenInFlight;
+}
+
+async function mintToken(): Promise<string> {
   // Better Auth >= 1.2 no longer returns the JWT inside the get-session body
   // (`session.token`); the jwt plugin mints it via the dedicated GET
   // /api/auth/token endpoint instead (same signing path, same claims).
@@ -89,7 +126,14 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { ...init, headers });
+  let res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { ...init, headers });
+  if ((res.status === 401 || res.status === 403) && tokenCache?.token === token) {
+    // The cached token may predate a change to the account (for example the
+    // business just linked at setup). Mint a fresh one and try once more.
+    clearTokenCache();
+    headers.Authorization = `Bearer ${await getToken()}`;
+    res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { ...init, headers });
+  }
 
   if (!res.ok) {
     let body: { error?: { code?: string; message?: string; detail?: unknown } } | null = null;
