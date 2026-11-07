@@ -1,7 +1,7 @@
 export function formatGhs(pesewas: number): string {
   // The minus goes before the symbol: −GH¢6,300, not GH¢-6,300.
   const cedis = Math.abs(pesewas) / 100;
-  const amount = `GH¢${cedis.toLocaleString("en-GH", { maximumFractionDigits: cedis % 1 === 0 ? 0 : 2 })}`;
+  const amount = `GH¢${cedis.toLocaleString("en-GH", { minimumFractionDigits: cedis % 1 === 0 ? 0 : 2, maximumFractionDigits: cedis % 1 === 0 ? 0 : 2 })}`;
   return pesewas < 0 ? `−${amount}` : amount;
 }
 
