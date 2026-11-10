@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 
 import { AddRecordDrawer } from "@/components/money/AddRecordForm";
 import { FarmBreakdown } from "@/components/money/FarmBreakdown";
-import { LenderNumbers } from "@/components/money/LenderNumbers";
 import { MonthlyCashFlowChart } from "@/components/money/MonthlyCashFlowChart";
 import { RankedList } from "@/components/money/RankedList";
 import { TransactionsList } from "@/components/money/TransactionsList";
@@ -170,8 +169,6 @@ export default function MoneyPage() {
 				{periods.length ? <MonthlyCashFlowChart periods={periods} /> : <p className="text-[13px] text-foreground/55">No activity in this range.</p>}
 			</section>
 
-			<LenderNumbers businessId={businessId} months={months || 12} />
-
 			<FarmBreakdown farm={data.farm} filter={filter} onFilter={setFilter} />
 
 			<div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -243,7 +240,7 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
 			<div className="mb-5 flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<h1 className="text-[24px] sm:text-[28px] m-0 mb-1.5">Money in &amp; out</h1>
-					<p className="text-sm opacity-70 m-0">Everything that came in and went out, and the numbers a lender works out from it.</p>
+					<p className="text-sm opacity-70 m-0">Everything that came in and went out.</p>
 				</div>
 				{actions}
 			</div>

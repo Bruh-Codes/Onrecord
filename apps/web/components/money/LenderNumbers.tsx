@@ -24,8 +24,8 @@ function seriesOf(indicator: Indicator): Series {
 /**
  * The ratios a lender works out from the owner's records (sales growth, costs
  * as a share of sales, days the account ran empty...). These come from the
- * readiness analysis, which covers the last 12 months of statements, so a
- * shorter range on the Money page only trims the monthly series.
+ * readiness analysis, which covers the last 12 months of statements. Shown on
+ * the Readiness page.
  */
 export function LenderNumbers({ businessId, months }: { businessId: string; months: number }) {
 	const indicators = useIndicatorsMap(businessId);
