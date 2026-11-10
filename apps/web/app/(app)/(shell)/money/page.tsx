@@ -153,7 +153,7 @@ export default function MoneyPage() {
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<Stat label="Money in" value={formatGhs(totalIn)} tone="in" />
 				<Stat label="Money out" value={formatGhs(totalOut)} />
-				<Stat label="In minus out" value={formatGhs(net)} tone={net < 0 ? "negative" : undefined} />
+				<Stat label="Net cash flow" value={formatGhs(net)} tone={net < 0 ? "negative" : undefined} />
 				<Stat label="Transactions" value={count.toLocaleString()} caption={span} />
 			</div>
 
