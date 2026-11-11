@@ -155,7 +155,7 @@ export default function LenderSummaryPage() {
 						</div>
 						<Figure label="Money out, average month" value={cedis(avgOut)} note={`${cedis(totalOut)} in total`} />
 						<Figure
-							label="In minus out"
+							label="Net cash flow"
 							value={cedis(net)}
 							note={`${positiveMonths} of ${periods.length} months ended above zero`}
 							tone={net < 0 ? "negative" : undefined}
@@ -172,7 +172,7 @@ export default function LenderSummaryPage() {
 										<th className="py-2 pr-3 font-medium">Month</th>
 										<th className="py-2 pr-3 text-right font-medium">Money in</th>
 										<th className="py-2 pr-3 text-right font-medium">Money out</th>
-										<th className="py-2 pr-3 text-right font-medium">In minus out</th>
+										<th className="py-2 pr-3 text-right font-medium">Net cash flow</th>
 										<th className="py-2 text-right font-medium">Payments</th>
 									</tr>
 								</thead>
