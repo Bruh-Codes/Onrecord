@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { InfoHint } from "@/components/overview/InfoHint";
+import { LenderNumbers } from "@/components/money/LenderNumbers";
 import { GapRowSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { useChecklist, useGaps, useMe, useScore } from "@/lib/hooks/use-business";
 import { askOna } from "@/lib/ona";
@@ -161,6 +162,12 @@ export default function ReadinessPage() {
 						<StepRow key={step.id} step={step} index={index + 1} />
 					))}
 				</ol>
+			)}
+
+			{businessId != null && score.data && (
+				<div className="mt-8">
+					<LenderNumbers businessId={businessId} months={12} />
+				</div>
 			)}
 
 			{done.length > 0 && (

@@ -680,7 +680,7 @@ def _snapshot_for_turn(message: str, snapshot: dict[str, Any]) -> dict[str, Any]
     return {"_note": "Casual greeting; do not infer business facts from this turn."}
 
 
-# Plain names for the readiness indicators, matching "What a lender works out" on Money.
+# Plain names for the readiness indicators, matching "What a lender works out" on Readiness.
 INDICATOR_LABELS = {
     "REV_MONTHLY": "Sales per month",
     "REV_TTM": "Sales in the last 12 months",
