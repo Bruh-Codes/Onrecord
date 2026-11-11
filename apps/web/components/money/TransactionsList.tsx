@@ -15,7 +15,10 @@ import {
 } from "@/lib/money";
 import { TransactionRowsSkeleton } from "@/components/ui/Skeleton";
 
+// Show the 10 newest first; "Show more" loads the rest in bigger steps.
+const FIRST = 10;
 const PAGE = 50;
+const MAX = 200;
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const DIRECTIONS: { value: TransactionQuery["direction"]; label: string }[] = [
 	{ value: undefined, label: "All" },
@@ -42,12 +45,12 @@ export function TransactionsList({
 	const [direction, setDirection] = useState<TransactionQuery["direction"]>(undefined);
 	const [category, setCategory] = useState("");
 	const [sort, setSort] = useState<NonNullable<TransactionQuery["sort"]>>("newest");
-	const [limit, setLimit] = useState(PAGE);
+	const [limit, setLimit] = useState(FIRST);
 
 	useEffect(() => {
 		const timer = window.setTimeout(() => {
 			setQ(search.trim());
-			setLimit(PAGE);
+			setLimit(FIRST);
 		}, 300);
 		return () => window.clearTimeout(timer);
 	}, [search]);
@@ -83,7 +86,7 @@ export function TransactionsList({
 							key={option.label}
 							type="button"
 							aria-pressed={direction === option.value}
-							onClick={() => { setDirection(option.value); setLimit(PAGE); }}
+							onClick={() => { setDirection(option.value); setLimit(FIRST); }}
 							className={`rounded-full px-3 py-1.5 text-[12.5px] cursor-pointer ${direction === option.value ? "bg-foreground text-background" : "text-foreground/70"}`}
 						>
 							{option.label}
@@ -93,7 +96,7 @@ export function TransactionsList({
 				<select
 					aria-label="Category"
 					value={category}
-					onChange={(event) => { setCategory(event.target.value); setLimit(PAGE); }}
+					onChange={(event) => { setCategory(event.target.value); setLimit(FIRST); }}
 					className="rounded-full border border-border bg-transparent px-3 py-2 text-[12.5px]"
 				>
 					<option value="">All categories</option>
@@ -105,7 +108,7 @@ export function TransactionsList({
 				<select
 					aria-label="Sort"
 					value={sort}
-					onChange={(event) => setSort(event.target.value as typeof sort)}
+					onChange={(event) => { setSort(event.target.value as typeof sort); setLimit(FIRST); }}
 					className="rounded-full border border-border bg-transparent px-3 py-2 text-[12.5px]"
 				>
 					<option value="newest">Newest first</option>
@@ -158,11 +161,11 @@ export function TransactionsList({
 				<div className="mt-3 flex justify-center">
 					<button
 						type="button"
-						onClick={() => setLimit((value) => Math.min(value + PAGE, 200))}
-						disabled={limit >= 200 || query.isFetching}
+						onClick={() => setLimit((value) => Math.min(value + PAGE, MAX))}
+						disabled={limit >= MAX || query.isFetching}
 						className="rounded-full border border-border px-4 py-2 text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{limit >= 200 ? "Narrow the filters to see more" : "Show more"}
+						{limit >= MAX ? "Narrow the filters to see more" : "Show more"}
 					</button>
 				</div>
 			)}
